@@ -29,7 +29,7 @@ export const CoachAdvisor = ({
 
   return (
     <div
-      className={`w-full border-3 border-black p-3 transition-all select-none ${
+      className={`w-full border-3 border-black p-3 transition-all select-none text-black ${
         coachEnabled
           ? 'bg-white brutal-shadow'
           : 'bg-[#f4f4eb] brutal-shadow-sm'
@@ -40,13 +40,13 @@ export const CoachAdvisor = ({
         <div className="flex items-center gap-2 min-w-0">
           <div
             className={`w-7 h-7 border-2 border-black flex items-center justify-center shrink-0 ${
-              coachEnabled ? 'bg-[#22c55e] text-black' : 'bg-neutral-300 text-black'
+              coachEnabled ? 'bg-[#22c55e] text-black' : 'bg-black text-white'
             }`}
           >
             <Sparkles className="w-4 h-4 stroke-[2.5]" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-xs sm:text-sm font-black uppercase font-brutal truncate">
+            <h2 className="text-xs sm:text-sm font-black uppercase font-brutal truncate text-black">
               GM Tactical Advisor
             </h2>
             <p className="text-[10px] text-neutral-800 font-mono font-bold hidden sm:block truncate">
@@ -131,22 +131,26 @@ export const CoachAdvisor = ({
           </div>
 
           {/* Sub-Actions: Voice & Arrow Controls */}
-          <div className="flex items-center justify-between gap-2 pt-1 border-t border-black/20 text-xs font-mono">
+          <div className="flex items-center justify-between gap-2 pt-1 border-t-2 border-black text-xs font-mono">
             <button
               onClick={handleSpeech}
-              className="brutal-press flex items-center gap-1 px-2 py-0.5 bg-white hover:bg-neutral-100 border-2 border-black text-black font-black uppercase cursor-pointer brutal-shadow-sm"
+              className="brutal-press flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-neutral-100 border-2 border-black text-black font-black uppercase cursor-pointer brutal-shadow-sm"
               title="Voice coach explanation"
             >
-              {isSpeaking ? <VolumeX className="w-3.5 h-3.5 text-red-600" /> : <Volume2 className="w-3.5 h-3.5" />}
+              {isSpeaking ? <VolumeX className="w-3.5 h-3.5 text-red-600" /> : <Volume2 className="w-3.5 h-3.5 text-black" />}
               <span>{isSpeaking ? 'STOP VOICE' : 'VOICE CO-PILOT'}</span>
             </button>
 
             <button
               onClick={onToggleArrow}
-              className="brutal-press flex items-center gap-1 px-2 py-0.5 bg-white hover:bg-neutral-100 border-2 border-black text-black font-black uppercase cursor-pointer brutal-shadow-sm"
+              className={`brutal-press flex items-center gap-1.5 px-3 py-1 border-2 border-black font-black uppercase cursor-pointer brutal-shadow-sm transition-all ${
+                showArrow
+                  ? 'bg-[#22c55e] text-black hover:bg-green-400'
+                  : 'bg-[#facc15] text-black hover:bg-yellow-400'
+              }`}
               title="Toggle tactical arrow on board"
             >
-              {showArrow ? <Eye className="w-3.5 h-3.5 text-[#22c55e]" /> : <EyeOff className="w-3.5 h-3.5" />}
+              {showArrow ? <Eye className="w-3.5 h-3.5 text-black" /> : <EyeOff className="w-3.5 h-3.5 text-black" />}
               <span>ARROW: {showArrow ? 'ON' : 'OFF'}</span>
             </button>
           </div>
