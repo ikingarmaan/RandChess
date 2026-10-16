@@ -7,7 +7,13 @@ export const GameOverModal = ({
   result, // { type: 'checkmate' | 'stalemate' | 'draw' | 'timeout' | 'resignation', winner: 'w' | 'b' | null, reason: string }
   onNewGame,
   onClose,
-  playerColor = 'w'
+  playerColor = 'w',
+  isOnline = false,
+  onOfferRematch = null,
+  onAcceptRematch = null,
+  rematchOffered = false,
+  rematchSent = false,
+  onOpenOnlineLobby = null
 }) => {
   useEffect(() => {
     sound.playGameOver();
@@ -46,7 +52,7 @@ export const GameOverModal = ({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
       style={{ overscrollBehavior: 'contain' }}
     >
-      <div className="bg-white text-black border-4 border-black p-6 sm:p-8 brutal-shadow-xl max-w-md w-full text-center space-y-5 relative select-none">
+      <div className="bg-white text-black border-4 border-black p-5 sm:p-7 brutal-shadow-xl max-w-md w-full text-center space-y-4 relative select-none max-h-[92vh] overflow-y-auto">
         <button
           onClick={onClose}
           className="brutal-press absolute top-4 right-4 bg-black text-white hover:bg-neutral-800 p-1.5 border-2 border-black cursor-pointer"
@@ -55,8 +61,8 @@ export const GameOverModal = ({
         </button>
 
         {/* Big Brutalist Trophy Stamp */}
-        <div className="mx-auto w-16 h-16 bg-[#facc15] border-3 border-black flex items-center justify-center brutal-shadow-sm">
-          <Trophy className="w-9 h-9 text-black" />
+        <div className="mx-auto w-14 h-14 bg-[#facc15] border-3 border-black flex items-center justify-center brutal-shadow-sm">
+          <Trophy className="w-8 h-8 text-black" />
         </div>
 
         <div>
@@ -71,24 +77,65 @@ export const GameOverModal = ({
           </p>
         </div>
 
+        {/* Online Rematch Notifications */}
+        {isOnline && rematchOffered && (
+          <div className="p-2.5 bg-[#facc15] border-2 border-black font-mono text-xs font-black text-black animate-pulse">
+            🤝 Opponent has requested a rematch!
+          </div>
+        )}
+
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-2 pt-2">
-          <button
-            onClick={() => {
-              onClose();
-              onNewGame();
-            }}
-            className="brutal-press flex-1 flex items-center justify-center gap-2 py-3 bg-[#22c55e] hover:bg-green-400 text-black border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>PLAY AGAIN</span>
-          </button>
+        <div className="flex flex-col gap-2 pt-2">
+          {isOnline ? (
+            <>
+              {rematchOffered ? (
+                <button
+                  onClick={() => {
+                    onClose();
+                    onAcceptRematch && onAcceptRematch();
+                  }}
+                  className="brutal-press w-full py-3 bg-[#22c55e] hover:bg-green-400 text-black border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
+                >
+                  ACCEPT REMATCH ▶
+                </button>
+              ) : (
+                <button
+                  onClick={onOfferRematch}
+                  disabled={rematchSent}
+                  className="brutal-press w-full py-3 bg-[#22c55e] hover:bg-green-400 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:border-neutral-400 disabled:cursor-not-allowed text-black border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
+                >
+                  {rematchSent ? '⏳ REMATCH OFFER SENT...' : '🔄 REQUEST REMATCH'}
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenOnlineLobby && onOpenOnlineLobby();
+                }}
+                className="brutal-press w-full py-2.5 bg-black text-white hover:bg-neutral-800 border-3 border-black font-brutal text-xs sm:text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
+              >
+                🌐 NEW ONLINE MATCH
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => {
+                onClose();
+                onNewGame();
+              }}
+              className="brutal-press w-full py-3 bg-[#22c55e] hover:bg-green-400 text-black border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
+            >
+              <RotateCcw className="w-4 h-4 inline mr-1" />
+              <span>PLAY AGAIN</span>
+            </button>
+          )}
 
           <button
             onClick={onClose}
-            className="brutal-press flex items-center justify-center gap-1.5 px-4 py-3 bg-white hover:bg-neutral-100 text-black border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
+            className="brutal-press w-full py-2.5 bg-white hover:bg-neutral-100 text-black border-3 border-black font-brutal text-xs sm:text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
           >
-            <Eye className="w-4 h-4" />
+            <Eye className="w-4 h-4 inline mr-1" />
             <span>REVIEW BOARD</span>
           </button>
         </div>

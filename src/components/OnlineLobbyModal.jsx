@@ -6,9 +6,11 @@ export const OnlineLobbyModal = ({
   onClose,
   onCreateRoom,
   onJoinRoom,
+  onLeaveRoom,
   roomCode,
   isWaiting,
-  onlineStatus
+  onlineStatus,
+  isConnected = true
 }) => {
   const [tab, setTab] = useState('create');
   const [inputCode, setInputCode] = useState('');
@@ -56,18 +58,29 @@ export const OnlineLobbyModal = ({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white text-black border-4 border-black p-5 sm:p-6 brutal-shadow-xl max-w-md w-full space-y-5 relative select-none">
+      <div className="bg-white text-black border-4 border-black p-5 sm:p-6 brutal-shadow-xl max-w-md w-full space-y-4 relative select-none max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b-3 border-black pb-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#22c55e] border-2 border-black flex items-center justify-center">
+            <div className="w-8 h-8 bg-[#22c55e] border-2 border-black flex items-center justify-center shrink-0">
               <Wifi className="w-5 h-5 text-black" />
             </div>
             <div>
-              <h2 className="font-brutal text-base sm:text-lg font-black uppercase tracking-tight">
-                Online Multiplayer
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-brutal text-base sm:text-lg font-black uppercase tracking-tight">
+                  Online Matchmaker
+                </h2>
+                <span
+                  className={`text-[9px] font-mono font-black uppercase px-1.5 py-0.2 border ${
+                    isConnected
+                      ? 'bg-[#22c55e] text-black border-black'
+                      : 'bg-[#facc15] text-black border-black animate-pulse'
+                  }`}
+                >
+                  {isConnected ? 'ONLINE' : 'CONNECTING...'}
+                </span>
+              </div>
               <p className="text-[11px] font-mono text-neutral-600">
-                P2P low-latency WebSockets matchmaker
+                P2P low-latency WebSockets room
               </p>
             </div>
           </div>
@@ -79,9 +92,17 @@ export const OnlineLobbyModal = ({
           </button>
         </div>
 
+        {/* Server status alert when connecting */}
+        {!isConnected && (
+          <div className="p-2.5 bg-[#facc15] border-2 border-black font-mono text-xs text-black font-black flex items-center gap-2">
+            <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin shrink-0" />
+            <span>Connecting to game server... If Render is waking up, this takes ~15s.</span>
+          </div>
+        )}
+
         {/* If waiting for opponent in an active room */}
         {isWaiting && roomCode ? (
-          <div className="py-4 text-center space-y-4">
+          <div className="py-2 text-center space-y-3.5">
             <div className="w-14 h-14 bg-[#22c55e] border-3 border-black flex items-center justify-center mx-auto brutal-shadow-sm">
               <Users className="w-7 h-7 text-black animate-pulse" />
             </div>
@@ -91,7 +112,7 @@ export const OnlineLobbyModal = ({
                 [ ROOM ACTIVE // WAITING FOR OPPONENT ]
               </span>
               <p className="text-xs text-neutral-600 font-mono mt-2">
-                Share this match code or direct URL with your opponent:
+                Share this match code or direct link with your opponent to play:
               </p>
             </div>
 
@@ -118,6 +139,16 @@ export const OnlineLobbyModal = ({
               {copiedLink ? <Check className="w-4 h-4 text-[#15803d]" /> : <Copy className="w-4 h-4" />}
               <span>{copiedLink ? 'INVITE LINK COPIED!' : 'COPY DIRECT INVITATION LINK'}</span>
             </button>
+
+            {/* Cancel Waiting Button */}
+            {onLeaveRoom && (
+              <button
+                onClick={onLeaveRoom}
+                className="brutal-press w-full py-2 bg-neutral-200 hover:bg-[#ef4444] hover:text-white border-2 border-black font-brutal text-xs font-black uppercase transition-colors cursor-pointer"
+              >
+                CANCEL & LEAVE ROOM
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
@@ -198,7 +229,8 @@ export const OnlineLobbyModal = ({
 
                 <button
                   onClick={handleCreate}
-                  className="brutal-press w-full py-3 bg-[#22c55e] hover:bg-green-400 text-black border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
+                  disabled={!isConnected}
+                  className="brutal-press w-full py-3 bg-[#22c55e] hover:bg-green-400 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:border-neutral-400 disabled:cursor-not-allowed disabled:shadow-none text-black border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
                 >
                   CREATE MATCH ROOM ▶
                 </button>
@@ -227,7 +259,7 @@ export const OnlineLobbyModal = ({
 
                 <button
                   type="submit"
-                  disabled={!inputCode.trim()}
+                  disabled={!inputCode.trim() || !isConnected}
                   className="brutal-press w-full py-3 bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:border-neutral-400 disabled:cursor-not-allowed disabled:shadow-none text-white border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
                 >
                   JOIN MATCH NOW ▶

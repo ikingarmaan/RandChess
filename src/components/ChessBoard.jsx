@@ -219,10 +219,13 @@ export const ChessBoard = ({
   }
 
   return (
-    <div className="relative w-full flex flex-col items-center select-none">
+    <div
+      className="relative w-full flex flex-col items-center select-none"
+      style={{ touchAction: 'manipulation', WebkitTouchCallout: 'none' }}
+    >
       {/* Outer Brutalist Frame with Thick 4px Black Border & Hard Offset Shadow */}
       <div className="relative w-full max-w-[min(94vw,540px)] aspect-square border-4 border-black bg-black brutal-shadow-lg transition-transform">
-        <div className="relative w-full h-full bg-black overflow-hidden">
+        <div className="relative w-full h-full bg-black overflow-hidden" style={{ touchAction: 'manipulation' }}>
           {/* 8x8 Chessboard Grid */}
           <div className="grid grid-cols-8 grid-rows-8 w-full h-full">
             {displayRanks.map((rank, rIdx) =>

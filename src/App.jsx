@@ -92,10 +92,32 @@ export default function App() {
   // --- Online Multiplayer State ---
   const [isOnlineModalOpen, setIsOnlineModalOpen] = useState(false);
   const [socket, setSocket] = useState(null);
+  const [socketConnected, setSocketConnected] = useState(false);
   const [onlineRoomCode, setOnlineRoomCode] = useState(null);
   const [isWaitingOnline, setIsWaitingOnline] = useState(false);
   const [onlineStatus, setOnlineStatus] = useState('');
   const [onlineMyColor, setOnlineMyColor] = useState('w');
+  const [drawOfferReceived, setDrawOfferReceived] = useState(false);
+  const [drawOfferSent, setDrawOfferSent] = useState(false);
+  const [drawDeclinedNotice, setDrawDeclinedNotice] = useState(false);
+  const [rematchOffered, setRematchOffered] = useState(false);
+  const [rematchSent, setRematchSent] = useState(false);
+
+  // Dynamic references to eliminate stale closures in socket event listeners
+  const chessRef = useRef(chess);
+  useEffect(() => {
+    chessRef.current = chess;
+  }, [chess]);
+
+  const onlineMyColorRef = useRef(onlineMyColor);
+  useEffect(() => {
+    onlineMyColorRef.current = onlineMyColor;
+  }, [onlineMyColor]);
+
+  const onlineRoomCodeRef = useRef(onlineRoomCode);
+  useEffect(() => {
+    onlineRoomCodeRef.current = onlineRoomCode;
+  }, [onlineRoomCode]);
 
   // Sync sound settings with audio manager
   useEffect(() => {
@@ -289,9 +311,20 @@ export default function App() {
         }
       }
 
-      // Online move emission
+      // Online move emission with server ack sync
       if (gameMode === 'online' && socket && onlineRoomCode) {
-        socket.emit('make_move', { roomId: onlineRoomCode, move: moveCandidate });
+        socket.emit('make_move', { roomId: onlineRoomCode, move: moveCandidate }, (ack) => {
+          if (ack && !ack.success) {
+            console.error('Server rejected move:', ack.error);
+            if (ack.fen) {
+              const rollback = new Chess(ack.fen);
+              setChess(rollback);
+              setBoardFen(rollback.fen());
+            }
+          } else if (ack && ack.timers) {
+            setTimers({ w: ack.timers.w, b: ack.timers.b });
+          }
+        });
       }
 
       runCoachAnalysis(nextGame);
@@ -340,44 +373,65 @@ export default function App() {
     });
     setSocket(newSocket);
 
-    newSocket.on('opponent_move', ({ move, gameOver }) => {
-      chess.move(move);
-      setBoardFen(chess.fen());
-      setLastMove({ from: move.from, to: move.to });
-      setHistory((prev) => [
-        ...prev,
-        {
-          san: move.san,
-          from: move.from,
-          to: move.to,
-          piece: move.piece,
-          color: move.color,
-          fen: chess.fen()
-        }
-      ]);
-      setViewHistoryIndex(null);
-      calculateMaterial(chess);
-      if (move.captured) sound.playCapture();
-      else sound.playMove();
-
-      if (chess.inCheck()) sound.playCheck();
-
-      if (gameOver) {
-        setGameOverResult(gameOver);
+    newSocket.on('connect', () => {
+      setSocketConnected(true);
+      // Check URL query parameters for ?room=XYZ
+      const params = new URLSearchParams(window.location.search);
+      const roomParam = params.get('room');
+      if (roomParam) {
+        newSocket.emit('join_room', { roomId: roomParam.toUpperCase() }, (res) => {
+          if (res && res.success) {
+            setOnlineRoomCode(roomParam.toUpperCase());
+            setGameMode('online');
+            setOnlineMyColor(res.color);
+            setPlayerColor(res.color);
+            setIsFlipped(res.color === 'b');
+            if (res.timeControl) {
+              setTimeControl(res.timeControl);
+              setTimers({ w: res.timeControl, b: res.timeControl });
+            }
+          }
+        });
       }
-      runCoachAnalysis(chess);
     });
 
-    newSocket.on('game_started', ({ roomId, whitePlayer, timeControl: tc }) => {
+    newSocket.on('disconnect', () => {
+      setSocketConnected(false);
+    });
+
+    newSocket.on('connect_error', () => {
+      setSocketConnected(false);
+    });
+
+    newSocket.on('game_started', ({ roomId, whitePlayer, timeControl: tc, fen }) => {
       setOnlineRoomCode(roomId);
       setIsWaitingOnline(false);
       setIsOnlineModalOpen(false);
       setGameMode('online');
+      setDrawOfferReceived(false);
+      setDrawOfferSent(false);
+      setRematchOffered(false);
+      setRematchSent(false);
+
       const isWhite = newSocket.id === whitePlayer;
       const myColor = isWhite ? 'w' : 'b';
       setOnlineMyColor(myColor);
       setPlayerColor(myColor);
       setIsFlipped(!isWhite);
+
+      // Fresh game initialization
+      const freshGame = fen ? new Chess(fen) : new Chess();
+      setChess(freshGame);
+      setBoardFen(freshGame.fen());
+      setLastMove(null);
+      setHistory([]);
+      setViewHistoryIndex(null);
+      setCapturedPieces({ w: [], b: [] });
+      setMaterialScore(0);
+      setEvalScore(0);
+      setGameOverResult(null);
+      setPendingPromotion(null);
+
       if (tc) {
         setTimeControl(tc);
         setTimers({ w: tc, b: tc });
@@ -385,43 +439,104 @@ export default function App() {
       sound.playCheck();
     });
 
+    newSocket.on('opponent_move', ({ move, fen, timers: serverTimers, gameOver }) => {
+      try {
+        const currentChess = chessRef.current;
+        const nextGame = fen ? new Chess(fen) : new Chess(currentChess.fen());
+        if (!fen) {
+          nextGame.move(move);
+        }
+        setChess(nextGame);
+        setBoardFen(nextGame.fen());
+        setLastMove({ from: move.from, to: move.to });
+        setHistory((prev) => [
+          ...prev,
+          {
+            san: move.san,
+            from: move.from,
+            to: move.to,
+            piece: move.piece,
+            color: move.color,
+            fen: nextGame.fen()
+          }
+        ]);
+        setViewHistoryIndex(null);
+        calculateMaterial(nextGame);
+        setEvalScore(evaluateBoard(nextGame));
+
+        if (move.captured) {
+          sound.playCapture();
+        } else if (move.flags && (move.flags.includes('k') || move.flags.includes('q'))) {
+          sound.playCastle();
+        } else {
+          sound.playMove();
+        }
+
+        if (nextGame.inCheck()) sound.playCheck();
+
+        if (serverTimers) {
+          setTimers({ w: serverTimers.w, b: serverTimers.b });
+        }
+
+        if (gameOver) {
+          setGameOverResult(gameOver);
+        } else if (nextGame.isGameOver()) {
+          if (nextGame.isCheckmate()) {
+            const winner = nextGame.turn() === 'w' ? 'b' : 'w';
+            setGameOverResult({
+              type: 'checkmate',
+              winner,
+              reason: `Checkmate! ${winner === 'w' ? 'White' : 'Black'} wins!`
+            });
+          } else if (nextGame.isDraw()) {
+            setGameOverResult({ type: 'draw', winner: null, reason: 'Draw' });
+          }
+        }
+
+        runCoachAnalysis(nextGame);
+      } catch (err) {
+        console.error('Error applying opponent move:', err);
+      }
+    });
+
+    newSocket.on('draw_offered', () => {
+      setDrawOfferReceived(true);
+      sound.playCheck();
+    });
+
+    newSocket.on('draw_declined', () => {
+      setDrawOfferSent(false);
+      setDrawDeclinedNotice(true);
+      setTimeout(() => setDrawDeclinedNotice(false), 4000);
+    });
+
+    newSocket.on('rematch_offered', () => {
+      setRematchOffered(true);
+      sound.playCheck();
+    });
+
+    newSocket.on('rematch_declined', () => {
+      setRematchSent(false);
+    });
+
     newSocket.on('game_over', (res) => {
       setGameOverResult(res);
+      setDrawOfferReceived(false);
+      setDrawOfferSent(false);
     });
 
     newSocket.on('opponent_disconnected', () => {
       setGameOverResult({
         type: 'resignation',
-        winner: onlineMyColor,
-        reason: 'Opponent disconnected. You win!'
+        winner: onlineMyColorRef.current,
+        reason: 'Opponent disconnected. You win by forfeit!'
       });
     });
 
     return () => {
       newSocket.disconnect();
     };
-  }, []);
-
-  // Check URL query parameters for ?room=XYZ
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const roomParam = params.get('room');
-    if (roomParam && socket) {
-      socket.emit('join_room', { roomId: roomParam }, (res) => {
-        if (res.success) {
-          setOnlineRoomCode(roomParam);
-          setGameMode('online');
-          setOnlineMyColor(res.color);
-          setPlayerColor(res.color);
-          setIsFlipped(res.color === 'b');
-          if (res.timeControl) {
-            setTimeControl(res.timeControl);
-            setTimers({ w: res.timeControl, b: res.timeControl });
-          }
-        }
-      });
-    }
-  }, [socket]);
+  }, [calculateMaterial, runCoachAnalysis]);
 
   // Restart / New Game
   const startNewGame = useCallback(() => {
@@ -477,6 +592,31 @@ export default function App() {
       to: coachAnalysis.bestMove.to
     });
   };
+
+  // Online Rematch & Room Management Handlers
+  const handleOfferRematch = useCallback(() => {
+    if (socket && onlineRoomCode) {
+      socket.emit('offer_rematch', { roomId: onlineRoomCode });
+      setRematchSent(true);
+    }
+  }, [socket, onlineRoomCode]);
+
+  const handleAcceptRematch = useCallback(() => {
+    if (socket && onlineRoomCode) {
+      socket.emit('accept_rematch', { roomId: onlineRoomCode });
+      setRematchOffered(false);
+      setGameOverResult(null);
+    }
+  }, [socket, onlineRoomCode]);
+
+  const handleLeaveRoom = useCallback(() => {
+    if (socket && onlineRoomCode) {
+      socket.emit('leave_room', { roomId: onlineRoomCode });
+    }
+    setOnlineRoomCode(null);
+    setIsWaitingOnline(false);
+    setIsOnlineModalOpen(false);
+  }, [socket, onlineRoomCode]);
 
   // Jump to specific move in history preview (null = return to live match)
   const handleJumpToMove = useCallback((idx) => {
@@ -669,36 +809,35 @@ export default function App() {
       <FloatingPiecesBackground isDark={isDarkTheme} />
 
       {/* Top Neo-Brutalist Masthead */}
-      <header className={`relative z-30 border-b-3 border-black px-3 sm:px-5 py-2 flex items-center justify-between shadow-md shrink-0 ${isDarkTheme ? 'bg-[#18181b]' : 'bg-white'}`}>
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-[#22c55e] border-2 border-black flex items-center justify-center font-black text-black text-lg brutal-shadow-sm">
+      <header className={`relative z-30 border-b-3 border-black px-2.5 sm:px-5 py-2 flex items-center justify-between shadow-md shrink-0 ${isDarkTheme ? 'bg-[#18181b]' : 'bg-white'}`}>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#22c55e] border-2 border-black flex items-center justify-center font-black text-black text-base sm:text-lg brutal-shadow-sm shrink-0">
             ♞
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-brutal text-sm sm:text-base font-black uppercase tracking-tight">
-                BRUTAL CHESS 2.0
+            <div className="flex items-center gap-1.5">
+              <h1 className="font-brutal text-xs sm:text-base font-black uppercase tracking-tight">
+                BRUTAL CHESS
               </h1>
-              <span className="font-mono text-[9px] font-black uppercase px-1.5 py-0.2 bg-[#facc15] text-black border border-black hidden sm:inline">
+              <span className="font-mono text-[9px] font-black uppercase px-1 py-0.2 bg-[#facc15] text-black border border-black hidden sm:inline">
                 MINIMAX v2.0
               </span>
             </div>
-            <p className="text-[10px] font-mono text-neutral-500 hidden md:block">
+            <p className="text-[9px] sm:text-[10px] font-mono text-neutral-500 hidden md:block">
               ZERO BLUE • STOCKFISH CALIBRATED • 100% TACTICAL
             </p>
           </div>
         </div>
 
-        {/* Header Action Buttons */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Quick Match Mode Switcher */}
+        {/* Desktop Match Mode Switcher + Suggest Move (Hidden on mobile, shown in sub-bar below) */}
+        <div className="hidden md:flex items-center gap-2">
           <div className="flex border-2 border-black bg-black p-0.5">
             <button
               onClick={() => {
                 setGameMode('ai');
                 setIsFlipped(playerColor === 'b');
               }}
-              className={`px-2 sm:px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
+              className={`px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
                 gameMode === 'ai' ? 'bg-[#22c55e] text-black' : 'bg-black text-white hover:text-[#22c55e]'
               }`}
             >
@@ -706,7 +845,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setGameMode('pass_play')}
-              className={`px-2 sm:px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
+              className={`px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
                 gameMode === 'pass_play' ? 'bg-[#22c55e] text-black' : 'bg-black text-white hover:text-[#22c55e]'
               }`}
             >
@@ -714,7 +853,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setIsOnlineModalOpen(true)}
-              className={`px-2 sm:px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
+              className={`px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
                 gameMode === 'online' ? 'bg-[#22c55e] text-black' : 'bg-black text-white hover:text-[#22c55e]'
               }`}
             >
@@ -722,10 +861,9 @@ export default function App() {
             </button>
           </div>
 
-          {/* Suggest Next Move ON / OFF Toggle in Header */}
           <button
             onClick={() => setCoachEnabled(!coachEnabled)}
-            className={`brutal-press flex items-center gap-1.5 px-2.5 sm:px-3 py-1 font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm transition-all ${
+            className={`brutal-press flex items-center gap-1.5 px-2.5 py-1 font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm transition-all ${
               coachEnabled
                 ? 'bg-[#22c55e] text-black hover:bg-green-400'
                 : 'bg-black text-white hover:bg-neutral-800'
@@ -733,18 +871,19 @@ export default function App() {
             title="Turn Next Move Suggestions ON / OFF"
           >
             <Lightbulb className={`w-3.5 h-3.5 ${coachEnabled ? 'text-black fill-current' : 'text-[#facc15]'}`} />
-            <span className="hidden sm:inline">SUGGEST MOVE:</span>
-            <span className="sm:hidden">SUGGEST:</span>
-            <span>{coachEnabled ? 'ON' : 'OFF'}</span>
+            <span>SUGGEST MOVE: {coachEnabled ? 'ON' : 'OFF'}</span>
           </button>
+        </div>
 
+        {/* Global Quick Action Buttons */}
+        <div className="flex items-center gap-1 sm:gap-1.5">
           {/* Flip Board Button */}
           <button
             onClick={() => setIsFlipped(!isFlipped)}
             className="brutal-press p-1.5 sm:p-2 bg-white text-black hover:bg-neutral-100 border-2 border-black cursor-pointer brutal-shadow-sm"
             title="Flip Board Perspective (HotKey: F)"
           >
-            <Repeat className="w-4 h-4" />
+            <Repeat className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
 
           {/* Quick Mute / Sound Toggle */}
@@ -753,7 +892,7 @@ export default function App() {
             className="brutal-press p-1.5 sm:p-2 bg-white text-black hover:bg-neutral-100 border-2 border-black cursor-pointer brutal-shadow-sm"
             title="Toggle Sound Effects"
           >
-            {soundEnabled ? <Volume2 className="w-4 h-4 text-[#22c55e]" /> : <VolumeX className="w-4 h-4 text-[#ef4444]" />}
+            {soundEnabled ? <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#22c55e]" /> : <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ef4444]" />}
           </button>
 
           {/* Dark / Light Toggle */}
@@ -762,7 +901,7 @@ export default function App() {
             className="brutal-press p-1.5 sm:p-2 bg-white text-black hover:bg-neutral-100 border-2 border-black cursor-pointer brutal-shadow-sm"
             title="Toggle Dark / Light Brutalism"
           >
-            {isDarkTheme ? <Sun className="w-4 h-4 text-[#facc15]" /> : <Moon className="w-4 h-4 text-black" />}
+            {isDarkTheme ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#facc15]" /> : <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black" />}
           </button>
 
           {/* Settings Modal Button */}
@@ -771,19 +910,69 @@ export default function App() {
             className="brutal-press p-1.5 sm:p-2 bg-white text-black hover:bg-neutral-100 border-2 border-black cursor-pointer brutal-shadow-sm"
             title="System Preferences & Blindfold Mode"
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
 
           {/* New Game Button */}
           <button
             onClick={startNewGame}
-            className="brutal-press flex items-center gap-1 px-3 py-1.5 bg-[#22c55e] hover:bg-green-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
+            className="brutal-press flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-[#22c55e] hover:bg-green-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
+            title="Start New Match"
           >
-            <PlusCircle className="w-4 h-4" />
+            <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span className="hidden sm:inline">NEW MATCH</span>
+            <span className="sm:hidden">NEW</span>
           </button>
         </div>
       </header>
+
+      {/* Mobile Sub-Header Bar (Pivotal for Mobile UX: Mode Switcher & Suggest Move) */}
+      <div className={`md:hidden border-b-2 border-black px-2 py-1.5 flex items-center justify-between gap-1.5 shrink-0 z-20 ${isDarkTheme ? 'bg-[#18181b]' : 'bg-[#e5e5dc]'}`}>
+        {/* Mobile Mode Switcher */}
+        <div className="flex border-2 border-black bg-black p-0.5 shrink-0">
+          <button
+            onClick={() => {
+              setGameMode('ai');
+              setIsFlipped(playerColor === 'b');
+            }}
+            className={`px-2 py-0.5 font-brutal text-[11px] font-black uppercase cursor-pointer transition-colors ${
+              gameMode === 'ai' ? 'bg-[#22c55e] text-black' : 'bg-black text-white'
+            }`}
+          >
+            vs AI
+          </button>
+          <button
+            onClick={() => setGameMode('pass_play')}
+            className={`px-2 py-0.5 font-brutal text-[11px] font-black uppercase cursor-pointer transition-colors ${
+              gameMode === 'pass_play' ? 'bg-[#22c55e] text-black' : 'bg-black text-white'
+            }`}
+          >
+            1v1
+          </button>
+          <button
+            onClick={() => setIsOnlineModalOpen(true)}
+            className={`px-2 py-0.5 font-brutal text-[11px] font-black uppercase cursor-pointer transition-colors ${
+              gameMode === 'online' ? 'bg-[#22c55e] text-black' : 'bg-black text-white'
+            }`}
+          >
+            ONLINE
+          </button>
+        </div>
+
+        {/* Mobile Suggest Next Move Toggle */}
+        <button
+          onClick={() => setCoachEnabled(!coachEnabled)}
+          className={`brutal-press flex items-center gap-1 px-2 py-1 font-brutal text-[11px] font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm shrink-0 transition-all ${
+            coachEnabled
+              ? 'bg-[#22c55e] text-black'
+              : 'bg-black text-white'
+          }`}
+          title="Toggle Move Suggestion on Mobile"
+        >
+          <Lightbulb className={`w-3 h-3 ${coachEnabled ? 'text-black fill-current' : 'text-[#facc15]'}`} />
+          <span>SUGGEST: {coachEnabled ? 'ON' : 'OFF'}</span>
+        </button>
+      </div>
 
       {/* Main Body: Dashboard with Left Board and Right Always-Visible Controls */}
       <main className="flex-1 w-full max-w-7xl mx-auto p-2 sm:p-4 lg:p-6 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-5 min-h-0">
@@ -1073,12 +1262,21 @@ export default function App() {
 
             <button
               onClick={() => {
-                const currentTurn = chess.turn();
-                setGameOverResult({
-                  type: 'resignation',
-                  winner: currentTurn === 'w' ? 'b' : 'w',
-                  reason: `${currentTurn === 'w' ? 'White' : 'Black'} surrendered the match`
-                });
+                if (gameMode === 'online' && socket && onlineRoomCode) {
+                  socket.emit('resign', { roomId: onlineRoomCode });
+                  setGameOverResult({
+                    type: 'resignation',
+                    winner: onlineMyColor === 'w' ? 'b' : 'w',
+                    reason: 'You surrendered the match'
+                  });
+                } else {
+                  const currentTurn = chess.turn();
+                  setGameOverResult({
+                    type: 'resignation',
+                    winner: currentTurn === 'w' ? 'b' : 'w',
+                    reason: `${currentTurn === 'w' ? 'White' : 'Black'} surrendered the match`
+                  });
+                }
               }}
               disabled={Boolean(gameOverResult) || history.length === 0}
               className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-[#ef4444] hover:bg-red-400 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-3 border-black text-white font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
@@ -1090,18 +1288,24 @@ export default function App() {
 
             <button
               onClick={() => {
-                setGameOverResult({
-                  type: 'draw',
-                  winner: null,
-                  reason: 'Draw concluded by mutual consent'
-                });
+                if (gameMode === 'online' && socket && onlineRoomCode) {
+                  socket.emit('offer_draw', { roomId: onlineRoomCode });
+                  setDrawOfferSent(true);
+                  setTimeout(() => setDrawOfferSent(false), 5000);
+                } else {
+                  setGameOverResult({
+                    type: 'draw',
+                    winner: null,
+                    reason: 'Draw concluded by mutual consent'
+                  });
+                }
               }}
-              disabled={Boolean(gameOverResult) || history.length === 0}
+              disabled={Boolean(gameOverResult) || history.length === 0 || drawOfferSent}
               className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-white hover:bg-neutral-100 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
               title="Offer match draw"
             >
               <Handshake className="w-4 h-4 text-black" />
-              DRAW
+              {drawOfferSent ? 'OFFERED...' : 'DRAW'}
             </button>
           </div>
         </div>
@@ -1112,6 +1316,54 @@ export default function App() {
         <span>BRUTAL CHESS v2.0 // HIGH-EFFICIENCY MINIMAX</span>
         <span className="hidden sm:inline">NO BLUE • 64 SQUARES • TACTICAL RADAR</span>
       </footer>
+
+      {/* Draw Offer Banners */}
+      {drawOfferReceived && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#facc15] text-black border-4 border-black p-4 brutal-shadow-xl max-w-sm w-[92vw] text-center space-y-2 select-none animate-bounce">
+          <div className="font-brutal text-sm font-black uppercase">
+            🤝 OPPONENT OFFERED A DRAW
+          </div>
+          <p className="text-xs font-mono text-neutral-800">
+            Do you agree to conclude this match in a draw?
+          </p>
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => {
+                if (socket && onlineRoomCode) {
+                  socket.emit('accept_draw', { roomId: onlineRoomCode });
+                }
+                setDrawOfferReceived(false);
+              }}
+              className="brutal-press flex-1 py-2 bg-[#22c55e] hover:bg-green-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
+            >
+              ACCEPT DRAW
+            </button>
+            <button
+              onClick={() => {
+                if (socket && onlineRoomCode) {
+                  socket.emit('decline_draw', { roomId: onlineRoomCode });
+                }
+                setDrawOfferReceived(false);
+              }}
+              className="brutal-press flex-1 py-2 bg-white hover:bg-neutral-100 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
+            >
+              DECLINE
+            </button>
+          </div>
+        </div>
+      )}
+
+      {drawDeclinedNotice && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-black text-white border-2 border-white px-4 py-2 brutal-shadow-md font-mono text-xs font-black uppercase text-center select-none">
+          Opponent declined the draw offer.
+        </div>
+      )}
+
+      {drawOfferSent && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#facc15] text-black border-2 border-black px-4 py-2 brutal-shadow-md font-mono text-xs font-black uppercase text-center select-none">
+          🤝 Draw offer sent to opponent...
+        </div>
+      )}
 
       {/* Modals with overscroll-behavior: contain per modern-web-guidance */}
       {pendingPromotion && (
@@ -1128,6 +1380,12 @@ export default function App() {
           onNewGame={startNewGame}
           onClose={() => setGameOverResult(null)}
           playerColor={playerColor}
+          isOnline={gameMode === 'online'}
+          onOfferRematch={handleOfferRematch}
+          onAcceptRematch={handleAcceptRematch}
+          rematchOffered={rematchOffered}
+          rematchSent={rematchSent}
+          onOpenOnlineLobby={() => setIsOnlineModalOpen(true)}
         />
       )}
 
@@ -1192,9 +1450,11 @@ export default function App() {
             }
           });
         }}
+        onLeaveRoom={handleLeaveRoom}
         roomCode={onlineRoomCode}
         isWaiting={isWaitingOnline}
         onlineStatus={onlineStatus}
+        isConnected={socketConnected}
       />
     </div>
   );

@@ -154,6 +154,12 @@ io.on('connection', (socket) => {
         } else if (room.chess.isDraw()) {
           gameOverInfo = { type: 'draw', winner: null, reason: 'Draw' };
         }
+      } else if (room.timers[currentTurn] <= 0) {
+        gameOverInfo = {
+          type: 'timeout',
+          winner: currentTurn === 'w' ? 'b' : 'w',
+          reason: `${currentTurn === 'w' ? 'White' : 'Black'} ran out of time`
+        };
       }
 
       // Broadcast move to opponent
@@ -191,25 +197,88 @@ io.on('connection', (socket) => {
     });
   });
 
-  // 5. Offer Draw
+  // 5. Draw Negotiation
   socket.on('offer_draw', ({ roomId }) => {
     socket.to(roomId).emit('draw_offered');
+  });
+
+  socket.on('decline_draw', ({ roomId }) => {
+    socket.to(roomId).emit('draw_declined');
   });
 
   socket.on('accept_draw', ({ roomId }) => {
     io.to(roomId).emit('game_over', {
       type: 'draw',
       winner: null,
-      reason: 'Draw agreed by both players'
+      reason: 'Draw agreed by mutual consent'
     });
   });
 
-  // 6. Handle Disconnect
+  // 6. Rematch Negotiation
+  socket.on('offer_rematch', ({ roomId }) => {
+    socket.to(roomId).emit('rematch_offered');
+  });
+
+  socket.on('decline_rematch', ({ roomId }) => {
+    socket.to(roomId).emit('rematch_declined');
+  });
+
+  socket.on('accept_rematch', ({ roomId }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    // Swap colors for rematch
+    const prevWhite = room.whitePlayer;
+    room.whitePlayer = room.blackPlayer;
+    room.blackPlayer = prevWhite;
+    room.chess = new Chess();
+    room.timers = {
+      w: room.timeControl,
+      b: room.timeControl,
+      lastTurnTimestamp: Date.now()
+    };
+    room.status = 'playing';
+
+    io.to(roomId).emit('game_started', {
+      roomId,
+      whitePlayer: room.whitePlayer,
+      blackPlayer: room.blackPlayer,
+      timeControl: room.timeControl,
+      fen: room.chess.fen()
+    });
+  });
+
+  // 7. Leave / Cancel Room
+  socket.on('leave_room', ({ roomId }) => {
+    if (roomId && rooms.has(roomId)) {
+      const room = rooms.get(roomId);
+      socket.leave(roomId);
+      if (room.status === 'waiting') {
+        rooms.delete(roomId);
+      } else {
+        socket.to(roomId).emit('opponent_disconnected');
+        rooms.delete(roomId);
+      }
+    }
+  });
+
+  // 8. Handle Disconnect with Grace Period
   socket.on('disconnect', () => {
     const roomId = socket.roomId;
     if (roomId && rooms.has(roomId)) {
-      socket.to(roomId).emit('opponent_disconnected');
-      rooms.delete(roomId);
+      const room = rooms.get(roomId);
+      if (room.status === 'waiting') {
+        rooms.delete(roomId);
+      } else {
+        socket.to(roomId).emit('opponent_connection_status', { connected: false });
+        // 15 seconds grace period before terminating match
+        setTimeout(() => {
+          const currentRoom = rooms.get(roomId);
+          if (currentRoom && (currentRoom.whitePlayer === socket.id || currentRoom.blackPlayer === socket.id)) {
+            socket.to(roomId).emit('opponent_disconnected');
+            rooms.delete(roomId);
+          }
+        }, 15000);
+      }
     }
   });
 });
