@@ -42,7 +42,7 @@ export const MoveHistory = ({
   const isAtEnd = history.length === 0 || currentMoveIndex === history.length - 1;
 
   return (
-    <div className="w-full bg-[#16161b] border-2 border-neutral-700 rounded-xl p-2 sm:p-2.5 flex flex-col h-36 sm:h-44 shadow-xl">
+    <div className="w-full bg-[#16161b] border-2 border-neutral-700 rounded-xl p-2.5 sm:p-3 flex flex-col h-48 sm:h-56 shadow-xl">
       {/* Header styled as FIDE Scoresheet with move count */}
       <div className="flex items-center justify-between border-b border-neutral-800 pb-1.5 mb-1.5">
         <div className="flex items-center gap-2">

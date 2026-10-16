@@ -592,78 +592,78 @@ export default function App() {
   const bottomPlayer = isFlipped ? player2 : player1;
 
   return (
-    <div className="relative min-h-screen lg:h-screen lg:max-h-screen bg-[#070708] text-neutral-100 flex flex-col justify-between selection:bg-emerald-500/30 selection:text-emerald-300 overflow-x-hidden lg:overflow-hidden">
+    <div className="relative min-h-screen bg-[#070708] text-neutral-100 flex flex-col justify-between selection:bg-emerald-500/30 selection:text-emerald-300 overflow-x-hidden">
       {/* Floating Architectural Chess Pieces & Constellation Background */}
       <FloatingPiecesBackground />
 
-      {/* Top Masthead & Atelier Navigation (Compact 44px) */}
-      <header className="relative z-30 border-b border-neutral-800 bg-[#0e0e13]/95 backdrop-blur-2xl px-3 sm:px-6 py-2 flex items-center justify-between shadow-xl shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-600 via-emerald-500 to-green-500 flex items-center justify-center font-black text-white text-lg shadow-[0_0_15px_rgba(16,185,129,0.35)] ring-1 ring-emerald-300">
+      {/* Top Masthead & Atelier Navigation */}
+      <header className="relative z-30 border-b border-neutral-800 bg-[#0e0e13]/95 backdrop-blur-2xl px-4 sm:px-6 py-2.5 flex items-center justify-between shadow-xl shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-green-500 flex items-center justify-center font-black text-white text-xl shadow-[0_0_15px_rgba(16,185,129,0.35)] ring-1 ring-emerald-300">
             ♞
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-serif-master text-sm sm:text-base font-black tracking-[0.12em] uppercase text-white">
+              <h1 className="font-serif-master text-base sm:text-lg font-black tracking-[0.12em] uppercase text-white">
                 Atelier Chess
               </h1>
-              <span className="hidden sm:inline-block font-serif-master text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400 shadow-sm">
+              <span className="font-serif-master text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400 shadow-sm">
                 GM Dossier
               </span>
             </div>
-            <p className="text-[10px] text-neutral-300 font-sans hidden md:block tracking-wide">
+            <p className="text-[11px] text-neutral-300 font-sans hidden sm:block tracking-wide">
               Stockfish-Calibrated Engine • Real-time Tactical Dossier • Zero Blue
             </p>
           </div>
         </div>
 
-        {/* Quick Mode Switches & Settings */}
+        {/* Quick Mode Switches & Controls in Header */}
         <div className="flex items-center gap-2">
-          {/* Mode Selector */}
-          <div className="hidden md:flex rounded-xl bg-black/70 border-2 border-neutral-700 p-0.5">
+          {/* Quick Match Mode Switcher */}
+          <div className="flex rounded-xl bg-black/70 border-2 border-neutral-700 p-0.5">
             <button
               onClick={() => {
                 setGameMode('ai');
                 setIsFlipped(playerColor === 'b');
               }}
-              className={`flex items-center gap-1.5 px-3 py-1 font-serif-master text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer border ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 font-serif-master text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer border ${
                 gameMode === 'ai'
                   ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
                   : 'bg-transparent text-neutral-200 hover:text-white border-transparent'
               }`}
             >
               <Bot className="w-3.5 h-3.5" />
-              vs Computer AI
+              <span className="hidden sm:inline">vs</span> AI
             </button>
             <button
               onClick={() => setGameMode('pass_play')}
-              className={`flex items-center gap-1.5 px-3 py-1 font-serif-master text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer border ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 font-serif-master text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer border ${
                 gameMode === 'pass_play'
                   ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
                   : 'bg-transparent text-neutral-200 hover:text-white border-transparent'
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              1v1 Pass & Play
+              1v1
             </button>
             <button
               onClick={() => setIsOnlineModalOpen(true)}
-              className={`flex items-center gap-1.5 px-3 py-1 font-serif-master text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer border ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 font-serif-master text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer border ${
                 gameMode === 'online'
                   ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
                   : 'bg-transparent text-neutral-200 hover:text-white border-transparent'
               }`}
             >
               <Wifi className="w-3.5 h-3.5" />
-              Online Match
+              Online
             </button>
           </div>
 
           {/* Flip Board Button */}
           <button
             onClick={() => setIsFlipped(!isFlipped)}
-            className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border-2 border-neutral-600 text-white hover:text-emerald-300 hover:border-emerald-400 transition-all cursor-pointer shadow-sm"
-            title="Invert Board Perspective"
+            className="p-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 border-2 border-neutral-600 text-white hover:text-emerald-300 hover:border-emerald-400 transition-all cursor-pointer shadow-sm"
+            title="Invert Board Perspective (Flip Board)"
           >
             <Repeat className="w-4 h-4" />
           </button>
@@ -671,7 +671,7 @@ export default function App() {
           {/* Settings Modal Button */}
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border-2 border-neutral-600 text-white hover:text-emerald-300 hover:border-emerald-400 transition-all cursor-pointer shadow-sm"
+            className="p-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 border-2 border-neutral-600 text-white hover:text-emerald-300 hover:border-emerald-400 transition-all cursor-pointer shadow-sm"
             title="Atelier Preferences"
           >
             <Settings className="w-4 h-4" />
@@ -680,7 +680,7 @@ export default function App() {
           {/* New Game Button */}
           <button
             onClick={startNewGame}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 border-2 border-emerald-300 text-white font-serif-master font-black text-xs uppercase tracking-wider shadow-md hover:shadow-emerald-500/30 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 border-2 border-emerald-300 text-white font-serif-master font-black text-xs uppercase tracking-wider shadow-md hover:shadow-emerald-500/30 transition-all cursor-pointer"
           >
             <PlusCircle className="w-4 h-4" />
             <span className="hidden sm:inline">New Match</span>
@@ -688,43 +688,10 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Body (Zero-Scroll on Desktop/Laptop) */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-2 sm:px-4 py-1 sm:py-2 flex flex-col lg:flex-row items-center lg:items-center justify-center gap-3 sm:gap-5 min-h-0 overflow-y-auto lg:overflow-hidden">
-        {/* Left Column: Match Status + Players + Board + Step Navigation Dock */}
-        <div className="flex flex-col items-center gap-1.5 sm:gap-2 w-full max-w-[min(90vw,50vh,430px)] shrink-0">
-          {/* Compact Live Match Mode Dossier Pill Bar */}
-          <div className="w-full rounded-xl py-1 px-3 bg-[#16161f] border-2 border-neutral-700 shadow-md flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 animate-ping" />
-              <span className="font-serif-master text-xs font-black text-white uppercase tracking-wider truncate">
-                {gameMode === 'ai'
-                  ? `Mode: vs Computer AI`
-                  : gameMode === 'online'
-                  ? `Online: ${onlineRoomCode || 'Lobby'}`
-                  : '1v1 Pass & Play'}
-              </span>
-              {gameMode === 'ai' && (
-                <span className="text-[10px] font-mono font-black uppercase px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400 shrink-0">
-                  {aiDifficulty} (~{aiDifficulty === 'easy' ? '800' : aiDifficulty === 'medium' ? '1200' : aiDifficulty === 'hard' ? '1600' : '2100'} ELO)
-                </span>
-              )}
-            </div>
-
-            {/* Quick AI Coach Status Pill */}
-            <button
-              onClick={() => setCoachEnabled(!coachEnabled)}
-              className={`flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-mono text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-2 shadow-sm shrink-0 ${
-                coachEnabled
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.35)]'
-                  : 'bg-neutral-800 hover:bg-neutral-700 text-white border-neutral-500'
-              }`}
-              title="Click to toggle AI Coach ON or OFF"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
-              <span>{coachEnabled ? 'Coach: ON' : 'Coach: OFF'}</span>
-            </button>
-          </div>
-
+      {/* Main Body: Board on Left, Controls & History on Right */}
+      <main className="flex-1 w-full max-w-7xl mx-auto p-3 sm:p-5 lg:p-6 flex flex-col md:flex-row items-center md:items-start justify-center gap-5 lg:gap-8 min-h-0">
+        {/* Left Column: Player Cards + Chess Board + Step Navigation Dock */}
+        <div className="flex flex-col items-center gap-2.5 w-full max-w-[min(94vw,560px)] shrink-0">
           {/* Top Player Card */}
           <PlayerCard
             player={topPlayer}
@@ -736,11 +703,11 @@ export default function App() {
           />
 
           {/* Chessboard with Evaluation Bar */}
-          <div className="flex items-center gap-2 sm:gap-2.5 w-full">
+          <div className="flex items-center gap-2.5 sm:gap-3 w-full">
             {/* Dynamic Live Evaluation Bar */}
             <EvalBar evalScore={evalScore} isFlipped={isFlipped} />
 
-            {/* Interactive Board */}
+            {/* Interactive Board (Restored to full 560px max width) */}
             <div className="flex-1">
               <ChessBoard
                 chess={displayChess}
@@ -765,21 +732,21 @@ export default function App() {
           </div>
 
           {/* Prominent High-Contrast Step Navigation Bar (Start, Back, Status, Forward, Last) */}
-          <div className="w-full rounded-xl py-1 px-2.5 bg-[#16161f] border-2 border-neutral-700 shadow-md flex items-center justify-between gap-1.5">
-            <div className="flex items-center gap-1.5">
+          <div className="w-full rounded-xl py-2 px-3 bg-[#16161f] border-2 border-neutral-700 shadow-md flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
               <button
                 onClick={handleGoFirst}
                 disabled={history.length === 0 || viewHistoryIndex === -1}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-35 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-neutral-600 text-white font-serif-master text-xs uppercase font-bold transition-all cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-neutral-600 text-white font-serif-master text-xs uppercase font-bold transition-all cursor-pointer shadow-sm"
                 title="Jump to Initial Board (Move 0)"
               >
-                <ChevronFirst className="w-3.5 h-3.5 text-emerald-400" />
+                <ChevronFirst className="w-4 h-4 text-emerald-400" />
                 <span>Start</span>
               </button>
               <button
                 onClick={handleGoPrev}
                 disabled={history.length === 0 || viewHistoryIndex === -1}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-neutral-800 hover:bg-emerald-600 disabled:opacity-35 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-emerald-400 text-white font-serif-master text-xs font-black uppercase transition-all cursor-pointer shadow-md"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-emerald-600 disabled:opacity-40 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-emerald-400 text-white font-serif-master text-xs font-black uppercase transition-all cursor-pointer shadow-md"
                 title="Step Back one move"
               >
                 <ChevronLeft className="w-4 h-4 text-emerald-300 stroke-[3]" />
@@ -790,18 +757,18 @@ export default function App() {
             {/* Current Move Status Pill */}
             <div className="flex items-center">
               {history.length === 0 ? (
-                <div className="px-2.5 py-0.5 rounded-lg bg-neutral-800 border-2 border-neutral-600 text-white font-mono text-[11px] font-bold">
+                <div className="px-3 py-1 rounded-lg bg-neutral-800 border-2 border-neutral-600 text-white font-mono text-xs font-bold">
                   Move 0 (Start)
                 </div>
               ) : isLivePosition ? (
-                <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 font-mono text-[11px] font-black shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 font-mono text-xs font-black shadow-[0_0_10px_rgba(16,185,129,0.3)]">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
                   <span>Live ({history.length} {history.length === 1 ? 'Move' : 'Moves'})</span>
                 </div>
               ) : (
                 <button
                   onClick={handleGoLast}
-                  className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-amber-500/25 border-2 border-amber-400 text-amber-200 font-mono text-[11px] font-black hover:bg-amber-500/35 transition-all cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.35)] animate-pulse"
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/25 border-2 border-amber-400 text-amber-200 font-mono text-xs font-black hover:bg-amber-500/35 transition-all cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.35)] animate-pulse"
                   title="Click to jump back to live match"
                 >
                   <span>Move {viewHistoryIndex === -1 ? '0' : `${viewHistoryIndex + 1}/${history.length}`}</span>
@@ -810,11 +777,11 @@ export default function App() {
               )}
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <button
                 onClick={handleGoNext}
                 disabled={history.length === 0 || isLivePosition}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-neutral-800 hover:bg-emerald-600 disabled:opacity-35 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-emerald-400 text-white font-serif-master text-xs font-black uppercase transition-all cursor-pointer shadow-md"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-emerald-600 disabled:opacity-40 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-emerald-400 text-white font-serif-master text-xs font-black uppercase transition-all cursor-pointer shadow-md"
                 title="Step Forward one move"
               >
                 <span>Fwd ▶</span>
@@ -823,11 +790,11 @@ export default function App() {
               <button
                 onClick={handleGoLast}
                 disabled={history.length === 0 || isLivePosition}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-35 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-neutral-600 text-white font-serif-master text-xs uppercase font-bold transition-all cursor-pointer shadow-sm"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-neutral-600 text-white font-serif-master text-xs uppercase font-bold transition-all cursor-pointer shadow-sm"
                 title="Jump to Latest Live Move"
               >
                 <span>Live</span>
-                <ChevronLast className="w-3.5 h-3.5 text-emerald-400" />
+                <ChevronLast className="w-4 h-4 text-emerald-400" />
               </button>
             </div>
           </div>
@@ -841,51 +808,152 @@ export default function App() {
             capturedPieces={bottomPlayer.color === 'w' ? capturedPieces.w : capturedPieces.b}
             materialAdvantage={bottomPlayer.color === 'w' ? Math.max(0, materialScore) : Math.max(0, -materialScore)}
           />
-
-          {/* Mobile Game Mode Selector */}
-          <div className="flex md:hidden w-full rounded-xl bg-[#16161f] border-2 border-neutral-700 p-1">
-            <button
-              onClick={() => {
-                setGameMode('ai');
-                setIsFlipped(playerColor === 'b');
-              }}
-              className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-black rounded-lg transition-all cursor-pointer border ${
-                gameMode === 'ai'
-                  ? 'bg-emerald-600 text-white border-emerald-300 shadow-md'
-                  : 'bg-transparent text-neutral-200 hover:text-white border-transparent'
-              }`}
-            >
-              <Bot className="w-3.5 h-3.5" />
-              vs Bot
-            </button>
-            <button
-              onClick={() => setGameMode('pass_play')}
-              className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-black rounded-lg transition-all cursor-pointer border ${
-                gameMode === 'pass_play'
-                  ? 'bg-emerald-600 text-white border-emerald-300 shadow-md'
-                  : 'bg-transparent text-neutral-200 hover:text-white border-transparent'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              1v1 Local
-            </button>
-            <button
-              onClick={() => setIsOnlineModalOpen(true)}
-              className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-black rounded-lg transition-all cursor-pointer border ${
-                gameMode === 'online'
-                  ? 'bg-emerald-600 text-white border-emerald-300 shadow-md'
-                  : 'bg-transparent text-neutral-200 hover:text-white border-transparent'
-              }`}
-            >
-              <Wifi className="w-3.5 h-3.5" />
-              Online
-            </button>
-          </div>
         </div>
 
-        {/* Right Column: AI Coach Explainer & Move History Scoresheet (Both permanently visible!) */}
-        <div className="w-full lg:max-w-[420px] flex flex-col gap-2 shrink-0">
-          {/* 1. THE AI COACH & MOVE ADVISOR (Explains Best Move & Why in Real-Time) */}
+        {/* Right Column: AI Mode Controls + Move History + AI Coach + Action Buttons */}
+        <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col gap-3 shrink-0">
+          {/* 1. DEDICATED GAME MODE & AI CONTROL PANEL */}
+          <div className="p-3 sm:p-4 rounded-2xl bg-[#16161f] border-2 border-neutral-700 shadow-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bot className="w-5 h-5 text-emerald-400" />
+                <h2 className="font-serif-master font-black text-sm uppercase tracking-wider text-white">
+                  Game Mode & Opponent
+                </h2>
+              </div>
+              <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400">
+                {gameMode === 'ai' ? 'Single Player' : gameMode === 'online' ? 'Multiplayer' : 'Pass & Play'}
+              </span>
+            </div>
+
+            {/* 3 Main Game Mode Buttons */}
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => {
+                  setGameMode('ai');
+                  setIsFlipped(playerColor === 'b');
+                }}
+                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border-2 transition-all cursor-pointer ${
+                  gameMode === 'ai'
+                    ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                    : 'bg-neutral-800 text-neutral-200 border-neutral-600 hover:border-neutral-400 hover:text-white'
+                }`}
+              >
+                <Bot className="w-4 h-4 mb-0.5" />
+                <span className="font-serif-master text-xs font-black">vs Computer</span>
+                <span className="text-[9px] font-mono opacity-80">AI Engine</span>
+              </button>
+
+              <button
+                onClick={() => setGameMode('pass_play')}
+                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border-2 transition-all cursor-pointer ${
+                  gameMode === 'pass_play'
+                    ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                    : 'bg-neutral-800 text-neutral-200 border-neutral-600 hover:border-neutral-400 hover:text-white'
+                }`}
+              >
+                <Users className="w-4 h-4 mb-0.5" />
+                <span className="font-serif-master text-xs font-black">1v1 Local</span>
+                <span className="text-[9px] font-mono opacity-80">Pass & Play</span>
+              </button>
+
+              <button
+                onClick={() => setIsOnlineModalOpen(true)}
+                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border-2 transition-all cursor-pointer ${
+                  gameMode === 'online'
+                    ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                    : 'bg-neutral-800 text-neutral-200 border-neutral-600 hover:border-neutral-400 hover:text-white'
+                }`}
+              >
+                <Wifi className="w-4 h-4 mb-0.5" />
+                <span className="font-serif-master text-xs font-black">Online</span>
+                <span className="text-[9px] font-mono opacity-80">Multiplayer</span>
+              </button>
+            </div>
+
+            {/* AI Settings Sub-Panel (Visible in AI Mode) */}
+            {gameMode === 'ai' && (
+              <div className="pt-2 border-t border-neutral-800 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-serif-master font-black text-neutral-200 uppercase tracking-wide">
+                    Computer AI Difficulty
+                  </span>
+                  <span className="font-mono text-emerald-300 font-bold text-[11px]">
+                    ~{aiDifficulty === 'easy' ? '800' : aiDifficulty === 'medium' ? '1200' : aiDifficulty === 'hard' ? '1600' : '2100'} ELO
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { id: 'easy', label: 'Novice', elo: '800' },
+                    { id: 'medium', label: 'Club', elo: '1200' },
+                    { id: 'hard', label: 'Expert', elo: '1600' },
+                    { id: 'master', label: 'Master', elo: '2100' }
+                  ].map((d) => (
+                    <button
+                      key={d.id}
+                      onClick={() => setAiDifficulty(d.id)}
+                      className={`flex flex-col items-center py-1.5 px-1 rounded-lg border-2 transition-all cursor-pointer ${
+                        aiDifficulty === d.id
+                          ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
+                          : 'bg-neutral-800 text-neutral-200 border-neutral-600 hover:border-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      <span className="font-serif-master text-xs font-black">{d.label}</span>
+                      <span className="text-[10px] font-mono text-emerald-300 font-bold">~{d.elo}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Player Side Chooser */}
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-xs text-neutral-300 font-serif-master font-bold uppercase">
+                    Play As:
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => {
+                        setPlayerColor('w');
+                        setIsFlipped(false);
+                        startNewGame();
+                      }}
+                      className={`px-3 py-1 rounded-lg text-xs font-black font-serif-master uppercase border-2 transition-all cursor-pointer ${
+                        playerColor === 'w'
+                          ? 'bg-white text-neutral-900 border-white shadow-sm'
+                          : 'bg-neutral-800 text-neutral-300 border-neutral-600 hover:text-white'
+                      }`}
+                    >
+                      ⚪ White (First)
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPlayerColor('b');
+                        setIsFlipped(true);
+                        startNewGame();
+                      }}
+                      className={`px-3 py-1 rounded-lg text-xs font-black font-serif-master uppercase border-2 transition-all cursor-pointer ${
+                        playerColor === 'b'
+                          ? 'bg-neutral-900 text-white border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                          : 'bg-neutral-800 text-neutral-300 border-neutral-600 hover:text-white'
+                      }`}
+                    >
+                      ⚫ Black (Second)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 2. MOVE HISTORY & SCORESHEET (Always visible with Forward / Backward navigation) */}
+          <MoveHistory
+            history={history}
+            currentMoveIndex={viewHistoryIndex}
+            onJumpToMove={handleJumpToMove}
+            fen={boardFen}
+            pgn={chess.pgn()}
+          />
+
+          {/* 3. THE AI COACH & MOVE ADVISOR (Explains Best Move & Why in Real-Time) */}
           <CoachAdvisor
             coachEnabled={coachEnabled}
             onToggleCoach={setCoachEnabled}
@@ -897,59 +965,15 @@ export default function App() {
             isThinking={isCoachThinking}
           />
 
-          {/* 2. MOVE HISTORY & SCORESHEET (Always visible with Forward / Backward navigation) */}
-          <MoveHistory
-            history={history}
-            currentMoveIndex={viewHistoryIndex}
-            onJumpToMove={handleJumpToMove}
-            fen={boardFen}
-            pgn={chess.pgn()}
-          />
-
-          {/* 3. Computer AI Strength Settings (Visible in AI Mode) */}
-          {gameMode === 'ai' && (
-            <div className="p-2 sm:p-2.5 rounded-xl bg-[#16161f] border-2 border-neutral-700 space-y-1.5 shadow-md">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-serif-master font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <Bot className="w-3.5 h-3.5 text-emerald-400" />
-                  Computer AI Strength
-                </span>
-                <span className="font-mono text-emerald-300 font-black uppercase text-[10px] px-2 py-0.2 rounded-full bg-emerald-500/20 border border-emerald-400">
-                  {aiDifficulty} (~{aiDifficulty === 'easy' ? '800' : aiDifficulty === 'medium' ? '1200' : aiDifficulty === 'hard' ? '1600' : '2100'} ELO)
-                </span>
-              </div>
-              <div className="grid grid-cols-4 gap-1.5">
-                {[
-                  { id: 'easy', label: 'Novice', elo: '800' },
-                  { id: 'medium', label: 'Club', elo: '1200' },
-                  { id: 'hard', label: 'Expert', elo: '1600' },
-                  { id: 'master', label: 'Master', elo: '2100' }
-                ].map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => setAiDifficulty(d.id)}
-                    className={`flex flex-col items-center py-1.5 px-1 rounded-lg border-2 transition-all cursor-pointer ${
-                      aiDifficulty === d.id
-                        ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
-                        : 'bg-neutral-800 text-neutral-100 border-neutral-600 hover:border-neutral-400 hover:text-white'
-                    }`}
-                  >
-                    <span className="font-serif-master text-xs font-black">{d.label}</span>
-                    <span className="text-[10px] font-mono text-emerald-300 font-bold">~{d.elo}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons: Takeback, Resign, Draw */}
+          {/* 4. Action Buttons: Takeback, Resign, Draw */}
           <div className="grid grid-cols-3 gap-2">
             <button
               onClick={handleUndoMove}
               disabled={history.length === 0 || gameMode === 'online'}
-              className="flex items-center justify-center gap-1 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 disabled:opacity-35 border-2 border-neutral-600 text-white font-serif-master font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+              className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-neutral-600 text-white font-serif-master font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+              title="Undo last move"
             >
-              <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
+              <RotateCcw className="w-4 h-4 text-emerald-400" />
               Takeback
             </button>
 
@@ -963,9 +987,10 @@ export default function App() {
                 });
               }}
               disabled={Boolean(gameOverResult) || history.length === 0}
-              className="flex items-center justify-center gap-1 py-2 rounded-xl bg-neutral-800 hover:bg-red-900/60 disabled:opacity-35 border-2 border-red-500 text-red-200 hover:text-white font-serif-master font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+              className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-neutral-800 hover:bg-red-900/60 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-red-500 text-red-200 hover:text-white font-serif-master font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+              title="Resign current match"
             >
-              <Flag className="w-3.5 h-3.5 text-red-400" />
+              <Flag className="w-4 h-4 text-red-400" />
               Resign
             </button>
 
@@ -978,17 +1003,18 @@ export default function App() {
                 });
               }}
               disabled={Boolean(gameOverResult) || history.length === 0}
-              className="flex items-center justify-center gap-1 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 disabled:opacity-35 border-2 border-neutral-600 text-white font-serif-master font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+              className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-neutral-600 text-white font-serif-master font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+              title="Offer a draw to opponent"
             >
-              <Handshake className="w-3.5 h-3.5 text-neutral-300" />
+              <Handshake className="w-4 h-4 text-neutral-300" />
               Offer Draw
             </button>
           </div>
         </div>
       </main>
 
-      {/* Footer (Compact Single Line) */}
-      <footer className="border-t border-neutral-800/80 py-1 text-center font-serif-master text-[10px] uppercase tracking-widest text-neutral-400 shrink-0 hidden sm:block">
+      {/* Footer */}
+      <footer className="border-t border-neutral-800 py-2.5 text-center font-serif-master text-[11px] uppercase tracking-widest text-neutral-400 shrink-0">
         Atelier Grandmaster Chess • Master Emerald & Crimson Ruby • High-Contrast Ergonomics
       </footer>
 

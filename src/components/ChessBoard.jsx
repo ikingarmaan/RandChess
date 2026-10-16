@@ -220,7 +220,7 @@ export const ChessBoard = ({
   }
 
   return (
-    <div className="relative aspect-square w-full max-w-[min(90vw,48vh,420px)] rounded-2xl p-2 sm:p-2.5 bg-gradient-to-b from-[#18181b] via-[#111113] to-[#09090b] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.9)] border-2 border-neutral-700 select-none">
+    <div className="relative aspect-square w-full max-w-[min(94vw,70vh,560px)] rounded-2xl p-2 sm:p-2.5 bg-gradient-to-b from-[#18181b] via-[#111113] to-[#09090b] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.9)] border-2 border-neutral-700 select-none">
       {/* Metallic Inlay Rim */}
       <div className="relative w-full h-full rounded-xl p-[2px] bg-gradient-to-tr from-neutral-700 via-neutral-600 to-neutral-700 shadow-inner">
         {/* 8x8 Grid Container */}
