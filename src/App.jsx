@@ -927,7 +927,7 @@ export default function App() {
           <div>
             <div className="flex items-center gap-1.5">
               <h1 className="font-brutal text-xs sm:text-base font-black uppercase tracking-tight">
-                BRUTAL CHESS
+                RandChess
               </h1>
               <span className="font-mono text-[9px] font-black uppercase px-1 py-0.2 bg-[#facc15] text-black border border-black hidden sm:inline">
                 MINIMAX v2.0
@@ -1447,7 +1447,7 @@ export default function App() {
 
       {/* Brutalist Footer Strip */}
       <footer className={`border-t-3 border-black py-1.5 px-4 flex items-center justify-between text-[10px] font-mono font-black uppercase tracking-widest shrink-0 ${isDarkTheme ? 'bg-black text-white' : 'bg-white text-black'}`}>
-        <span>BRUTAL CHESS v2.0 // HIGH-EFFICIENCY MINIMAX</span>
+        <span>RandChess v2.0 // HIGH-EFFICIENCY MINIMAX</span>
         <span className="hidden sm:inline">NO BLUE • 64 SQUARES • TACTICAL RADAR</span>
       </footer>
 

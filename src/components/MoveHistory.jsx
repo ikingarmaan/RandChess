@@ -61,7 +61,7 @@ export const MoveHistory = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `brutal-chess-match-${Date.now()}.pgn`;
+    link.download = `randchess-match-${Date.now()}.pgn`;
     link.click();
     URL.revokeObjectURL(url);
   };
