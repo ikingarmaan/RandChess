@@ -81,10 +81,10 @@ export default function App() {
   const [timers, setTimers] = useState({ w: 300, b: 300 });
   const timerIntervalRef = useRef(null);
 
-  // --- AI Coach Mode State ---
-  const [coachEnabled, setCoachEnabled] = useState(true);
+  // --- AI Coach Mode State (Defaults to OFF per user preference) ---
+  const [coachEnabled, setCoachEnabled] = useState(false);
   const [coachAnalysis, setCoachAnalysis] = useState(null);
-  const [showCoachArrow, setShowCoachArrow] = useState(true);
+  const [showCoachArrow, setShowCoachArrow] = useState(false);
   const [isCoachThinking, setIsCoachThinking] = useState(false);
 
   // --- Neo-Brutalist Layout & Tabs State ---
@@ -224,10 +224,12 @@ export default function App() {
     runCoachAnalysisRef.current = runCoachAnalysis;
   }, [runCoachAnalysis]);
 
-  // Initial coach run on mount
+  // Initial coach run on mount (only if coachEnabled is true)
   useEffect(() => {
-    runCoachAnalysis(chess, true);
-  }, [runCoachAnalysis]);
+    if (coachEnabled) {
+      runCoachAnalysis(chess, true);
+    }
+  }, [coachEnabled, runCoachAnalysis]);
 
   // Clock countdown timer interval
   useEffect(() => {
@@ -1138,7 +1140,7 @@ export default function App() {
               <button
                 onClick={handleGoFirst}
                 disabled={history.length === 0 || viewHistoryIndex === -1}
-                className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-neutral-100 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+                className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-[#facc15] disabled:bg-neutral-200 disabled:text-neutral-500 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
                 title="Jump to Initial Board (Move 0)"
               >
                 <ChevronFirst className="w-4 h-4 text-black" />
@@ -1147,10 +1149,10 @@ export default function App() {
               <button
                 onClick={handleGoPrev}
                 disabled={history.length === 0 || viewHistoryIndex === -1}
-                className="brutal-press flex items-center gap-1 px-3 py-1 bg-white hover:bg-[#22c55e] disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+                className="brutal-press flex items-center gap-1 px-3 py-1 bg-white hover:bg-[#22c55e] disabled:bg-neutral-200 disabled:text-neutral-500 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
                 title="Step Back one move"
               >
-                <ChevronLeft className="w-4 h-4 stroke-[3]" />
+                <ChevronLeft className="w-4 h-4 stroke-[3] text-black" />
                 <span>BACK</span>
               </button>
             </div>
@@ -1158,7 +1160,7 @@ export default function App() {
             {/* Current Move Status */}
             <div>
               {history.length === 0 ? (
-                <div className="px-2.5 py-0.5 border-2 border-black font-mono text-xs font-black bg-neutral-200 text-neutral-600">
+                <div className="px-2.5 py-0.5 border-2 border-black font-mono text-xs font-black bg-neutral-200 text-black">
                   MOVE 0
                 </div>
               ) : isLivePosition ? (
@@ -1182,16 +1184,16 @@ export default function App() {
               <button
                 onClick={handleGoNext}
                 disabled={history.length === 0 || isLivePosition}
-                className="brutal-press flex items-center gap-1 px-3 py-1 bg-white hover:bg-[#22c55e] disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+                className="brutal-press flex items-center gap-1 px-3 py-1 bg-white hover:bg-[#22c55e] disabled:bg-neutral-200 disabled:text-neutral-500 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
                 title="Step Forward one move"
               >
                 <span>FWD</span>
-                <ChevronRight className="w-4 h-4 stroke-[3]" />
+                <ChevronRight className="w-4 h-4 stroke-[3] text-black" />
               </button>
               <button
                 onClick={handleGoLast}
                 disabled={history.length === 0 || isLivePosition}
-                className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-[#22c55e] hover:bg-green-400 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+                className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-[#22c55e] hover:bg-green-400 disabled:bg-neutral-200 disabled:text-neutral-500 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
                 title="Jump to Latest Live Move"
               >
                 <span className="hidden sm:inline">LIVE</span>
@@ -1219,7 +1221,7 @@ export default function App() {
               <span className="font-brutal text-xs font-black uppercase tracking-wide">
                 Match Opponent
               </span>
-              <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 bg-[#facc15] border border-black">
+              <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 bg-[#facc15] text-black border border-black">
                 {gameMode === 'ai' ? '🤖 vs COMPUTER' : gameMode === 'online' ? '🌐 ONLINE MULTIPLAYER' : '👥 1v1 PASS & PLAY'}
               </span>
             </div>
@@ -1233,39 +1235,39 @@ export default function App() {
                 }}
                 className={`brutal-press py-2.5 px-1 border-3 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
                   gameMode === 'ai'
-                    ? 'bg-[#22c55e] text-black font-black brutal-shadow-sm'
-                    : 'bg-white text-black font-bold hover:bg-neutral-100'
+                    ? 'bg-[#22c55e] text-black font-black brutal-shadow'
+                    : 'bg-[#f4f4eb] text-black font-black hover:bg-[#facc15] brutal-shadow-sm'
                 }`}
               >
                 <Bot className="w-5 h-5 mb-0.5" />
                 <span className="font-brutal text-xs font-black">vs BOT AI</span>
-                <span className="text-[9px] font-mono font-bold opacity-75">Engine</span>
+                <span className="text-[9px] font-mono font-black text-neutral-800">Engine</span>
               </button>
 
               <button
                 onClick={() => setGameMode('pass_play')}
                 className={`brutal-press py-2.5 px-1 border-3 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
                   gameMode === 'pass_play'
-                    ? 'bg-[#22c55e] text-black font-black brutal-shadow-sm'
-                    : 'bg-white text-black font-bold hover:bg-neutral-100'
+                    ? 'bg-[#22c55e] text-black font-black brutal-shadow'
+                    : 'bg-[#f4f4eb] text-black font-black hover:bg-[#facc15] brutal-shadow-sm'
                 }`}
               >
                 <Users className="w-5 h-5 mb-0.5" />
                 <span className="font-brutal text-xs font-black">1v1 LOCAL</span>
-                <span className="text-[9px] font-mono font-bold opacity-75">Pass & Play</span>
+                <span className="text-[9px] font-mono font-black text-neutral-800">Pass & Play</span>
               </button>
 
               <button
                 onClick={() => setIsOnlineModalOpen(true)}
                 className={`brutal-press py-2.5 px-1 border-3 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
                   gameMode === 'online'
-                    ? 'bg-[#22c55e] text-black font-black brutal-shadow-sm'
-                    : 'bg-white text-black font-bold hover:bg-neutral-100'
+                    ? 'bg-[#22c55e] text-black font-black brutal-shadow'
+                    : 'bg-[#f4f4eb] text-black font-black hover:bg-[#facc15] brutal-shadow-sm'
                 }`}
               >
                 <Wifi className="w-5 h-5 mb-0.5" />
                 <span className="font-brutal text-xs font-black">ONLINE</span>
-                <span className="text-[9px] font-mono font-bold opacity-75">PvP Lobby</span>
+                <span className="text-[9px] font-mono font-black text-neutral-800">PvP Lobby</span>
               </button>
             </div>
 
@@ -1273,8 +1275,8 @@ export default function App() {
             {gameMode === 'ai' && (
               <div className="border-t-2 border-black pt-2 space-y-2">
                 <div className="flex items-center justify-between text-xs font-mono font-black">
-                  <span>BOT DIFFICULTY:</span>
-                  <span className="text-[#15803d]">
+                  <span className="uppercase text-black">BOT DIFFICULTY:</span>
+                  <span className="bg-black text-[#22c55e] px-2 py-0.5 border border-black font-mono font-black">
                     ~{aiDifficulty === 'easy' ? '800' : aiDifficulty === 'medium' ? '1200' : aiDifficulty === 'hard' ? '1600' : '2100'} ELO
                   </span>
                 </div>
@@ -1289,21 +1291,25 @@ export default function App() {
                     <button
                       key={d.id}
                       onClick={() => setAiDifficulty(d.id)}
-                      className={`brutal-press py-1.5 border-2 border-black cursor-pointer flex flex-col items-center ${
+                      className={`brutal-press py-1.5 border-2 border-black cursor-pointer flex flex-col items-center transition-all ${
                         aiDifficulty === d.id
                           ? 'bg-[#22c55e] text-black brutal-shadow-sm font-black'
-                          : 'bg-white text-black hover:bg-neutral-100 font-bold'
+                          : 'bg-white text-black hover:bg-[#fef08a] font-black'
                       }`}
                     >
                       <span className="text-[10px] font-black">{d.label}</span>
-                      <span className="text-[9px] opacity-80">~{d.elo}</span>
+                      <span className={`text-[9px] font-mono font-black px-1 mt-0.5 ${
+                        aiDifficulty === d.id ? 'bg-black text-white' : 'bg-neutral-200 text-black'
+                      }`}>
+                        ~{d.elo}
+                      </span>
                     </button>
                   ))}
                 </div>
 
                 {/* Side Chooser */}
                 <div className="flex items-center justify-between pt-1">
-                  <span className="font-brutal text-xs font-black uppercase">Play As:</span>
+                  <span className="font-brutal text-xs font-black uppercase text-black">Play As:</span>
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
@@ -1311,11 +1317,13 @@ export default function App() {
                         setIsFlipped(false);
                         startNewGame();
                       }}
-                      className={`brutal-press px-3 py-1 text-xs font-black border-2 border-black cursor-pointer ${
-                        playerColor === 'w' ? 'bg-white text-black brutal-shadow-sm' : 'bg-neutral-200 text-neutral-600'
+                      className={`brutal-press px-3 py-1.5 text-xs font-black uppercase border-3 border-black cursor-pointer transition-all ${
+                        playerColor === 'w'
+                          ? 'bg-white text-black brutal-shadow-sm ring-2 ring-[#22c55e]'
+                          : 'bg-neutral-200 text-black hover:bg-neutral-100'
                       }`}
                     >
-                      ⚪ WHITE (FIRST)
+                      ⚪ WHITE (1st)
                     </button>
                     <button
                       onClick={() => {
@@ -1323,11 +1331,13 @@ export default function App() {
                         setIsFlipped(true);
                         startNewGame();
                       }}
-                      className={`brutal-press px-3 py-1 text-xs font-black border-2 border-black cursor-pointer ${
-                        playerColor === 'b' ? 'bg-black text-white brutal-shadow-sm' : 'bg-neutral-200 text-neutral-600'
+                      className={`brutal-press px-3 py-1.5 text-xs font-black uppercase border-3 border-black cursor-pointer transition-all ${
+                        playerColor === 'b'
+                          ? 'bg-black text-white brutal-shadow-sm ring-2 ring-[#22c55e]'
+                          : 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700'
                       }`}
                     >
-                      ⚫ BLACK (SECOND)
+                      ⚫ BLACK (2nd)
                     </button>
                   </div>
                 </div>
@@ -1366,15 +1376,15 @@ export default function App() {
             onAnalyzeNow={() => runCoachAnalysis(chess, true)}
           />
 
-          {/* 4. MATCH ACTION BUTTONS (Takeback, Resign, Draw) */}
+          {/* 4. MATCH ACTION BUTTONS (Takeback, Resign, Draw) - Ultra High Contrast */}
           <div className="grid grid-cols-3 gap-2">
             <button
               onClick={handleUndoMove}
               disabled={history.length === 0 || gameMode === 'online'}
-              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-white hover:bg-neutral-100 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
+              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-white hover:bg-[#facc15] disabled:bg-neutral-200 disabled:text-neutral-500 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer transition-colors"
               title="Take back last move (HotKey: Z)"
             >
-              <RotateCcw className="w-4 h-4 text-[#22c55e]" />
+              <RotateCcw className="w-4 h-4 text-black stroke-[2.5]" />
               TAKEBACK
             </button>
 
@@ -1397,10 +1407,10 @@ export default function App() {
                 }
               }}
               disabled={Boolean(gameOverResult) || history.length === 0}
-              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-[#ef4444] hover:bg-red-400 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-3 border-black text-white font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
+              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-[#ef4444] hover:bg-red-500 disabled:bg-neutral-200 disabled:text-neutral-500 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-3 border-black text-white font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer transition-colors"
               title="Resign current match"
             >
-              <Flag className="w-4 h-4 text-white" />
+              <Flag className="w-4 h-4 text-white stroke-[2.5]" />
               RESIGN
             </button>
 
@@ -1419,10 +1429,10 @@ export default function App() {
                 }
               }}
               disabled={Boolean(gameOverResult) || history.length === 0 || drawOfferSent}
-              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-white hover:bg-neutral-100 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
+              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-[#facc15] hover:bg-yellow-300 disabled:bg-neutral-200 disabled:text-neutral-500 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer transition-colors"
               title="Offer match draw"
             >
-              <Handshake className="w-4 h-4 text-black" />
+              <Handshake className="w-4 h-4 text-black stroke-[2.5]" />
               {drawOfferSent ? 'OFFERED...' : 'DRAW'}
             </button>
           </div>

@@ -144,73 +144,91 @@ export const MoveHistory = ({
       {/* Move List Body */}
       <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto p-1.5 space-y-1 font-mono text-xs">
         {movePairs.length === 0 ? (
-          <div className="py-6 flex flex-col items-center justify-center text-neutral-500 font-brutal p-3 text-center">
-            <span className="font-black text-black text-sm uppercase">[ NO MOVES RECORDED ]</span>
-            <span className="text-xs text-neutral-600">Make a move on the board to start match recording</span>
+          <div className="py-6 flex flex-col items-center justify-center p-3 text-center my-auto">
+            <div className="bg-[#fef9c3] border-2 border-black px-3 py-1 font-mono text-xs font-black text-black uppercase mb-1">
+              [ NO MOVES RECORDED YET ]
+            </div>
+            <span className="text-xs font-mono font-bold text-black">
+              Make a move on the board to start match recording
+            </span>
           </div>
         ) : (
-          movePairs.map((pair) => (
-            <div
-              key={pair.moveNum}
-              className="grid grid-cols-12 gap-1 px-2 py-0.5 border border-black/10 hover:border-black items-center transition-colors"
-            >
-              <span className="col-span-3 text-neutral-500 font-mono font-bold text-xs">
-                {pair.moveNum}.
-              </span>
-              <button
-                onClick={() => onJumpToMove && onJumpToMove(pair.wIdx)}
-                className={`col-span-4 text-left font-black px-1.5 py-0.5 transition-all cursor-pointer ${
-                  currentMoveIndex === pair.wIdx
-                    ? 'bg-[#22c55e] text-black border-2 border-black brutal-shadow-sm font-black'
-                    : 'text-black hover:bg-neutral-200'
+          movePairs.map((pair, idx) => {
+            const isEven = idx % 2 === 0;
+            return (
+              <div
+                key={pair.moveNum}
+                className={`grid grid-cols-12 gap-1.5 px-2 py-1 items-center border-b border-black/20 ${
+                  isEven ? 'bg-white' : 'bg-[#f7f7f0]'
                 }`}
-                title={`Jump to move ${pair.moveNum}. ${pair.white?.san}`}
               >
-                {pair.white?.san}
-              </button>
-              {pair.black && (
+                {/* High-contrast Move Number Badge */}
+                <div className="col-span-3 flex items-center">
+                  <span className="bg-black text-[#facc15] font-mono font-black text-[11px] px-1.5 py-0.5 border border-black min-w-[28px] text-center">
+                    {pair.moveNum}.
+                  </span>
+                </div>
+
+                {/* White Move Button */}
                 <button
-                  onClick={() => onJumpToMove && onJumpToMove(pair.bIdx)}
-                  className={`col-span-5 text-left font-black px-1.5 py-0.5 transition-all cursor-pointer ${
-                    currentMoveIndex === pair.bIdx
-                      ? 'bg-[#22c55e] text-black border-2 border-black brutal-shadow-sm font-black'
-                      : 'text-black hover:bg-neutral-200'
+                  onClick={() => onJumpToMove && onJumpToMove(pair.wIdx)}
+                  className={`col-span-4 text-center font-mono text-xs font-black px-2 py-1 border-2 border-black transition-all cursor-pointer ${
+                    currentMoveIndex === pair.wIdx
+                      ? 'bg-[#22c55e] text-black brutal-shadow-sm font-black ring-1 ring-black'
+                      : 'bg-white text-black hover:bg-[#fef08a]'
                   }`}
-                  title={`Jump to move ${pair.moveNum}... ${pair.black.san}`}
+                  title={`Jump to move ${pair.moveNum}. ${pair.white?.san}`}
                 >
-                  {pair.black.san}
+                  {pair.white?.san}
                 </button>
-              )}
-            </div>
-          ))
+
+                {/* Black Move Button */}
+                {pair.black ? (
+                  <button
+                    onClick={() => onJumpToMove && onJumpToMove(pair.bIdx)}
+                    className={`col-span-5 text-center font-mono text-xs font-black px-2 py-1 border-2 border-black transition-all cursor-pointer ${
+                      currentMoveIndex === pair.bIdx
+                        ? 'bg-[#22c55e] text-black brutal-shadow-sm font-black ring-1 ring-black'
+                        : 'bg-neutral-800 text-white hover:bg-neutral-700'
+                    }`}
+                    title={`Jump to move ${pair.moveNum}... ${pair.black.san}`}
+                  >
+                    {pair.black.san}
+                  </button>
+                ) : (
+                  <div className="col-span-5" />
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 
       {/* Neo-Brutalist Step Navigation Dock */}
-      <div className="bg-[#f4f4eb] border-t-3 border-black p-1.5 flex items-center justify-between gap-1 shrink-0">
+      <div className="bg-[#facc15] border-t-3 border-black p-1.5 flex items-center justify-between gap-1 shrink-0">
         <div className="flex items-center gap-1">
           <button
             onClick={onGoFirst}
             disabled={history.length === 0 || isAtStart}
-            className="brutal-press flex items-center gap-1 px-2 py-1 bg-white hover:bg-neutral-100 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+            className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-neutral-100 disabled:bg-neutral-200 disabled:text-neutral-500 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
             title="Jump to initial board position (Move 0)"
           >
-            <ChevronFirst className="w-3.5 h-3.5" />
+            <ChevronFirst className="w-3.5 h-3.5 text-black" />
             <span className="hidden sm:inline">Start</span>
           </button>
           <button
             onClick={onGoPrev}
             disabled={history.length === 0 || isAtStart}
-            className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-[#22c55e] disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+            className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-[#22c55e] disabled:bg-neutral-200 disabled:text-neutral-500 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
             title="Step Back one move"
           >
-            <ChevronLeft className="w-3.5 h-3.5 stroke-[3]" />
+            <ChevronLeft className="w-3.5 h-3.5 stroke-[3] text-black" />
             <span>Back</span>
           </button>
         </div>
 
         {/* Current Move Indicator */}
-        <div className="px-2 py-0.5 border-2 border-black font-mono text-xs font-black bg-black text-white">
+        <div className="px-2.5 py-0.5 border-2 border-black font-mono text-xs font-black bg-black text-[#22c55e]">
           {history.length === 0 ? 'MOVE 0' : isLive ? `LIVE (${history.length})` : `${currentMoveIndex === -1 ? '0' : currentMoveIndex + 1}/${history.length}`}
         </div>
 
@@ -218,20 +236,20 @@ export const MoveHistory = ({
           <button
             onClick={onGoNext}
             disabled={history.length === 0 || isAtEnd}
-            className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-[#22c55e] disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+            className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-[#22c55e] disabled:bg-neutral-200 disabled:text-neutral-500 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
             title="Step Forward one move"
           >
             <span>Fwd</span>
-            <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
+            <ChevronRight className="w-3.5 h-3.5 stroke-[3] text-black" />
           </button>
           <button
             onClick={onGoLast}
             disabled={history.length === 0 || isAtEnd}
-            className="brutal-press flex items-center gap-1 px-2 py-1 bg-[#22c55e] hover:bg-green-400 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+            className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-[#22c55e] hover:bg-green-400 disabled:bg-neutral-200 disabled:text-neutral-500 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
             title="Jump to latest live move"
           >
             <span className="hidden sm:inline">Live</span>
-            <ChevronLast className="w-3.5 h-3.5" />
+            <ChevronLast className="w-3.5 h-3.5 text-black" />
           </button>
         </div>
       </div>

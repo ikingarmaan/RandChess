@@ -49,7 +49,7 @@ export const CoachAdvisor = ({
             <h2 className="text-xs sm:text-sm font-black uppercase font-brutal truncate">
               GM Tactical Advisor
             </h2>
-            <p className="text-[10px] text-neutral-600 font-mono hidden sm:block truncate">
+            <p className="text-[10px] text-neutral-800 font-mono font-bold hidden sm:block truncate">
               Positional evaluation & blunder radar
             </p>
           </div>
@@ -72,13 +72,13 @@ export const CoachAdvisor = ({
 
       {/* Main Content Body */}
       {!coachEnabled ? (
-        <div className="py-4 px-3 text-center font-mono space-y-2.5 bg-[#f4f4eb] border-2 border-dashed border-black/40 my-1">
+        <div className="py-4 px-3 text-center font-mono space-y-2 bg-[#fef9c3] border-2 border-black my-1">
           <div className="flex items-center justify-center gap-2 text-black font-black font-brutal text-xs sm:text-sm uppercase">
-            <Lightbulb className="w-4 h-4 text-neutral-500" />
+            <Lightbulb className="w-4 h-4 text-black" />
             <span>[ MOVE SUGGESTIONS ARE OFF ]</span>
           </div>
-          <p className="text-xs text-neutral-600 max-w-sm mx-auto">
-            AI move recommendations, tactical reasons, and on-board directional arrows are currently disabled. Click below to turn them on anytime.
+          <p className="text-xs text-black font-medium max-w-sm mx-auto">
+            AI recommendations and tactical arrows are turned off by default. Click below to view recommendations.
           </p>
           <button
             onClick={() => onToggleCoach(true)}
