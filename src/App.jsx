@@ -95,6 +95,7 @@ export default function App() {
   const [socketConnected, setSocketConnected] = useState(false);
   const [onlineRoomCode, setOnlineRoomCode] = useState(null);
   const [isWaitingOnline, setIsWaitingOnline] = useState(false);
+  const [isSearchingQuickMatch, setIsSearchingQuickMatch] = useState(false);
   const [onlineStatus, setOnlineStatus] = useState('');
   const [onlineMyColor, setOnlineMyColor] = useState('w');
   const [drawOfferReceived, setDrawOfferReceived] = useState(false);
@@ -163,16 +164,24 @@ export default function App() {
   }, []);
 
   // Update AI Coach Analysis
-  const runCoachAnalysis = useCallback((gameInstance) => {
+  const runCoachAnalysis = useCallback((gameInstance, isExplicit = false) => {
     if (!coachEnabled || gameInstance.isGameOver()) {
       if (gameInstance.isGameOver()) {
-        const res = analyzeAndExplain(gameInstance);
-        setCoachAnalysis(res);
+        try {
+          const res = analyzeAndExplain(gameInstance);
+          setCoachAnalysis(res);
+        } catch (e) {}
       }
       return;
     }
 
     if (gameMode === 'ai' && gameInstance.turn() !== playerColor) {
+      return;
+    }
+
+    // In online competitive multiplayer, do not block the JS thread / network packets with Minimax
+    // unless the player explicitly asks for coach advice
+    if (gameMode === 'online' && !isExplicit) {
       return;
     }
 
@@ -187,12 +196,12 @@ export default function App() {
       } finally {
         setIsCoachThinking(false);
       }
-    }, 50);
+    }, 25);
   }, [coachEnabled, gameMode, playerColor]);
 
   // Initial coach run on mount
   useEffect(() => {
-    runCoachAnalysis(chess);
+    runCoachAnalysis(chess, true);
   }, [runCoachAnalysis]);
 
   // Clock countdown timer interval
@@ -369,6 +378,12 @@ export default function App() {
   useEffect(() => {
     const newSocket = io(window.location.origin, {
       transports: ['websocket', 'polling'],
+      upgrade: true,
+      rememberUpgrade: true,
+      timeout: 10000,
+      reconnection: true,
+      reconnectionAttempts: 20,
+      reconnectionDelay: 1000,
       autoConnect: true
     });
     setSocket(newSocket);
@@ -397,6 +412,7 @@ export default function App() {
 
     newSocket.on('disconnect', () => {
       setSocketConnected(false);
+      setIsSearchingQuickMatch(false);
     });
 
     newSocket.on('connect_error', () => {
@@ -406,6 +422,7 @@ export default function App() {
     newSocket.on('game_started', ({ roomId, whitePlayer, timeControl: tc, fen }) => {
       setOnlineRoomCode(roomId);
       setIsWaitingOnline(false);
+      setIsSearchingQuickMatch(false);
       setIsOnlineModalOpen(false);
       setGameMode('online');
       setDrawOfferReceived(false);
@@ -609,14 +626,55 @@ export default function App() {
     }
   }, [socket, onlineRoomCode]);
 
+  const handleFindQuickMatch = useCallback(({ timeControl: tc, preferredColor }) => {
+    if (!socket || !socketConnected) {
+      setOnlineStatus('Game server is connecting. Please wait a moment...');
+      return;
+    }
+    setOnlineStatus('');
+    setIsSearchingQuickMatch(true);
+    socket.emit('find_quick_match', { timeControl: tc, preferredColor }, (res) => {
+      if (!res || !res.success) {
+        setIsSearchingQuickMatch(false);
+        setOnlineStatus('Failed to start quick match. Please try again.');
+      } else if (res.matched) {
+        setIsSearchingQuickMatch(false);
+        setOnlineRoomCode(res.roomId);
+        setIsOnlineModalOpen(false);
+        setGameMode('online');
+        setOnlineMyColor(res.color);
+        setPlayerColor(res.color);
+        setIsFlipped(res.color === 'b');
+        if (res.timeControl) {
+          setTimeControl(res.timeControl);
+          setTimers({ w: res.timeControl, b: res.timeControl });
+        }
+      }
+    });
+  }, [socket, socketConnected]);
+
+  const handleCancelQuickMatch = useCallback(() => {
+    if (socket) {
+      socket.emit('cancel_quick_match', () => {
+        setIsSearchingQuickMatch(false);
+      });
+    } else {
+      setIsSearchingQuickMatch(false);
+    }
+  }, [socket]);
+
   const handleLeaveRoom = useCallback(() => {
     if (socket && onlineRoomCode) {
       socket.emit('leave_room', { roomId: onlineRoomCode });
     }
+    if (socket && isSearchingQuickMatch) {
+      socket.emit('cancel_quick_match');
+    }
+    setIsSearchingQuickMatch(false);
     setOnlineRoomCode(null);
     setIsWaitingOnline(false);
     setIsOnlineModalOpen(false);
-  }, [socket, onlineRoomCode]);
+  }, [socket, onlineRoomCode, isSearchingQuickMatch]);
 
   // Jump to specific move in history preview (null = return to live match)
   const handleJumpToMove = useCallback((idx) => {
@@ -862,7 +920,13 @@ export default function App() {
           </div>
 
           <button
-            onClick={() => setCoachEnabled(!coachEnabled)}
+            onClick={() => {
+              const nextVal = !coachEnabled;
+              setCoachEnabled(nextVal);
+              if (nextVal) {
+                runCoachAnalysis(chess, true);
+              }
+            }}
             className={`brutal-press flex items-center gap-1.5 px-2.5 py-1 font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm transition-all ${
               coachEnabled
                 ? 'bg-[#22c55e] text-black hover:bg-green-400'
@@ -961,7 +1025,13 @@ export default function App() {
 
         {/* Mobile Suggest Next Move Toggle */}
         <button
-          onClick={() => setCoachEnabled(!coachEnabled)}
+          onClick={() => {
+            const nextVal = !coachEnabled;
+            setCoachEnabled(nextVal);
+            if (nextVal) {
+              runCoachAnalysis(chess, true);
+            }
+          }}
           className={`brutal-press flex items-center gap-1 px-2 py-1 font-brutal text-[11px] font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm shrink-0 transition-all ${
             coachEnabled
               ? 'bg-[#22c55e] text-black'
@@ -1239,13 +1309,17 @@ export default function App() {
           {/* 3. GRANDMASTER AI COACH & "PLAY BEST MOVE" BUTTON */}
           <CoachAdvisor
             coachEnabled={coachEnabled}
-            onToggleCoach={setCoachEnabled}
+            onToggleCoach={(val) => {
+              setCoachEnabled(val);
+              if (val) runCoachAnalysis(chess, true);
+            }}
             analysis={coachAnalysis}
             onApplyBestMove={handleApplyBestMove}
             showArrow={showCoachArrow}
             onToggleArrow={() => setShowCoachArrow(!showCoachArrow)}
             turnColor={chess.turn() === 'w' ? 'White' : 'Black'}
             isThinking={isCoachThinking}
+            onAnalyzeNow={() => runCoachAnalysis(chess, true)}
           />
 
           {/* 4. MATCH ACTION BUTTONS (Takeback, Resign, Draw) */}
@@ -1416,11 +1490,21 @@ export default function App() {
 
       <OnlineLobbyModal
         isOpen={isOnlineModalOpen}
-        onClose={() => setIsOnlineModalOpen(false)}
+        onClose={() => {
+          if (isSearchingQuickMatch) handleCancelQuickMatch();
+          setIsOnlineModalOpen(false);
+        }}
+        onFindQuickMatch={handleFindQuickMatch}
+        onCancelQuickMatch={handleCancelQuickMatch}
+        isSearchingQuickMatch={isSearchingQuickMatch}
         onCreateRoom={({ timeControl: tc, preferredColor }) => {
-          if (!socket) return;
+          if (!socket || !socketConnected) {
+            setOnlineStatus('Connecting to game server... Please wait a moment.');
+            return;
+          }
+          setOnlineStatus('');
           socket.emit('create_room', { timeControl: tc, preferredColor }, (res) => {
-            if (res.success) {
+            if (res && res.success) {
               setOnlineRoomCode(res.roomId);
               setIsWaitingOnline(true);
               setOnlineMyColor(res.color);
@@ -1428,14 +1512,21 @@ export default function App() {
               setIsFlipped(res.color === 'b');
               setTimeControl(res.timeControl);
               setTimers({ w: res.timeControl, b: res.timeControl });
+            } else {
+              setOnlineStatus(res?.error || 'Failed to create room');
             }
           });
         }}
         onJoinRoom={(code) => {
-          if (!socket) return;
-          socket.emit('join_room', { roomId: code }, (res) => {
-            if (res.success) {
-              setOnlineRoomCode(code);
+          if (!socket || !socketConnected) {
+            setOnlineStatus('Connecting to game server... Please wait a moment.');
+            return;
+          }
+          setOnlineStatus('');
+          const clean = (code || '').trim().toUpperCase();
+          socket.emit('join_room', { roomId: clean }, (res) => {
+            if (res && res.success) {
+              setOnlineRoomCode(clean);
               setIsOnlineModalOpen(false);
               setGameMode('online');
               setOnlineMyColor(res.color);
@@ -1446,7 +1537,7 @@ export default function App() {
                 setTimers({ w: res.timeControl, b: res.timeControl });
               }
             } else {
-              setOnlineStatus(res.error || 'Failed to join room');
+              setOnlineStatus(res?.error || 'Room not found. Check the code.');
             }
           });
         }}

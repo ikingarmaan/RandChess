@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Wifi, Copy, Check, Users, ArrowRight, X, Clock, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Wifi, Copy, Check, Users, ArrowRight, X, Clock, Zap, Clipboard, Loader2, Sparkles } from 'lucide-react';
 
 export const OnlineLobbyModal = ({
   isOpen,
@@ -7,17 +7,27 @@ export const OnlineLobbyModal = ({
   onCreateRoom,
   onJoinRoom,
   onLeaveRoom,
+  onFindQuickMatch,
+  onCancelQuickMatch,
+  isSearchingQuickMatch = false,
   roomCode,
   isWaiting,
   onlineStatus,
   isConnected = true
 }) => {
-  const [tab, setTab] = useState('create');
+  const [tab, setTab] = useState('quick'); // 'quick' | 'create' | 'join'
   const [inputCode, setInputCode] = useState('');
   const [timeChoice, setTimeChoice] = useState(300); // 5 mins
   const [colorChoice, setColorChoice] = useState('random');
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pasteNotice, setPasteNotice] = useState(false);
+
+  // Clear submitting state when modal changes state or waiting updates
+  useEffect(() => {
+    setIsSubmitting(false);
+  }, [isOpen, roomCode, isWaiting, isSearchingQuickMatch, onlineStatus]);
 
   if (!isOpen) return null;
 
@@ -39,26 +49,60 @@ export const OnlineLobbyModal = ({
     }
   };
 
+  const handlePasteCode = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        // Extract 6-character alphanumeric code or from URL
+        let clean = text.trim();
+        const urlMatch = clean.match(/room=([A-Za-z0-9]{6})/i);
+        if (urlMatch && urlMatch[1]) {
+          clean = urlMatch[1];
+        } else {
+          clean = clean.replace(/[^A-Za-z0-9]/g, '').slice(0, 6);
+        }
+        setInputCode(clean.toUpperCase());
+        setPasteNotice(true);
+        setTimeout(() => setPasteNotice(false), 2000);
+      }
+    } catch (err) {
+      console.warn('Clipboard read failed:', err);
+    }
+  };
+
   const handleCreate = () => {
+    if (!isConnected || isSubmitting) return;
+    setIsSubmitting(true);
     onCreateRoom({ timeControl: timeChoice, preferredColor: colorChoice });
   };
 
   const handleJoin = (e) => {
     e.preventDefault();
-    if (inputCode.trim()) {
-      onJoinRoom(inputCode.trim().toUpperCase());
+    const clean = inputCode.trim().toUpperCase();
+    if (clean && isConnected && !isSubmitting) {
+      setIsSubmitting(true);
+      onJoinRoom(clean);
+    }
+  };
+
+  const handleStartQuickMatch = () => {
+    if (!isConnected || isSubmitting) return;
+    setIsSubmitting(true);
+    if (onFindQuickMatch) {
+      onFindQuickMatch({ timeControl: timeChoice, preferredColor: colorChoice });
     }
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4"
       style={{ overscrollBehavior: 'contain' }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && !isWaiting && !isSearchingQuickMatch) onClose();
       }}
     >
-      <div className="bg-white text-black border-4 border-black p-5 sm:p-6 brutal-shadow-xl max-w-md w-full space-y-4 relative select-none max-h-[90vh] overflow-y-auto">
+      <div className="bg-white text-black border-4 border-black p-4 sm:p-6 brutal-shadow-xl max-w-md w-full space-y-3.5 relative select-none max-h-[92vh] overflow-y-auto">
+        {/* Header Bar */}
         <div className="flex items-center justify-between border-b-3 border-black pb-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-[#22c55e] border-2 border-black flex items-center justify-center shrink-0">
@@ -66,8 +110,8 @@ export const OnlineLobbyModal = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="font-brutal text-base sm:text-lg font-black uppercase tracking-tight">
-                  Online Matchmaker
+                <h2 className="font-brutal text-sm sm:text-base font-black uppercase tracking-tight">
+                  Online Multiplayer
                 </h2>
                 <span
                   className={`text-[9px] font-mono font-black uppercase px-1.5 py-0.2 border ${
@@ -76,32 +120,57 @@ export const OnlineLobbyModal = ({
                       : 'bg-[#facc15] text-black border-black animate-pulse'
                   }`}
                 >
-                  {isConnected ? 'ONLINE' : 'CONNECTING...'}
+                  {isConnected ? 'LIVE' : 'CONNECTING...'}
                 </span>
               </div>
-              <p className="text-[11px] font-mono text-neutral-600">
-                P2P low-latency WebSockets room
+              <p className="text-[10px] font-mono text-neutral-600">
+                Ultra-low latency direct WebSockets
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="brutal-press p-1.5 bg-black text-white hover:bg-neutral-800 border-2 border-black cursor-pointer"
+            aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Server status alert when connecting */}
         {!isConnected && (
           <div className="p-2.5 bg-[#facc15] border-2 border-black font-mono text-xs text-black font-black flex items-center gap-2">
-            <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin shrink-0" />
-            <span>Connecting to game server... If Render is waking up, this takes ~15s.</span>
+            <Loader2 className="w-3.5 h-3.5 text-black animate-spin shrink-0" />
+            <span>Connecting to game server... Ready in seconds!</span>
           </div>
         )}
 
-        {/* If waiting for opponent in an active room */}
-        {isWaiting && roomCode ? (
+        {/* Quick Match Searching Screen */}
+        {isSearchingQuickMatch ? (
+          <div className="py-4 text-center space-y-4">
+            <div className="w-16 h-16 bg-[#facc15] border-3 border-black flex items-center justify-center mx-auto brutal-shadow-sm relative">
+              <Zap className="w-8 h-8 text-black animate-bounce" />
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#22c55e] border-2 border-black rounded-full animate-ping" />
+            </div>
+
+            <div className="space-y-1">
+              <span className="font-mono text-xs font-black uppercase px-2 py-0.5 bg-black text-[#22c55e] border-2 border-black">
+                [ ⚡ SEARCHING OPPONENT... ]
+              </span>
+              <p className="text-xs text-neutral-700 font-mono pt-2">
+                Looking for an available player... Matching is instant once an opponent connects!
+              </p>
+            </div>
+
+            <button
+              onClick={onCancelQuickMatch}
+              className="brutal-press w-full py-2.5 bg-neutral-200 hover:bg-[#ef4444] hover:text-white border-2 border-black font-brutal text-xs font-black uppercase transition-colors cursor-pointer"
+            >
+              CANCEL SEARCH
+            </button>
+          </div>
+        ) : isWaiting && roomCode ? (
+          /* Private Room Waiting for Opponent Screen */
           <div className="py-2 text-center space-y-3.5">
             <div className="w-14 h-14 bg-[#22c55e] border-3 border-black flex items-center justify-center mx-auto brutal-shadow-sm">
               <Users className="w-7 h-7 text-black animate-pulse" />
@@ -112,7 +181,7 @@ export const OnlineLobbyModal = ({
                 [ ROOM ACTIVE // WAITING FOR OPPONENT ]
               </span>
               <p className="text-xs text-neutral-600 font-mono mt-2">
-                Share this match code or direct link with your opponent to play:
+                Share this match code or direct link with your opponent:
               </p>
             </div>
 
@@ -151,12 +220,23 @@ export const OnlineLobbyModal = ({
             )}
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* Tab Chooser */}
-            <div className="grid grid-cols-2 gap-2 border-2 border-black p-1 bg-[#f4f4eb]">
+          <div className="space-y-3.5">
+            {/* 3 Brutalist Tabs */}
+            <div className="grid grid-cols-3 gap-1 border-2 border-black p-1 bg-[#f4f4eb]">
+              <button
+                onClick={() => setTab('quick')}
+                className={`py-1.5 font-brutal text-[11px] sm:text-xs font-black uppercase transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                  tab === 'quick'
+                    ? 'bg-black text-[#22c55e] brutal-shadow-sm'
+                    : 'bg-transparent text-black hover:bg-neutral-200'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Quick Match</span>
+              </button>
               <button
                 onClick={() => setTab('create')}
-                className={`py-1.5 font-brutal text-xs font-black uppercase transition-all cursor-pointer ${
+                className={`py-1.5 font-brutal text-[11px] sm:text-xs font-black uppercase transition-all cursor-pointer ${
                   tab === 'create'
                     ? 'bg-black text-white brutal-shadow-sm'
                     : 'bg-transparent text-black hover:bg-neutral-200'
@@ -166,21 +246,30 @@ export const OnlineLobbyModal = ({
               </button>
               <button
                 onClick={() => setTab('join')}
-                className={`py-1.5 font-brutal text-xs font-black uppercase transition-all cursor-pointer ${
+                className={`py-1.5 font-brutal text-[11px] sm:text-xs font-black uppercase transition-all cursor-pointer ${
                   tab === 'join'
                     ? 'bg-black text-white brutal-shadow-sm'
                     : 'bg-transparent text-black hover:bg-neutral-200'
                 }`}
               >
-                Join with Code
+                Join Code
               </button>
             </div>
 
-            {tab === 'create' ? (
-              <div className="space-y-3.5">
-                {/* Time Control */}
+            {/* TAB 1: QUICK MATCH */}
+            {tab === 'quick' && (
+              <div className="space-y-3">
+                <div className="p-2.5 bg-[#f4f4eb] border-2 border-black font-mono text-[11px] text-neutral-700">
+                  <div className="font-black text-black flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-[#15803d]" />
+                    <span>INSTANT PAIRING: NO CODE NEEDED</span>
+                  </div>
+                  <span>Click Find Opponent to match instantly with another player online.</span>
+                </div>
+
+                {/* Clock Duration */}
                 <div className="space-y-1">
-                  <label className="font-brutal text-xs font-black uppercase">
+                  <label className="font-brutal text-[11px] font-black uppercase">
                     Clock Duration
                   </label>
                   <div className="grid grid-cols-4 gap-1.5 font-mono text-xs font-black">
@@ -192,6 +281,7 @@ export const OnlineLobbyModal = ({
                     ].map((t) => (
                       <button
                         key={t.val}
+                        type="button"
                         onClick={() => setTimeChoice(t.val)}
                         className={`brutal-press py-1.5 border-2 border-black cursor-pointer ${
                           timeChoice === t.val ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-[#f4f4eb] text-black'
@@ -205,8 +295,8 @@ export const OnlineLobbyModal = ({
 
                 {/* Preferred Color */}
                 <div className="space-y-1">
-                  <label className="font-brutal text-xs font-black uppercase">
-                    Play As
+                  <label className="font-brutal text-[11px] font-black uppercase">
+                    Preferred Color
                   </label>
                   <div className="grid grid-cols-3 gap-1.5 font-mono text-xs font-black">
                     {[
@@ -216,6 +306,7 @@ export const OnlineLobbyModal = ({
                     ].map((c) => (
                       <button
                         key={c.val}
+                        type="button"
                         onClick={() => setColorChoice(c.val)}
                         className={`brutal-press py-1.5 border-2 border-black cursor-pointer ${
                           colorChoice === c.val ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-[#f4f4eb] text-black'
@@ -228,27 +319,126 @@ export const OnlineLobbyModal = ({
                 </div>
 
                 <button
-                  onClick={handleCreate}
-                  disabled={!isConnected}
-                  className="brutal-press w-full py-3 bg-[#22c55e] hover:bg-green-400 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:border-neutral-400 disabled:cursor-not-allowed disabled:shadow-none text-black border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
+                  type="button"
+                  onClick={handleStartQuickMatch}
+                  disabled={!isConnected || isSubmitting}
+                  className="brutal-press w-full py-3 bg-[#22c55e] hover:bg-green-400 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:border-neutral-400 disabled:cursor-not-allowed text-black border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm flex items-center justify-center gap-2"
                 >
-                  CREATE MATCH ROOM ▶
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-black" />
+                      <span>FINDING OPPONENT...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4 text-black" />
+                      <span>⚡ FIND OPPONENT NOW ▶</span>
+                    </>
+                  )}
                 </button>
               </div>
-            ) : (
-              <form onSubmit={handleJoin} className="space-y-3.5">
+            )}
+
+            {/* TAB 2: CREATE PRIVATE ROOM */}
+            {tab === 'create' && (
+              <div className="space-y-3">
+                {/* Time Control */}
                 <div className="space-y-1">
-                  <label className="font-brutal text-xs font-black uppercase">
-                    Enter 6-Character Room Code
+                  <label className="font-brutal text-[11px] font-black uppercase">
+                    Clock Duration
                   </label>
-                  <input
-                    type="text"
-                    value={inputCode}
-                    onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                    placeholder="e.g. A9X4K2"
-                    maxLength={6}
-                    className="w-full p-2.5 text-center font-mono text-lg font-black uppercase bg-[#f4f4eb] text-black border-3 border-black outline-none tracking-widest placeholder:text-neutral-400"
-                  />
+                  <div className="grid grid-cols-4 gap-1.5 font-mono text-xs font-black">
+                    {[
+                      { label: '1 MIN', val: 60 },
+                      { label: '3 MIN', val: 180 },
+                      { label: '5 MIN', val: 300 },
+                      { label: '10 MIN', val: 600 }
+                    ].map((t) => (
+                      <button
+                        key={t.val}
+                        type="button"
+                        onClick={() => setTimeChoice(t.val)}
+                        className={`brutal-press py-1.5 border-2 border-black cursor-pointer ${
+                          timeChoice === t.val ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-[#f4f4eb] text-black'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Preferred Color */}
+                <div className="space-y-1">
+                  <label className="font-brutal text-[11px] font-black uppercase">
+                    Play As
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5 font-mono text-xs font-black">
+                    {[
+                      { label: 'WHITE', val: 'w' },
+                      { label: 'RANDOM', val: 'random' },
+                      { label: 'BLACK', val: 'b' }
+                    ].map((c) => (
+                      <button
+                        key={c.val}
+                        type="button"
+                        onClick={() => setColorChoice(c.val)}
+                        className={`brutal-press py-1.5 border-2 border-black cursor-pointer ${
+                          colorChoice === c.val ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-[#f4f4eb] text-black'
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  disabled={!isConnected || isSubmitting}
+                  className="brutal-press w-full py-3 bg-[#22c55e] hover:bg-green-400 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:border-neutral-400 disabled:cursor-not-allowed text-black border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-black" />
+                      <span>GENERATING ROOM...</span>
+                    </>
+                  ) : (
+                    <span>CREATE PRIVATE ROOM ▶</span>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* TAB 3: JOIN WITH CODE */}
+            {tab === 'join' && (
+              <form onSubmit={handleJoin} className="space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="font-brutal text-[11px] font-black uppercase">
+                      6-Character Room Code
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handlePasteCode}
+                      className="text-[10px] font-mono font-black uppercase px-2 py-0.5 bg-[#f4f4eb] hover:bg-[#22c55e] border border-black flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <Clipboard className="w-3 h-3" />
+                      <span>{pasteNotice ? 'PASTED!' : 'PASTE CODE'}</span>
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={inputCode}
+                      onChange={(e) => setInputCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                      placeholder="e.g. A9X4K2"
+                      maxLength={6}
+                      autoFocus
+                      className="w-full p-2.5 text-center font-mono text-xl font-black uppercase bg-[#f4f4eb] text-black border-3 border-black outline-none tracking-widest placeholder:text-neutral-400 focus:bg-white"
+                    />
+                  </div>
                 </div>
 
                 {onlineStatus && (
@@ -259,10 +449,17 @@ export const OnlineLobbyModal = ({
 
                 <button
                   type="submit"
-                  disabled={!inputCode.trim() || !isConnected}
-                  className="brutal-press w-full py-3 bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:border-neutral-400 disabled:cursor-not-allowed disabled:shadow-none text-white border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
+                  disabled={!inputCode.trim() || !isConnected || isSubmitting}
+                  className="brutal-press w-full py-3 bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:border-neutral-400 disabled:cursor-not-allowed text-white border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm flex items-center justify-center gap-2"
                 >
-                  JOIN MATCH NOW ▶
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>CONNECTING TO ROOM...</span>
+                    </>
+                  ) : (
+                    <span>JOIN MATCH NOW ▶</span>
+                  )}
                 </button>
               </form>
             )}

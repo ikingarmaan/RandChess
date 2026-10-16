@@ -15,13 +15,22 @@ const io = new Server(httpServer, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST']
-  }
+  },
+  transports: ['websocket', 'polling'],
+  perMessageDeflate: false,
+  allowUpgrades: true,
+  pingInterval: 10000,
+  pingTimeout: 5000,
+  httpCompression: false
 });
 
 const PORT = process.env.PORT || 3000;
 
 // Active rooms storage: roomId -> { chess, whitePlayer, blackPlayer, timeControl, timers, startedAt }
 const rooms = new Map();
+
+// Quick match queue: { socketId, socket, timeControl, preferredColor }
+let quickMatchQueue = null;
 
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -33,7 +42,92 @@ function generateRoomCode() {
 }
 
 io.on('connection', (socket) => {
-  // 1. Create Room
+  // 1. Instant Quick Match (1-click play)
+  socket.on('find_quick_match', ({ timeControl = 300, preferredColor = 'random' } = {}, callback) => {
+    // If someone is already waiting in queue and still connected
+    if (quickMatchQueue && quickMatchQueue.socketId !== socket.id) {
+      const opponent = quickMatchQueue;
+      quickMatchQueue = null;
+
+      // Verify opponent is still connected
+      if (opponent.socket.connected) {
+        let roomId = generateRoomCode();
+        while (rooms.has(roomId)) {
+          roomId = generateRoomCode();
+        }
+
+        let hostColor = 'w';
+        if (preferredColor === 'b') hostColor = 'b';
+        else if (preferredColor === 'w') hostColor = 'w';
+        else if (opponent.preferredColor === 'w') hostColor = 'b';
+        else if (opponent.preferredColor === 'b') hostColor = 'w';
+        else hostColor = Math.random() < 0.5 ? 'w' : 'b';
+
+        const opponentColor = hostColor === 'w' ? 'b' : 'w';
+
+        const roomData = {
+          id: roomId,
+          chess: new Chess(),
+          timeControl: timeControl || opponent.timeControl || 300,
+          whitePlayer: hostColor === 'w' ? socket.id : opponent.socketId,
+          blackPlayer: hostColor === 'b' ? socket.id : opponent.socketId,
+          timers: {
+            w: timeControl,
+            b: timeControl,
+            lastTurnTimestamp: Date.now()
+          },
+          status: 'playing'
+        };
+
+        rooms.set(roomId, roomData);
+        socket.join(roomId);
+        opponent.socket.join(roomId);
+        socket.roomId = roomId;
+        opponent.socket.roomId = roomId;
+
+        if (callback) {
+          callback({
+            success: true,
+            matched: true,
+            roomId,
+            color: hostColor,
+            timeControl: roomData.timeControl
+          });
+        }
+
+        // Notify both players immediately
+        io.to(roomId).emit('game_started', {
+          roomId,
+          whitePlayer: roomData.whitePlayer,
+          blackPlayer: roomData.blackPlayer,
+          timeControl: roomData.timeControl,
+          fen: roomData.chess.fen()
+        });
+        return;
+      }
+    }
+
+    // Otherwise place player in waiting queue
+    quickMatchQueue = {
+      socketId: socket.id,
+      socket,
+      timeControl,
+      preferredColor
+    };
+
+    if (callback) {
+      callback({ success: true, matched: false, waiting: true });
+    }
+  });
+
+  socket.on('cancel_quick_match', (callback) => {
+    if (quickMatchQueue && quickMatchQueue.socketId === socket.id) {
+      quickMatchQueue = null;
+    }
+    if (callback) callback({ success: true });
+  });
+
+  // 2. Create Private Room
   socket.on('create_room', ({ timeControl = 300, preferredColor = 'random' }, callback) => {
     let roomId = generateRoomCode();
     while (rooms.has(roomId)) {
@@ -72,15 +166,16 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 2. Join Room
+  // 3. Join Private Room
   socket.on('join_room', ({ roomId }, callback) => {
-    const room = rooms.get(roomId);
+    const cleanRoomId = (roomId || '').trim().toUpperCase();
+    const room = rooms.get(cleanRoomId);
     if (!room) {
       if (callback) callback({ success: false, error: 'Room not found. Check code.' });
       return;
     }
 
-    if (room.whitePlayer && room.blackPlayer) {
+    if (room.whitePlayer && room.blackPlayer && room.whitePlayer !== socket.id && room.blackPlayer !== socket.id) {
       if (callback) callback({ success: false, error: 'Room is already full.' });
       return;
     }
@@ -89,20 +184,22 @@ io.on('connection', (socket) => {
     if (!room.whitePlayer) {
       room.whitePlayer = socket.id;
       playerColor = 'w';
-    } else {
+    } else if (!room.blackPlayer) {
       room.blackPlayer = socket.id;
       playerColor = 'b';
+    } else {
+      playerColor = room.whitePlayer === socket.id ? 'w' : 'b';
     }
 
     room.status = 'playing';
     room.timers.lastTurnTimestamp = Date.now();
-    socket.join(roomId);
-    socket.roomId = roomId;
+    socket.join(cleanRoomId);
+    socket.roomId = cleanRoomId;
 
     if (callback) {
       callback({
         success: true,
-        roomId,
+        roomId: cleanRoomId,
         color: playerColor,
         timeControl: room.timeControl,
         fen: room.chess.fen()
@@ -110,8 +207,8 @@ io.on('connection', (socket) => {
     }
 
     // Notify all players in room that match is ready to start
-    io.to(roomId).emit('game_started', {
-      roomId,
+    io.to(cleanRoomId).emit('game_started', {
+      roomId: cleanRoomId,
       whitePlayer: room.whitePlayer,
       blackPlayer: room.blackPlayer,
       timeControl: room.timeControl,
@@ -119,10 +216,14 @@ io.on('connection', (socket) => {
     });
   });
 
-  // 3. Make Move
+  // 4. Make Move (Ultra-low latency direct broadcast)
   socket.on('make_move', ({ roomId, move }, callback) => {
-    const room = rooms.get(roomId);
-    if (!room) return;
+    const cleanRoomId = (roomId || socket.roomId || '').trim().toUpperCase();
+    const room = rooms.get(cleanRoomId);
+    if (!room) {
+      if (callback) callback({ success: false, error: 'Room not found' });
+      return;
+    }
 
     const currentTurn = room.chess.turn();
     const isWhiteTurn = currentTurn === 'w';
@@ -162,8 +263,8 @@ io.on('connection', (socket) => {
         };
       }
 
-      // Broadcast move to opponent
-      socket.to(roomId).emit('opponent_move', {
+      // Fast uncompressed broadcast to opponent immediately
+      socket.to(cleanRoomId).emit('opponent_move', {
         move: result,
         fen: room.chess.fen(),
         timers: room.timers,
@@ -183,48 +284,55 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 4. Resign
-  socket.on('resign', ({ roomId }) => {
-    const room = rooms.get(roomId);
+  // 5. Resign
+  socket.on('resign', ({ roomId } = {}) => {
+    const cleanRoomId = (roomId || socket.roomId || '').trim().toUpperCase();
+    const room = rooms.get(cleanRoomId);
     if (!room) return;
     const resigningColor = socket.id === room.whitePlayer ? 'w' : 'b';
     const winnerColor = resigningColor === 'w' ? 'b' : 'w';
 
-    io.to(roomId).emit('game_over', {
+    io.to(cleanRoomId).emit('game_over', {
       type: 'resignation',
       winner: winnerColor,
       reason: `${resigningColor === 'w' ? 'White' : 'Black'} resigned`
     });
   });
 
-  // 5. Draw Negotiation
-  socket.on('offer_draw', ({ roomId }) => {
-    socket.to(roomId).emit('draw_offered');
+  // 6. Draw Negotiation
+  socket.on('offer_draw', ({ roomId } = {}) => {
+    const cleanRoomId = (roomId || socket.roomId || '').trim().toUpperCase();
+    socket.to(cleanRoomId).emit('draw_offered');
   });
 
-  socket.on('decline_draw', ({ roomId }) => {
-    socket.to(roomId).emit('draw_declined');
+  socket.on('decline_draw', ({ roomId } = {}) => {
+    const cleanRoomId = (roomId || socket.roomId || '').trim().toUpperCase();
+    socket.to(cleanRoomId).emit('draw_declined');
   });
 
-  socket.on('accept_draw', ({ roomId }) => {
-    io.to(roomId).emit('game_over', {
+  socket.on('accept_draw', ({ roomId } = {}) => {
+    const cleanRoomId = (roomId || socket.roomId || '').trim().toUpperCase();
+    io.to(cleanRoomId).emit('game_over', {
       type: 'draw',
       winner: null,
       reason: 'Draw agreed by mutual consent'
     });
   });
 
-  // 6. Rematch Negotiation
-  socket.on('offer_rematch', ({ roomId }) => {
-    socket.to(roomId).emit('rematch_offered');
+  // 7. Rematch Negotiation
+  socket.on('offer_rematch', ({ roomId } = {}) => {
+    const cleanRoomId = (roomId || socket.roomId || '').trim().toUpperCase();
+    socket.to(cleanRoomId).emit('rematch_offered');
   });
 
-  socket.on('decline_rematch', ({ roomId }) => {
-    socket.to(roomId).emit('rematch_declined');
+  socket.on('decline_rematch', ({ roomId } = {}) => {
+    const cleanRoomId = (roomId || socket.roomId || '').trim().toUpperCase();
+    socket.to(cleanRoomId).emit('rematch_declined');
   });
 
-  socket.on('accept_rematch', ({ roomId }) => {
-    const room = rooms.get(roomId);
+  socket.on('accept_rematch', ({ roomId } = {}) => {
+    const cleanRoomId = (roomId || socket.roomId || '').trim().toUpperCase();
+    const room = rooms.get(cleanRoomId);
     if (!room) return;
     // Swap colors for rematch
     const prevWhite = room.whitePlayer;
@@ -238,8 +346,8 @@ io.on('connection', (socket) => {
     };
     room.status = 'playing';
 
-    io.to(roomId).emit('game_started', {
-      roomId,
+    io.to(cleanRoomId).emit('game_started', {
+      roomId: cleanRoomId,
       whitePlayer: room.whitePlayer,
       blackPlayer: room.blackPlayer,
       timeControl: room.timeControl,
@@ -247,22 +355,27 @@ io.on('connection', (socket) => {
     });
   });
 
-  // 7. Leave / Cancel Room
-  socket.on('leave_room', ({ roomId }) => {
-    if (roomId && rooms.has(roomId)) {
-      const room = rooms.get(roomId);
-      socket.leave(roomId);
+  // 8. Leave / Cancel Room
+  socket.on('leave_room', ({ roomId } = {}) => {
+    const cleanRoomId = (roomId || socket.roomId || '').trim().toUpperCase();
+    if (cleanRoomId && rooms.has(cleanRoomId)) {
+      const room = rooms.get(cleanRoomId);
+      socket.leave(cleanRoomId);
       if (room.status === 'waiting') {
-        rooms.delete(roomId);
+        rooms.delete(cleanRoomId);
       } else {
-        socket.to(roomId).emit('opponent_disconnected');
-        rooms.delete(roomId);
+        socket.to(cleanRoomId).emit('opponent_disconnected');
+        rooms.delete(cleanRoomId);
       }
     }
   });
 
-  // 8. Handle Disconnect with Grace Period
+  // 9. Handle Disconnect with Clean Queue Eviction & Grace Period
   socket.on('disconnect', () => {
+    if (quickMatchQueue && quickMatchQueue.socketId === socket.id) {
+      quickMatchQueue = null;
+    }
+
     const roomId = socket.roomId;
     if (roomId && rooms.has(roomId)) {
       const room = rooms.get(roomId);

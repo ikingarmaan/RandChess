@@ -10,7 +10,8 @@ export const CoachAdvisor = ({
   showArrow,
   onToggleArrow,
   turnColor = 'White',
-  isThinking = false
+  isThinking = false,
+  onAnalyzeNow
 }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
 
@@ -105,17 +106,17 @@ export const CoachAdvisor = ({
               </span>
             </div>
 
-              {/* Play Best Move Button - High Contrast & Prominent */}
-              {onApplyBestMove && (
-                <button
-                  onClick={onApplyBestMove}
-                  className="brutal-press flex items-center gap-1.5 px-3 py-1.5 bg-[#22c55e] hover:bg-green-400 text-black border-2 border-black font-brutal text-xs sm:text-sm font-black uppercase cursor-pointer brutal-shadow-sm shrink-0"
-                  title="Execute this recommended move directly on board"
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>PLAY BEST MOVE ▶</span>
-                </button>
-              )}
+            {/* Play Best Move Button - High Contrast & Prominent */}
+            {onApplyBestMove && (
+              <button
+                onClick={onApplyBestMove}
+                className="brutal-press flex items-center gap-1.5 px-3 py-1.5 bg-[#22c55e] hover:bg-green-400 text-black border-2 border-black font-brutal text-xs sm:text-sm font-black uppercase cursor-pointer brutal-shadow-sm shrink-0"
+                title="Execute this recommended move directly on board"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>PLAY BEST MOVE ▶</span>
+              </button>
+            )}
           </div>
 
           {/* Tactical Explanation & Plan */}
@@ -151,8 +152,17 @@ export const CoachAdvisor = ({
           </div>
         </div>
       ) : (
-        <div className="py-3 text-center font-mono text-xs text-neutral-500">
-          Play a move to receive grandmaster tactical guidance
+        <div className="py-3 text-center font-mono text-xs text-neutral-600 space-y-2">
+          <div>Play a move or calculate tactical recommendations for current board</div>
+          {onAnalyzeNow && (
+            <button
+              onClick={onAnalyzeNow}
+              className="brutal-press inline-flex items-center gap-1.5 px-3 py-1.5 bg-black text-white hover:bg-neutral-800 border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#22c55e]" />
+              <span>ANALYZE POSITION NOW</span>
+            </button>
+          )}
         </div>
       )}
     </div>
