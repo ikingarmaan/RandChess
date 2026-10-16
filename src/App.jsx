@@ -663,7 +663,7 @@ export default function App() {
   const bottomPlayer = isFlipped ? player2 : player1;
 
   return (
-    <div className={`relative min-h-screen lg:h-screen lg:max-h-screen flex flex-col justify-between selection:bg-[#22c55e] selection:text-black font-brutal overflow-x-hidden ${isDarkTheme ? 'bg-[#0f0f12] text-white' : 'bg-[#f4f4ec] text-black'}`}>
+    <div className={`relative min-h-screen flex flex-col justify-between selection:bg-[#22c55e] selection:text-black font-brutal overflow-x-hidden ${isDarkTheme ? 'bg-[#0f0f12] text-white' : 'bg-[#f4f4ec] text-black'}`}>
       {/* Neo-Brutalist Grid Background */}
       <FloatingPiecesBackground isDark={isDarkTheme} />
 
@@ -768,8 +768,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Body: Compact 2-Column Dashboard (Fits screen without scrolling) */}
-      <main className="flex-1 w-full max-w-7xl mx-auto p-2 sm:p-4 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-4 min-h-0 lg:overflow-hidden">
+      {/* Main Body: Dashboard with Left Board and Right Always-Visible Controls */}
+      <main className="flex-1 w-full max-w-7xl mx-auto p-2 sm:p-4 lg:p-6 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-5 min-h-0">
         {/* Left Column: Top Player + Board with EvalBar + Bottom Player + Step Navigation */}
         <div className="flex flex-col items-center gap-2 w-full max-w-[min(94vw,540px)] shrink-0">
           {/* Top Player Card */}
@@ -891,319 +891,202 @@ export default function App() {
           />
         </div>
 
-        {/* Right Column: High-Density Neo-Brutalist Tactical Station */}
-        <div className="w-full lg:w-[420px] flex flex-col gap-2.5 shrink-0 lg:h-full lg:overflow-y-auto pr-0.5">
-          {/* Tactical Tab Bar (4 Tabs) */}
-          <div className="grid grid-cols-4 gap-1 border-3 border-black p-1 bg-black text-white shrink-0">
-            <button
-              onClick={() => setActiveTab('battle')}
-              className={`py-1.5 font-brutal text-xs font-black uppercase transition-all cursor-pointer ${
-                activeTab === 'battle' ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-transparent text-white hover:text-[#22c55e]'
-              }`}
-            >
-              ⚔️ Battle
-            </button>
-            <button
-              onClick={() => setActiveTab('scoresheet')}
-              className={`py-1.5 font-brutal text-xs font-black uppercase transition-all cursor-pointer ${
-                activeTab === 'scoresheet' ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-transparent text-white hover:text-[#22c55e]'
-              }`}
-            >
-              📜 Moves
-            </button>
-            <button
-              onClick={() => setActiveTab('coach')}
-              className={`py-1.5 font-brutal text-xs font-black uppercase transition-all cursor-pointer ${
-                activeTab === 'coach' ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-transparent text-white hover:text-[#22c55e]'
-              }`}
-            >
-              🧠 Coach
-            </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`py-1.5 font-brutal text-xs font-black uppercase transition-all cursor-pointer ${
-                activeTab === 'settings' ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-transparent text-white hover:text-[#22c55e]'
-              }`}
-            >
-              ⚙️ Tools
-            </button>
-          </div>
-
-          {/* TAB 1: BATTLE (Game Mode, AI Controls, Clocks, Actions) */}
-          {activeTab === 'battle' && (
-            <div className="space-y-2.5">
-              {/* Game Mode Chooser Card */}
-              <div className="bg-white text-black border-3 border-black p-3 brutal-shadow space-y-2.5">
-                <div className="flex items-center justify-between border-b-2 border-black pb-1.5">
-                  <span className="font-brutal text-xs font-black uppercase">
-                    Opponent Selection
-                  </span>
-                  <span className="font-mono text-[10px] font-black uppercase px-1.5 bg-[#facc15] border border-black">
-                    {gameMode === 'ai' ? 'SINGLE PLAYER' : gameMode === 'online' ? 'MULTIPLAYER' : 'PASS & PLAY'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-1.5">
-                  <button
-                    onClick={() => {
-                      setGameMode('ai');
-                      setIsFlipped(playerColor === 'b');
-                    }}
-                    className={`brutal-press py-2 px-1 border-2 border-black flex flex-col items-center justify-center cursor-pointer ${
-                      gameMode === 'ai' ? 'bg-[#22c55e] text-black brutal-shadow-sm font-black' : 'bg-[#f4f4eb] hover:bg-neutral-200'
-                    }`}
-                  >
-                    <Bot className="w-4 h-4 mb-0.5" />
-                    <span className="font-brutal text-xs font-black">vs BOT AI</span>
-                  </button>
-
-                  <button
-                    onClick={() => setGameMode('pass_play')}
-                    className={`brutal-press py-2 px-1 border-2 border-black flex flex-col items-center justify-center cursor-pointer ${
-                      gameMode === 'pass_play' ? 'bg-[#22c55e] text-black brutal-shadow-sm font-black' : 'bg-[#f4f4eb] hover:bg-neutral-200'
-                    }`}
-                  >
-                    <Users className="w-4 h-4 mb-0.5" />
-                    <span className="font-brutal text-xs font-black">1v1 LOCAL</span>
-                  </button>
-
-                  <button
-                    onClick={() => setIsOnlineModalOpen(true)}
-                    className={`brutal-press py-2 px-1 border-2 border-black flex flex-col items-center justify-center cursor-pointer ${
-                      gameMode === 'online' ? 'bg-[#22c55e] text-black brutal-shadow-sm font-black' : 'bg-[#f4f4eb] hover:bg-neutral-200'
-                    }`}
-                  >
-                    <Wifi className="w-4 h-4 mb-0.5" />
-                    <span className="font-brutal text-xs font-black">ONLINE</span>
-                  </button>
-                </div>
-
-                {/* AI Difficulty Sub-panel */}
-                {gameMode === 'ai' && (
-                  <div className="border-t-2 border-black pt-2 space-y-2">
-                    <div className="flex items-center justify-between text-xs font-mono font-black">
-                      <span>ENGINE DIFFICULTY:</span>
-                      <span className="text-[#15803d]">
-                        ~{aiDifficulty === 'easy' ? '800' : aiDifficulty === 'medium' ? '1200' : aiDifficulty === 'hard' ? '1600' : '2100'} ELO
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-1 font-mono text-xs font-black">
-                      {[
-                        { id: 'easy', label: 'NOVICE', elo: '800' },
-                        { id: 'medium', label: 'CLUB', elo: '1200' },
-                        { id: 'hard', label: 'EXPERT', elo: '1600' },
-                        { id: 'master', label: 'MASTER', elo: '2100' }
-                      ].map((d) => (
-                        <button
-                          key={d.id}
-                          onClick={() => setAiDifficulty(d.id)}
-                          className={`brutal-press py-1.5 border-2 border-black cursor-pointer flex flex-col items-center ${
-                            aiDifficulty === d.id ? 'bg-[#22c55e] text-black brutal-shadow-sm font-black' : 'bg-[#f4f4eb] text-neutral-700'
-                          }`}
-                        >
-                          <span className="text-[10px]">{d.label}</span>
-                          <span className="text-[9px] opacity-75">{d.elo}</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Side Chooser */}
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="font-brutal text-xs font-black uppercase">Play As:</span>
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => {
-                            setPlayerColor('w');
-                            setIsFlipped(false);
-                            startNewGame();
-                          }}
-                          className={`brutal-press px-2.5 py-1 text-xs font-black border-2 border-black cursor-pointer ${
-                            playerColor === 'w' ? 'bg-white text-black brutal-shadow-sm font-black' : 'bg-neutral-200 text-neutral-600'
-                          }`}
-                        >
-                          ⚪ WHITE (FIRST)
-                        </button>
-                        <button
-                          onClick={() => {
-                            setPlayerColor('b');
-                            setIsFlipped(true);
-                            startNewGame();
-                          }}
-                          className={`brutal-press px-2.5 py-1 text-xs font-black border-2 border-black cursor-pointer ${
-                            playerColor === 'b' ? 'bg-black text-white brutal-shadow-sm font-black' : 'bg-neutral-200 text-neutral-600'
-                          }`}
-                        >
-                          ⚫ BLACK (SECOND)
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* In-Game Action Buttons: Takeback, Resign, Draw */}
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={handleUndoMove}
-                  disabled={history.length === 0 || gameMode === 'online'}
-                  className="brutal-press flex items-center justify-center gap-1 py-2.5 bg-white hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
-                  title="Take back last move (HotKey: Z)"
-                >
-                  <RotateCcw className="w-4 h-4 text-[#22c55e]" />
-                  TAKEBACK
-                </button>
-
-                <button
-                  onClick={() => {
-                    const currentTurn = chess.turn();
-                    setGameOverResult({
-                      type: 'resignation',
-                      winner: currentTurn === 'w' ? 'b' : 'w',
-                      reason: `${currentTurn === 'w' ? 'White' : 'Black'} surrendered the match`
-                    });
-                  }}
-                  disabled={Boolean(gameOverResult) || history.length === 0}
-                  className="brutal-press flex items-center justify-center gap-1 py-2.5 bg-[#ef4444] hover:bg-red-400 disabled:opacity-40 disabled:cursor-not-allowed border-3 border-black text-white font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
-                  title="Resign current match"
-                >
-                  <Flag className="w-4 h-4 text-white" />
-                  RESIGN
-                </button>
-
-                <button
-                  onClick={() => {
-                    setGameOverResult({
-                      type: 'draw',
-                      winner: null,
-                      reason: 'Draw concluded by mutual consent'
-                    });
-                  }}
-                  disabled={Boolean(gameOverResult) || history.length === 0}
-                  className="brutal-press flex items-center justify-center gap-1 py-2.5 bg-white hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
-                  title="Offer match draw"
-                >
-                  <Handshake className="w-4 h-4 text-black" />
-                  DRAW
-                </button>
-              </div>
-
-              {/* Quick AI Coach Preview in Battle Tab */}
-              <CoachAdvisor
-                coachEnabled={coachEnabled}
-                onToggleCoach={setCoachEnabled}
-                analysis={coachAnalysis}
-                onApplyBestMove={handleApplyBestMove}
-                showArrow={showCoachArrow}
-                onToggleArrow={() => setShowCoachArrow(!showCoachArrow)}
-                turnColor={chess.turn() === 'w' ? 'White' : 'Black'}
-                isThinking={isCoachThinking}
-              />
+        {/* Right Column: Always-Visible High-Contrast Station */}
+        <div className="w-full lg:w-[410px] xl:w-[440px] flex flex-col gap-3 shrink-0">
+          {/* 1. MATCH OPPONENT & GAME MODE (Prominent High-Contrast Buttons) */}
+          <div className="bg-white text-black border-3 border-black p-3 brutal-shadow space-y-2.5">
+            <div className="flex items-center justify-between border-b-2 border-black pb-1.5">
+              <span className="font-brutal text-xs font-black uppercase tracking-wide">
+                Match Opponent
+              </span>
+              <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 bg-[#facc15] border border-black">
+                {gameMode === 'ai' ? '🤖 vs COMPUTER' : gameMode === 'online' ? '🌐 ONLINE MULTIPLAYER' : '👥 1v1 PASS & PLAY'}
+              </span>
             </div>
-          )}
 
-          {/* TAB 2: SCORESHEET (Move History, Click to Jump, FEN/PGN) */}
-          {activeTab === 'scoresheet' && (
-            <div className="space-y-2">
-              <MoveHistory
-                history={history}
-                currentMoveIndex={viewHistoryIndex === null ? (history.length - 1) : viewHistoryIndex}
-                isLive={isLivePosition}
-                onJumpToMove={handleJumpToMove}
-                onGoFirst={handleGoFirst}
-                onGoPrev={handleGoPrev}
-                onGoNext={handleGoNext}
-                onGoLast={handleGoLast}
-                fen={displayChess.fen()}
-                pgn={chess.pgn()}
-                onLoadFen={handleLoadCustomFen}
-              />
-            </div>
-          )}
-
-          {/* TAB 3: AI COACH (Detailed Tactical Dossier) */}
-          {activeTab === 'coach' && (
-            <div className="space-y-2">
-              <CoachAdvisor
-                coachEnabled={coachEnabled}
-                onToggleCoach={setCoachEnabled}
-                analysis={coachAnalysis}
-                onApplyBestMove={handleApplyBestMove}
-                showArrow={showCoachArrow}
-                onToggleArrow={() => setShowCoachArrow(!showCoachArrow)}
-                turnColor={chess.turn() === 'w' ? 'White' : 'Black'}
-                isThinking={isCoachThinking}
-              />
-            </div>
-          )}
-
-          {/* TAB 4: SETTINGS & TOOLS */}
-          {activeTab === 'settings' && (
-            <div className="bg-white text-black border-3 border-black p-3.5 brutal-shadow space-y-3">
-              <div className="flex items-center justify-between border-b-2 border-black pb-2">
-                <span className="font-brutal text-sm font-black uppercase">
-                  Engine & Visual Preferences
-                </span>
-                <span className="font-mono text-[10px] font-black px-1.5 bg-[#22c55e] text-black">
-                  ACTIVE
-                </span>
-              </div>
-
-              {/* Master Volume */}
-              <div className="bg-[#f4f4eb] border-2 border-black p-2 space-y-1">
-                <div className="flex items-center justify-between font-mono text-xs font-black">
-                  <span>MASTER AUDIO VOLUME</span>
-                  <span>{Math.round(soundVolume * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={soundVolume}
-                  onChange={(e) => setSoundVolume(parseFloat(e.target.value))}
-                  className="w-full accent-black cursor-pointer"
-                />
-              </div>
-
-              {/* Helpers */}
-              <div className="grid grid-cols-2 gap-1.5 font-mono text-xs font-black uppercase">
-                <button
-                  onClick={() => setShowCoordinates(!showCoordinates)}
-                  className={`brutal-press p-2 border-2 border-black cursor-pointer ${
-                    showCoordinates ? 'bg-[#22c55e] text-black' : 'bg-neutral-200 text-neutral-600'
-                  }`}
-                >
-                  COORDINATES: {showCoordinates ? 'ON' : 'OFF'}
-                </button>
-
-                <button
-                  onClick={() => setShowLegalDots(!showLegalDots)}
-                  className={`brutal-press p-2 border-2 border-black cursor-pointer ${
-                    showLegalDots ? 'bg-[#22c55e] text-black' : 'bg-neutral-200 text-neutral-600'
-                  }`}
-                >
-                  LEGAL DOTS: {showLegalDots ? 'ON' : 'OFF'}
-                </button>
-
-                <button
-                  onClick={() => setBlindfoldMode(!blindfoldMode)}
-                  className={`brutal-press col-span-2 p-2 border-2 border-black cursor-pointer ${
-                    blindfoldMode ? 'bg-[#facc15] text-black' : 'bg-neutral-200 text-neutral-600'
-                  }`}
-                >
-                  BLINDFOLD TRAINING: {blindfoldMode ? 'ACTIVE (PIECES HIDDEN)' : 'OFF'}
-                </button>
-              </div>
+            {/* 3 Main Game Mode Buttons - High Contrast */}
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => {
+                  setGameMode('ai');
+                  setIsFlipped(playerColor === 'b');
+                }}
+                className={`brutal-press py-2.5 px-1 border-3 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
+                  gameMode === 'ai'
+                    ? 'bg-[#22c55e] text-black font-black brutal-shadow-sm'
+                    : 'bg-white text-black font-bold hover:bg-neutral-100'
+                }`}
+              >
+                <Bot className="w-5 h-5 mb-0.5" />
+                <span className="font-brutal text-xs font-black">vs BOT AI</span>
+                <span className="text-[9px] font-mono font-bold opacity-75">Engine</span>
+              </button>
 
               <button
-                onClick={() => setIsSettingsOpen(true)}
-                className="brutal-press w-full py-2 bg-black text-white hover:bg-neutral-800 font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm"
+                onClick={() => setGameMode('pass_play')}
+                className={`brutal-press py-2.5 px-1 border-3 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
+                  gameMode === 'pass_play'
+                    ? 'bg-[#22c55e] text-black font-black brutal-shadow-sm'
+                    : 'bg-white text-black font-bold hover:bg-neutral-100'
+                }`}
               >
-                OPEN FULL PREFERENCES MODAL ▶
+                <Users className="w-5 h-5 mb-0.5" />
+                <span className="font-brutal text-xs font-black">1v1 LOCAL</span>
+                <span className="text-[9px] font-mono font-bold opacity-75">Pass & Play</span>
+              </button>
+
+              <button
+                onClick={() => setIsOnlineModalOpen(true)}
+                className={`brutal-press py-2.5 px-1 border-3 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
+                  gameMode === 'online'
+                    ? 'bg-[#22c55e] text-black font-black brutal-shadow-sm'
+                    : 'bg-white text-black font-bold hover:bg-neutral-100'
+                }`}
+              >
+                <Wifi className="w-5 h-5 mb-0.5" />
+                <span className="font-brutal text-xs font-black">ONLINE</span>
+                <span className="text-[9px] font-mono font-bold opacity-75">PvP Lobby</span>
               </button>
             </div>
-          )}
+
+            {/* AI Difficulty Sub-panel (When in vs AI mode) */}
+            {gameMode === 'ai' && (
+              <div className="border-t-2 border-black pt-2 space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono font-black">
+                  <span>BOT DIFFICULTY:</span>
+                  <span className="text-[#15803d]">
+                    ~{aiDifficulty === 'easy' ? '800' : aiDifficulty === 'medium' ? '1200' : aiDifficulty === 'hard' ? '1600' : '2100'} ELO
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1.5 font-mono text-xs font-black">
+                  {[
+                    { id: 'easy', label: 'NOVICE', elo: '800' },
+                    { id: 'medium', label: 'CLUB', elo: '1200' },
+                    { id: 'hard', label: 'EXPERT', elo: '1600' },
+                    { id: 'master', label: 'MASTER', elo: '2100' }
+                  ].map((d) => (
+                    <button
+                      key={d.id}
+                      onClick={() => setAiDifficulty(d.id)}
+                      className={`brutal-press py-1.5 border-2 border-black cursor-pointer flex flex-col items-center ${
+                        aiDifficulty === d.id
+                          ? 'bg-[#22c55e] text-black brutal-shadow-sm font-black'
+                          : 'bg-white text-black hover:bg-neutral-100 font-bold'
+                      }`}
+                    >
+                      <span className="text-[10px] font-black">{d.label}</span>
+                      <span className="text-[9px] opacity-80">~{d.elo}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Side Chooser */}
+                <div className="flex items-center justify-between pt-1">
+                  <span className="font-brutal text-xs font-black uppercase">Play As:</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setPlayerColor('w');
+                        setIsFlipped(false);
+                        startNewGame();
+                      }}
+                      className={`brutal-press px-3 py-1 text-xs font-black border-2 border-black cursor-pointer ${
+                        playerColor === 'w' ? 'bg-white text-black brutal-shadow-sm' : 'bg-neutral-200 text-neutral-600'
+                      }`}
+                    >
+                      ⚪ WHITE (FIRST)
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPlayerColor('b');
+                        setIsFlipped(true);
+                        startNewGame();
+                      }}
+                      className={`brutal-press px-3 py-1 text-xs font-black border-2 border-black cursor-pointer ${
+                        playerColor === 'b' ? 'bg-black text-white brutal-shadow-sm' : 'bg-neutral-200 text-neutral-600'
+                      }`}
+                    >
+                      ⚫ BLACK (SECOND)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 2. MOVE SCORESHEET / HISTORY ("ai moves" - always visible!) */}
+          <MoveHistory
+            history={history}
+            currentMoveIndex={viewHistoryIndex === null ? (history.length - 1) : viewHistoryIndex}
+            isLive={isLivePosition}
+            onJumpToMove={handleJumpToMove}
+            onGoFirst={handleGoFirst}
+            onGoPrev={handleGoPrev}
+            onGoNext={handleGoNext}
+            onGoLast={handleGoLast}
+            fen={displayChess.fen()}
+            pgn={chess.pgn()}
+            onLoadFen={handleLoadCustomFen}
+          />
+
+          {/* 3. GRANDMASTER AI COACH & "PLAY BEST MOVE" BUTTON */}
+          <CoachAdvisor
+            coachEnabled={coachEnabled}
+            onToggleCoach={setCoachEnabled}
+            analysis={coachAnalysis}
+            onApplyBestMove={handleApplyBestMove}
+            showArrow={showCoachArrow}
+            onToggleArrow={() => setShowCoachArrow(!showCoachArrow)}
+            turnColor={chess.turn() === 'w' ? 'White' : 'Black'}
+            isThinking={isCoachThinking}
+          />
+
+          {/* 4. MATCH ACTION BUTTONS (Takeback, Resign, Draw) */}
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={handleUndoMove}
+              disabled={history.length === 0 || gameMode === 'online'}
+              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-white hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
+              title="Take back last move (HotKey: Z)"
+            >
+              <RotateCcw className="w-4 h-4 text-[#22c55e]" />
+              TAKEBACK
+            </button>
+
+            <button
+              onClick={() => {
+                const currentTurn = chess.turn();
+                setGameOverResult({
+                  type: 'resignation',
+                  winner: currentTurn === 'w' ? 'b' : 'w',
+                  reason: `${currentTurn === 'w' ? 'White' : 'Black'} surrendered the match`
+                });
+              }}
+              disabled={Boolean(gameOverResult) || history.length === 0}
+              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-[#ef4444] hover:bg-red-400 disabled:opacity-40 disabled:cursor-not-allowed border-3 border-black text-white font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
+              title="Resign current match"
+            >
+              <Flag className="w-4 h-4 text-white" />
+              RESIGN
+            </button>
+
+            <button
+              onClick={() => {
+                setGameOverResult({
+                  type: 'draw',
+                  winner: null,
+                  reason: 'Draw concluded by mutual consent'
+                });
+              }}
+              disabled={Boolean(gameOverResult) || history.length === 0}
+              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-white hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
+              title="Offer match draw"
+            >
+              <Handshake className="w-4 h-4 text-black" />
+              DRAW
+            </button>
+          </div>
         </div>
       </main>
 

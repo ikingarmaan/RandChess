@@ -95,19 +95,17 @@ export const CoachAdvisor = ({
               </span>
             </div>
 
-            <div className="flex items-center gap-1 shrink-0">
-              {/* Play Move Button */}
+              {/* Play Best Move Button - High Contrast & Prominent */}
               {onApplyBestMove && (
                 <button
                   onClick={onApplyBestMove}
-                  className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-black text-white hover:bg-[#22c55e] hover:text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer"
+                  className="brutal-press flex items-center gap-1.5 px-3 py-1.5 bg-[#22c55e] hover:bg-green-400 text-black border-2 border-black font-brutal text-xs sm:text-sm font-black uppercase cursor-pointer brutal-shadow-sm shrink-0"
                   title="Execute this recommended move directly on board"
                 >
-                  <Play className="w-3 h-3 fill-current" />
-                  <span>PLAY MOVE</span>
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>PLAY BEST MOVE ▶</span>
                 </button>
               )}
-            </div>
           </div>
 
           {/* Tactical Explanation & Plan */}

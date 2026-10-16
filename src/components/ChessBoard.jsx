@@ -137,7 +137,7 @@ export const ChessBoard = ({
     };
   };
 
-  // Neo-Brutalist Tactical Vector Arrow with Black Outline
+  // Sleek Tactical Vector Arrow (Sleek, proportional, non-intrusive)
   let arrowSvg = null;
   if (showCoachArrow && coachMove && coachMove.from && coachMove.to) {
     const start = getSquareCenter(coachMove.from);
@@ -148,66 +148,72 @@ export const ChessBoard = ({
     const angle = Math.atan2(dy, dx);
     const length = Math.hypot(dx, dy);
 
-    const shortenedEnd = {
-      x: start.x + Math.cos(angle) * Math.max(0, length - 3.4),
-      y: start.y + Math.sin(angle) * Math.max(0, length - 3.4)
+    // Graceful offsets so the arrow doesn't obstruct the piece
+    const startOffset = {
+      x: start.x + Math.cos(angle) * 2.2,
+      y: start.y + Math.sin(angle) * 2.2
+    };
+
+    const endOffset = {
+      x: start.x + Math.cos(angle) * Math.max(0, length - 2.8),
+      y: start.y + Math.sin(angle) * Math.max(0, length - 2.8)
     };
 
     arrowSvg = (
       <svg
-        className="absolute inset-0 w-full h-full pointer-events-none z-30 brutal-coach-arrow overflow-visible"
+        className="absolute inset-0 w-full h-full pointer-events-none z-30 overflow-visible opacity-90"
         viewBox="0 0 100 100"
       >
         <defs>
           <marker
-            id="brutalArrowHeadBlack"
+            id="sleekArrowHeadBlack"
             viewBox="0 0 10 10"
-            refX="6"
+            refX="5"
             refY="5"
-            markerWidth="6"
-            markerHeight="6"
+            markerWidth="3.2"
+            markerHeight="3.2"
             orient="auto-start-reverse"
           >
-            <path d="M 0 1 L 9 5 L 0 9 z" fill="#000000" stroke="#000000" strokeWidth="1" />
+            <path d="M 1 2 L 8 5 L 1 8 z" fill="#000000" stroke="#000000" strokeWidth="0.8" />
           </marker>
           <marker
-            id="brutalArrowHeadGreen"
+            id="sleekArrowHeadGreen"
             viewBox="0 0 10 10"
-            refX="6"
+            refX="5"
             refY="5"
-            markerWidth="5"
-            markerHeight="5"
+            markerWidth="2.5"
+            markerHeight="2.5"
             orient="auto-start-reverse"
           >
-            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#22c55e" stroke="#000000" strokeWidth="0.8" />
+            <path d="M 1 2.2 L 7.5 5 L 1 7.8 z" fill="#22c55e" />
           </marker>
         </defs>
 
-        {/* Shadow / outline line */}
+        {/* Outer dark stroke */}
         <line
-          x1={start.x}
-          y1={start.y}
-          x2={shortenedEnd.x}
-          y2={shortenedEnd.y}
+          x1={startOffset.x}
+          y1={startOffset.y}
+          x2={endOffset.x}
+          y2={endOffset.y}
           stroke="#000000"
-          strokeWidth="6"
+          strokeWidth="2.6"
           strokeLinecap="round"
-          markerEnd="url(#brutalArrowHeadBlack)"
+          markerEnd="url(#sleekArrowHeadBlack)"
         />
-        {/* Neon Green inner line */}
+        {/* Neon green inner stroke */}
         <line
-          x1={start.x}
-          y1={start.y}
-          x2={shortenedEnd.x}
-          y2={shortenedEnd.y}
+          x1={startOffset.x}
+          y1={startOffset.y}
+          x2={endOffset.x}
+          y2={endOffset.y}
           stroke="#22c55e"
-          strokeWidth="3.2"
+          strokeWidth="1.5"
           strokeLinecap="round"
-          markerEnd="url(#brutalArrowHeadGreen)"
+          markerEnd="url(#sleekArrowHeadGreen)"
         />
         {/* Origin dot */}
-        <circle cx={start.x} cy={start.y} r="2.8" fill="#000000" />
-        <circle cx={start.x} cy={start.y} r="1.8" fill="#ffffff" />
+        <circle cx={start.x} cy={start.y} r="1.5" fill="#000000" />
+        <circle cx={start.x} cy={start.y} r="0.9" fill="#22c55e" />
       </svg>
     );
   }

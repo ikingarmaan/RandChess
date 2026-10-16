@@ -80,7 +80,7 @@ export const MoveHistory = ({
   const isAtEnd = isLive || currentMoveIndex >= history.length - 1;
 
   return (
-    <div className="w-full bg-white border-3 border-black flex flex-col h-56 sm:h-64 brutal-shadow select-none">
+    <div className="w-full bg-white border-3 border-black flex flex-col h-48 sm:h-52 brutal-shadow select-none">
       {/* Brutalist Scoresheet Header */}
       <div className="bg-black text-white px-3 py-1.5 flex items-center justify-between border-b-3 border-black shrink-0">
         <div className="flex items-center gap-2">
