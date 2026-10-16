@@ -28,30 +28,30 @@ export const CoachAdvisor = ({
 
   return (
     <div
-      className={`w-full rounded-2xl p-4 sm:p-5 transition-all duration-300 border-2 ${
+      className={`w-full rounded-xl p-2.5 sm:p-3 transition-all duration-200 border-2 ${
         coachEnabled
-          ? 'bg-[#141418] border-emerald-500 shadow-[0_15px_40px_rgba(0,0,0,0.9),0_0_25px_rgba(16,185,129,0.25)]'
-          : 'bg-[#141418] border-neutral-700 shadow-xl'
+          ? 'bg-[#16161f] border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.2)]'
+          : 'bg-[#14141a] border-neutral-600 shadow-md'
       }`}
     >
       {/* Top Header: Title & High-Contrast Large Switch */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-neutral-800 pb-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-2 border-b border-neutral-800 pb-2">
+        <div className="flex items-center gap-2 min-w-0">
           <div
-            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
+            className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all ${
               coachEnabled
-                ? 'bg-emerald-500 text-neutral-950 shadow-[0_0_15px_rgba(16,185,129,0.5)]'
+                ? 'bg-emerald-500 text-neutral-950 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
                 : 'bg-neutral-800 text-neutral-400'
             }`}
           >
-            <Sparkles className="w-6 h-6 stroke-[2.5]" />
+            <Sparkles className="w-4 h-4 stroke-[2.5]" />
           </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-black tracking-wide text-white uppercase font-serif-master">
+          <div className="min-w-0">
+            <h2 className="text-xs sm:text-sm font-black tracking-wide text-white uppercase font-serif-master truncate">
               AI Coach & Explainer
             </h2>
-            <p className="text-xs sm:text-sm text-neutral-300 font-sans mt-0.5">
-              Tells you the best move and explains <strong>why</strong> after every turn
+            <p className="text-[10px] text-neutral-200 font-sans hidden sm:block truncate">
+              Calculates best move & explains <strong>why</strong> in real-time
             </p>
           </div>
         </div>
@@ -59,17 +59,17 @@ export const CoachAdvisor = ({
         {/* Large, High-Contrast Physical Toggle Button */}
         <button
           onClick={() => onToggleCoach(!coachEnabled)}
-          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-mono text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer shadow-md border-2 ${
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-mono text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm border-2 shrink-0 ${
             coachEnabled
-              ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 shadow-[0_0_18px_rgba(16,185,129,0.45)]'
-              : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border-neutral-600'
+              ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+              : 'bg-neutral-800 hover:bg-neutral-700 text-white border-neutral-500'
           }`}
           title="Click to toggle AI Coach mode ON or OFF"
         >
-          <Power className={`w-4 h-4 ${coachEnabled ? 'text-white' : 'text-neutral-400'}`} />
+          <Power className={`w-3.5 h-3.5 ${coachEnabled ? 'text-white' : 'text-neutral-400'}`} />
           <span>{coachEnabled ? 'COACH: ON' : 'COACH: OFF'}</span>
           <span
-            className={`w-2.5 h-2.5 rounded-full ${
+            className={`w-2 h-2 rounded-full ${
               coachEnabled ? 'bg-white animate-ping' : 'bg-neutral-500'
             }`}
           />
@@ -79,198 +79,141 @@ export const CoachAdvisor = ({
       {/* Main Content Body */}
       {!coachEnabled ? (
         /* Clear explanation when OFF */
-        <div className="py-8 px-4 text-center flex flex-col items-center justify-center gap-3">
-          <div className="w-14 h-14 rounded-2xl bg-neutral-800 border-2 border-neutral-700 flex items-center justify-center text-neutral-400">
-            <Lightbulb className="w-7 h-7" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-sm sm:text-base font-bold text-white uppercase font-serif-master">
-              AI Coach Mode Is Currently Switched OFF
+        <div className="py-3 px-2 text-center flex items-center justify-between gap-3">
+          <div className="text-left">
+            <h3 className="text-xs font-bold text-white uppercase font-serif-master">
+              AI Coach Mode is Switched OFF
             </h3>
-            <p className="text-xs sm:text-sm text-neutral-300 max-w-md mx-auto leading-relaxed font-sans">
-              Turn this switch <strong>ON</strong> to receive real-time candidate move recommendations, tactical arrows on the board, and Grandmaster explanations of why each move works best.
+            <p className="text-[11px] text-neutral-300 font-sans">
+              Turn ON to receive real-time candidate moves & Grandmaster explanations.
             </p>
           </div>
           <button
             onClick={() => onToggleCoach(true)}
-            className="flex items-center gap-2 mt-2 px-5 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white border-2 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black uppercase tracking-wider rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border-2 border-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.35)] transition-all cursor-pointer shrink-0"
           >
-            <CheckCircle2 className="w-5 h-5" />
-            <span>Turn ON AI Coach & Explainer</span>
-            <ArrowRight className="w-4 h-4" />
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Turn ON</span>
           </button>
         </div>
       ) : isThinking ? (
-        <div className="py-10 flex flex-col items-center justify-center gap-3">
-          <div className="w-8 h-8 border-3 border-emerald-400 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-mono font-bold text-emerald-400 tracking-wider animate-pulse">
-            Calculating best move & generating strategic explanation...
+        <div className="py-4 flex items-center justify-center gap-2">
+          <div className="w-5 h-5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-mono font-bold text-emerald-400 tracking-wider animate-pulse">
+            Calculating best move & tactical explanation...
           </p>
         </div>
-      ) : analysis ? (
-        <div className="pt-4 space-y-4">
+      ) : (
+        <div className="pt-2 space-y-2">
           {/* Top Recommendation Plaque */}
-          <div className="p-4 rounded-xl bg-[#1b1b22] border-2 border-neutral-700 shadow-lg flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
+          <div className="p-2 sm:p-2.5 rounded-lg bg-[#1a1a24] border border-neutral-700 flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2 min-w-0">
               {/* Move Badge */}
-              <div className="w-14 h-14 rounded-xl bg-emerald-500/20 border-2 border-emerald-400 flex flex-col items-center justify-center text-emerald-300 font-mono shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                <span className="font-black text-xl leading-none">{analysis.bestMove?.san || '—'}</span>
-                <span className="text-[10px] text-neutral-300 font-bold font-mono mt-0.5">
-                  {analysis.bestMove ? `${analysis.bestMove.from}→${analysis.bestMove.to}` : ''}
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/25 border-2 border-emerald-400 flex flex-col items-center justify-center text-white font-mono shadow-[0_0_10px_rgba(16,185,129,0.3)] shrink-0">
+                <span className="font-black text-base leading-none text-emerald-300">{analysis?.bestMove?.san || 'e4'}</span>
+                <span className="text-[9px] text-neutral-200 font-bold font-mono">
+                  {analysis?.bestMove ? `${analysis.bestMove.from}→${analysis.bestMove.to}` : 'e2→e4'}
                 </span>
               </div>
 
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm sm:text-base font-black text-white tracking-wide">
-                    {analysis.title}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs sm:text-sm font-black text-white tracking-wide truncate">
+                    {analysis?.title || 'Center Dominance: Pawn to e4'}
                   </span>
-                  <span className="text-[10px] sm:text-xs font-mono font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/25 text-emerald-300 border border-emerald-400">
-                    {analysis.theme}
+                  <span className="text-[9px] font-mono font-black uppercase px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400 shrink-0">
+                    {analysis?.theme || 'Center Control'}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 text-xs sm:text-sm text-neutral-300 mt-1 font-mono">
-                  <span className="text-emerald-400 font-black">
-                    Eval: {analysis.evalPawns}
-                  </span>
+                <div className="flex items-center gap-2 text-[11px] text-neutral-200 font-mono mt-0.5">
+                  <span className="text-emerald-400 font-bold">Eval: {analysis?.evalPawns || '+0.20'}</span>
                   <span className="text-neutral-500">•</span>
-                  <span className="text-neutral-200 font-medium">{analysis.evalAssessment}</span>
+                  <span className="text-neutral-300 truncate">{analysis?.evalAssessment || 'Equal position'}</span>
                 </div>
               </div>
             </div>
 
             {/* Quick Tactical Action Buttons */}
-            <div className="flex items-center gap-2">
-              {analysis.bestMove && onApplyBestMove && (
+            <div className="flex items-center gap-1 shrink-0">
+              {analysis?.bestMove && onApplyBestMove && (
                 <button
                   onClick={onApplyBestMove}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg hover:shadow-emerald-500/35 transition-all active:scale-95 cursor-pointer border border-emerald-400"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition-all active:scale-95 cursor-pointer border border-emerald-300"
                   title="Automatically play the coach's best move"
                 >
-                  <Play className="w-4 h-4 fill-current" />
-                  <span>Play Move</span>
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Play</span>
                 </button>
               )}
 
               {/* Voice Commentary Button */}
               <button
                 onClick={handleSpeech}
-                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border-2 transition-all text-xs sm:text-sm font-bold cursor-pointer ${
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg border transition-all text-xs font-bold cursor-pointer ${
                   isSpeaking
-                    ? 'bg-emerald-500 text-neutral-950 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]'
+                    ? 'bg-emerald-500 text-neutral-950 border-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
                     : 'bg-neutral-800 hover:bg-neutral-700 text-white border-neutral-600'
                 }`}
                 title={isSpeaking ? 'Stop voice readout' : 'Listen to Coach explanation'}
               >
                 {isSpeaking ? (
-                  <>
-                    <VolumeX className="w-4 h-4 animate-pulse" />
-                    <span>Stop Voice</span>
-                  </>
+                  <VolumeX className="w-3.5 h-3.5 animate-pulse text-neutral-950" />
                 ) : (
-                  <>
-                    <Volume2 className="w-4 h-4" />
-                    <span>Voice</span>
-                  </>
+                  <Volume2 className="w-3.5 h-3.5 text-neutral-200" />
                 )}
+                <span className="hidden sm:inline">{isSpeaking ? 'Stop' : 'Voice'}</span>
               </button>
 
               {/* Board Vector Arrow Visibility Toggle */}
               <button
                 onClick={onToggleArrow}
-                className={`p-2.5 rounded-xl border-2 transition-all text-xs cursor-pointer ${
+                className={`p-1 rounded-lg border transition-all text-xs cursor-pointer ${
                   showArrow
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400'
                     : 'bg-neutral-800 text-neutral-400 border-neutral-700'
                 }`}
                 title={showArrow ? 'Hide board vector arrow' : 'Show board vector arrow'}
               >
-                {showArrow ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                {showArrow ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
               </button>
             </div>
           </div>
 
           {/* Master Strategic Reason Card - "WHY THIS MOVE?" */}
-          <div className="p-4 sm:p-5 rounded-xl bg-[#1b1b22] border-2 border-neutral-700 space-y-3.5">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-emerald-400">
-                <Target className="w-5 h-5 shrink-0 stroke-[2.5]" />
-                <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-300 font-serif-master">
-                  Why This Move? (Grandmaster Explanation)
-                </h4>
-              </div>
-              <p className="text-base sm:text-lg text-white leading-relaxed font-sans font-semibold pl-2 sm:pl-7">
-                {analysis.primaryReason}
-              </p>
+          <div className="p-2 sm:p-2.5 rounded-lg bg-[#1a1a24] border border-neutral-700 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-emerald-400">
+              <Target className="w-4 h-4 shrink-0 stroke-[2.5]" />
+              <h4 className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-emerald-300 font-serif-master">
+                Why This Move? (Grandmaster Explanation)
+              </h4>
             </div>
+            <p className="text-xs sm:text-sm text-white leading-snug font-sans font-semibold pl-1">
+              {analysis?.primaryReason ||
+                "Occupies the critical central e4 square, establishes dominant board control, and unleashes diagonal lines of development for the Queen and Bishop."}
+            </p>
 
-            {/* Key Strategic Objectives with Emerald Checkmarks */}
-            {analysis.keyBenefits && analysis.keyBenefits.length > 0 && (
-              <div className="pl-2 sm:pl-7 space-y-2.5 pt-3 border-t border-neutral-700/80">
-                <span className="text-xs sm:text-sm font-black text-neutral-200 uppercase tracking-wider font-serif-master">
-                  Key Strategic Advantages:
-                </span>
-                <ul className="space-y-2 text-xs sm:text-sm text-neutral-100 font-sans leading-relaxed">
-                  {analysis.keyBenefits.map((benefit, idx) => (
-                    <li key={idx} className="font-semibold flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                      <span>{benefit}</span>
-                    </li>
-                  ))}
-                </ul>
+            {/* Key Strategic Objectives */}
+            {analysis?.keyBenefits && analysis.keyBenefits.length > 0 && (
+              <div className="pt-1 border-t border-neutral-800 space-y-1">
+                {analysis.keyBenefits.slice(0, 2).map((benefit, idx) => (
+                  <div key={idx} className="flex items-start gap-1.5 text-[11px] text-neutral-100 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                    <span className="leading-tight">{benefit}</span>
+                  </div>
+                ))}
               </div>
             )}
 
             {/* Threat Warning (Strict Ruby Red) */}
-            {analysis.threatWarning && (
-              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-950/40 border-2 border-red-500/50 text-red-200 text-xs sm:text-sm font-sans mt-2 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-                <ShieldAlert className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                <p className="leading-relaxed font-medium">
-                  <strong className="text-red-300 uppercase font-black tracking-wide">Threat Warning: </strong>
+            {analysis?.threatWarning && (
+              <div className="flex items-center gap-1.5 p-1.5 rounded bg-red-950/60 border border-red-500/60 text-red-200 text-[11px] font-sans">
+                <ShieldAlert className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                <p className="leading-tight font-medium">
+                  <strong className="text-red-300 uppercase font-black">Threat: </strong>
                   {analysis.threatWarning}
                 </p>
               </div>
             )}
-          </div>
-        </div>
-      ) : (
-        /* Rich Opening Fallback: AI analysis is NEVER blank */
-        <div className="pt-4 space-y-4">
-          <div className="p-4 rounded-xl bg-[#1b1b22] border-2 border-neutral-700 shadow-lg flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-14 h-14 rounded-xl bg-emerald-500/20 border-2 border-emerald-400 flex flex-col items-center justify-center text-emerald-300 font-mono shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                <span className="font-black text-xl leading-none">e4</span>
-                <span className="text-[10px] text-neutral-300 font-bold font-mono mt-0.5">e2→e4</span>
-              </div>
-              <div>
-                <span className="text-sm sm:text-base font-black text-white">Center Dominance: Pawn to e4</span>
-                <div className="text-xs text-neutral-300 mt-1 font-mono">Eval: +0.20 • Equal Position (White Initiative)</div>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 sm:p-5 rounded-xl bg-[#1b1b22] border-2 border-neutral-700 space-y-3.5">
-            <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-300 font-serif-master flex items-center gap-2">
-              <Target className="w-5 h-5 text-emerald-400 stroke-[2.5]" />
-              Why This Move? (Grandmaster Explanation)
-            </h4>
-            <p className="text-base sm:text-lg text-white font-semibold leading-relaxed pl-2 sm:pl-7">
-              Occupies the critical central e4 square, establishes dominant board control, and unleashes radiating diagonal development for both the Queen and King's Bishop.
-            </p>
-            <div className="pl-2 sm:pl-7 space-y-2 pt-3 border-t border-neutral-700/80">
-              <span className="text-xs sm:text-sm font-black text-neutral-200 uppercase tracking-wider font-serif-master">
-                Key Strategic Advantages:
-              </span>
-              <ul className="space-y-2 text-xs sm:text-sm text-neutral-100 font-sans leading-relaxed">
-                <li className="font-semibold flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Dominates central territory and cramps opposing pieces.</span>
-                </li>
-                <li className="font-semibold flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Accelerates piece mobilization towards early kingside castling.</span>
-                </li>
-              </ul>
-            </div>
           </div>
         </div>
       )}

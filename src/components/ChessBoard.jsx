@@ -220,9 +220,9 @@ export const ChessBoard = ({
   }
 
   return (
-    <div className="relative aspect-square w-full max-w-[min(90vw,540px)] sm:max-w-[min(90vw,580px)] rounded-2xl p-2.5 sm:p-3 bg-gradient-to-b from-[#18181b] via-[#111113] to-[#09090b] shadow-[0_30px_70px_-15px_rgba(0,0,0,0.95),inset_0_1px_1px_rgba(255,255,255,0.12)] border border-neutral-800 ring-1 ring-white/10 select-none">
-      {/* Delicate Metallic Inlay Rim */}
-      <div className="relative w-full h-full rounded-xl p-[2px] bg-gradient-to-tr from-neutral-800 via-neutral-700 to-neutral-800 shadow-inner">
+    <div className="relative aspect-square w-full max-w-[min(90vw,48vh,420px)] rounded-2xl p-2 sm:p-2.5 bg-gradient-to-b from-[#18181b] via-[#111113] to-[#09090b] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.9)] border-2 border-neutral-700 select-none">
+      {/* Metallic Inlay Rim */}
+      <div className="relative w-full h-full rounded-xl p-[2px] bg-gradient-to-tr from-neutral-700 via-neutral-600 to-neutral-700 shadow-inner">
         {/* 8x8 Grid Container */}
         <div className="relative w-full h-full rounded-[10px] overflow-hidden shadow-2xl bg-neutral-950">
           <div className="grid grid-cols-8 grid-rows-8 w-full h-full">
@@ -254,6 +254,8 @@ export const ChessBoard = ({
                 const isKingInCheck = sq === kingInCheckSq;
                 const isMyPiece = piece && piece.color === chess.turn();
 
+                const isLightSquare = (fIdx + rIdx) % 2 === 0;
+
                 return (
                   <div
                     key={sq}
@@ -270,13 +272,17 @@ export const ChessBoard = ({
                   >
                     {/* Rank coordinate (High contrast, clearly visible) */}
                     {fIdx === 0 && (
-                      <span className="absolute top-0.5 left-1 font-mono text-xs sm:text-sm font-black select-none pointer-events-none opacity-85 drop-shadow">
+                      <span className={`absolute top-0.5 left-1 font-mono text-[10px] sm:text-xs font-black select-none pointer-events-none drop-shadow ${
+                        isLightSquare ? 'text-[#122e1c]' : 'text-white'
+                      }`}>
                         {rank}
                       </span>
                     )}
                     {/* File coordinate (High contrast, clearly visible) */}
                     {rIdx === 7 && (
-                      <span className="absolute bottom-0.5 right-1 font-mono text-xs sm:text-sm font-black select-none pointer-events-none opacity-85 drop-shadow">
+                      <span className={`absolute bottom-0.5 right-1 font-mono text-[10px] sm:text-xs font-black select-none pointer-events-none drop-shadow ${
+                        isLightSquare ? 'text-[#122e1c]' : 'text-white'
+                      }`}>
                         {file}
                       </span>
                     )}

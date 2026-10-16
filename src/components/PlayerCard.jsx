@@ -24,112 +24,95 @@ export const PlayerCard = ({
 
   return (
     <div
-      className={`relative w-full rounded-2xl p-3 sm:p-4 transition-all duration-300 border-2 ${
+      className={`relative w-full rounded-xl py-1.5 px-3 transition-all duration-200 border-2 select-none ${
         isCurrentTurn
-          ? 'bg-[#18181c] border-emerald-500 shadow-[0_10px_30px_rgba(0,0,0,0.85),0_0_20px_rgba(16,185,129,0.2)]'
-          : 'bg-[#141418] border-neutral-700 shadow-md text-neutral-300'
+          ? 'bg-[#181822] border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+          : 'bg-[#14141a] border-neutral-600 shadow-sm'
       }`}
     >
-      {/* Mechanical Clock Rocker Top Bar */}
-      <div className="absolute top-0 left-6 right-6 h-[3px] overflow-hidden rounded-full">
-        {isCurrentTurn && (
-          <div className="w-full h-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-        )}
-      </div>
+      {/* Turn indicator glow line */}
+      {isCurrentTurn && (
+        <div className="absolute top-0 left-4 right-4 h-[2px] bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+      )}
 
-      <div className="flex items-center justify-between gap-3">
-        {/* Left: Player Identity, Title & Captured Pieces */}
-        <div className="flex items-center gap-3">
-          {/* Avatar Medal / Plaque */}
+      <div className="flex items-center justify-between gap-2.5">
+        {/* Left: Player Identity, ELO & Captured Pieces */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* Avatar Medal */}
           <div
-            className={`relative w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-bold shadow-md transition-all ${
+            className={`relative w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold shrink-0 transition-all ${
               isWhite
-                ? 'bg-white text-neutral-900 border-2 border-white'
-                : 'bg-neutral-900 text-white border-2 border-neutral-600'
+                ? 'bg-white text-neutral-900 border-2 border-white shadow-sm'
+                : 'bg-neutral-900 text-white border-2 border-neutral-500 shadow-sm'
             }`}
           >
             {player.type === 'bot' ? (
-              <Bot className="w-6 h-6 text-emerald-400" />
+              <Bot className="w-4 h-4 text-emerald-400" />
             ) : player.type === 'remote' ? (
-              <Wifi className="w-6 h-6 text-emerald-400" />
+              <Wifi className="w-4 h-4 text-emerald-400" />
             ) : (
-              <User className="w-6 h-6 text-neutral-800" />
+              <User className="w-4 h-4 text-neutral-800" />
             )}
 
-            {/* Turn Jewel Indicator */}
             {isCurrentTurn && (
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 ring-2 ring-[#18181c] shadow-[0_0_10px_rgba(16,185,129,0.9)] animate-pulse" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#181822] shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse" />
             )}
           </div>
 
-          <div>
-            <div className="flex items-center gap-2">
-              <span
-                className={`font-serif-master text-sm sm:text-base font-black tracking-wide ${
-                  isCurrentTurn ? 'text-white' : 'text-neutral-200'
-                }`}
-              >
-                {player.name}
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-serif-master text-xs sm:text-sm font-black text-white truncate">
+              {player.name}
+            </span>
+
+            {player.rating && (
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-neutral-800 text-emerald-300 border border-neutral-600 shrink-0">
+                {player.type === 'bot' ? 'AI' : 'ELO'} {player.rating}
               </span>
+            )}
 
-              {/* FIDE / ELO Title Badge */}
-              {player.rating ? (
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-neutral-800 text-neutral-200 border border-neutral-600">
-                  {player.type === 'bot' ? 'AI' : 'ELO'} {player.rating}
-                </span>
-              ) : null}
+            {isThinking && isCurrentTurn && (
+              <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/25 border border-emerald-400 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1 shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
+                Thinking...
+              </span>
+            )}
 
-              {isThinking && isCurrentTurn && (
-                <span className="text-xs font-mono font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-400 px-2.5 py-0.5 rounded-full animate-pulse flex items-center gap-1.5 shadow-[0_0_8px_rgba(16,185,129,0.3)]">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-                  Thinking...
-                </span>
-              )}
-            </div>
-
-            {/* Recessed Captured Pieces Velvet Tray */}
-            <div className="flex items-center gap-2 mt-1 min-h-[22px]">
-              <div className="flex items-center -space-x-1 px-2 py-0.5 rounded-lg bg-black/60 border border-neutral-700">
-                {capturedPieces.length === 0 ? (
-                  <span className="text-[11px] font-mono text-neutral-400 px-1 italic">no captures yet</span>
-                ) : (
-                  capturedPieces.map((p, idx) => (
-                    <div
-                      key={idx}
-                      className="w-5 h-5 opacity-90 hover:opacity-100 hover:scale-125 transition-all drop-shadow"
-                    >
-                      <PieceIcon piece={p} />
-                    </div>
-                  ))
-                )}
+            {/* Captured Pieces Mini Velvet Tray */}
+            {capturedPieces.length > 0 && (
+              <div className="hidden sm:flex items-center -space-x-1 px-1.5 py-0.5 rounded bg-black/60 border border-neutral-700 shrink-0">
+                {capturedPieces.map((p, idx) => (
+                  <div key={idx} className="w-4 h-4 drop-shadow">
+                    <PieceIcon piece={p} />
+                  </div>
+                ))}
               </div>
+            )}
 
-              {materialAdvantage > 0 && (
-                <span className="text-xs font-mono font-black text-emerald-300 bg-emerald-500/25 border-2 border-emerald-400 px-2 py-0.5 rounded-md shadow-[0_0_10px_rgba(16,185,129,0.35)]">
-                  +{materialAdvantage}
-                </span>
-              )}
-            </div>
+            {materialAdvantage > 0 && (
+              <span className="text-[10px] font-mono font-black text-emerald-300 bg-emerald-500/25 border border-emerald-400 px-1.5 py-0.2 rounded shrink-0">
+                +{materialAdvantage}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Right: Chronometer Clock Display (DGT style) */}
+        {/* Right: Digital Timer */}
         {timeRemaining !== null && (
           <div
-            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-mono font-black text-base sm:text-lg border-2 transition-all duration-200 ${
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-mono font-black text-xs sm:text-sm border-2 shrink-0 transition-all ${
               isLowTime
-                ? 'bg-red-950/80 text-red-300 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] animate-pulse'
+                ? 'bg-red-950 text-red-300 border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse'
                 : isCurrentTurn
-                ? 'bg-[#101012] text-emerald-400 border-emerald-400 shadow-[0_0_18px_rgba(16,185,129,0.35)]'
-                : 'bg-[#101012] text-neutral-300 border-neutral-700'
+                ? 'bg-black text-emerald-400 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.35)]'
+                : 'bg-black text-white border-neutral-600'
             }`}
           >
             <Clock
-              className={`w-4 h-4 sm:w-5 sm:h-5 ${
+              className={`w-3.5 h-3.5 ${
                 isLowTime ? 'text-red-400 animate-spin' : isCurrentTurn ? 'text-emerald-400' : 'text-neutral-400'
               }`}
             />
-            <span className="tracking-widest">{formatTime(timeRemaining)}</span>
+            <span className="tracking-wider">{formatTime(timeRemaining)}</span>
           </div>
         )}
       </div>
