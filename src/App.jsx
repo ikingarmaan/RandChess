@@ -48,7 +48,7 @@ export default function App() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [lastMove, setLastMove] = useState(null);
   const [history, setHistory] = useState([]);
-  const [viewHistoryIndex, setViewHistoryIndex] = useState(-1);
+  const [viewHistoryIndex, setViewHistoryIndex] = useState(null); // null means live match
   const [capturedPieces, setCapturedPieces] = useState({ w: [], b: [] });
   const [materialScore, setMaterialScore] = useState(0); // + = White advantage
   const [gameOverResult, setGameOverResult] = useState(null);
@@ -215,7 +215,14 @@ export default function App() {
 
       // Clone chess to create an updated instance for React state
       const nextGame = new Chess(chess.fen());
-      const moveResult = nextGame.move(moveCandidate);
+      const movePayload = typeof moveCandidate === 'string'
+        ? moveCandidate
+        : {
+            from: moveCandidate.from,
+            to: moveCandidate.to,
+            promotion: moveCandidate.promotion
+          };
+      const moveResult = nextGame.move(movePayload);
       if (!moveResult) return;
 
       // Audio feedback
@@ -245,11 +252,8 @@ export default function App() {
         color: moveResult.color,
         fen: newFen
       };
-      setHistory((prev) => {
-        const next = [...prev, newHistoryItem];
-        setViewHistoryIndex(next.length - 1);
-        return next;
-      });
+      setHistory((prev) => [...prev, newHistoryItem]);
+      setViewHistoryIndex(null); // return to live position
 
       calculateMaterial(nextGame);
       setEvalScore(evaluateBoard(nextGame));
@@ -342,6 +346,7 @@ export default function App() {
           fen: chess.fen()
         }
       ]);
+      setViewHistoryIndex(null);
       calculateMaterial(chess);
       if (move.captured) sound.playCapture();
       else sound.playMove();
@@ -416,7 +421,7 @@ export default function App() {
     setBoardFen(newGame.fen());
     setLastMove(null);
     setHistory([]);
-    setViewHistoryIndex(-1);
+    setViewHistoryIndex(null);
     setCapturedPieces({ w: [], b: [] });
     setMaterialScore(0);
     setEvalScore(0);
@@ -445,8 +450,14 @@ export default function App() {
     });
   };
 
-  // Jump to specific move in history preview
+  // Jump to specific move in history preview (null = return to live match)
   const handleJumpToMove = useCallback((idx) => {
+    if (idx === null || (history.length > 0 && idx >= history.length - 1)) {
+      setViewHistoryIndex(null);
+      calculateMaterial(chess);
+      setEvalScore(evaluateBoard(chess));
+      return;
+    }
     if (idx < 0) {
       setViewHistoryIndex(-1);
       const startG = new Chess();
@@ -466,7 +477,7 @@ export default function App() {
         console.error('Error previewing move fen:', e);
       }
     }
-  }, [history, calculateMaterial]);
+  }, [history, chess, calculateMaterial]);
 
   const handleGoFirst = useCallback(() => {
     if (history.length === 0) return;
@@ -475,26 +486,30 @@ export default function App() {
 
   const handleGoPrev = useCallback(() => {
     if (history.length === 0) return;
-    const current = viewHistoryIndex === -1 ? -1 : viewHistoryIndex;
-    handleJumpToMove(Math.max(-1, current - 1));
+    const current = viewHistoryIndex === null ? history.length - 1 : viewHistoryIndex;
+    handleJumpToMove(current - 1);
   }, [history.length, viewHistoryIndex, handleJumpToMove]);
 
   const handleGoNext = useCallback(() => {
     if (history.length === 0) return;
-    const current = viewHistoryIndex === -1 ? -1 : viewHistoryIndex;
-    handleJumpToMove(Math.min(history.length - 1, current + 1));
+    if (viewHistoryIndex === null || viewHistoryIndex >= history.length - 1) return;
+    const target = viewHistoryIndex + 1;
+    if (target >= history.length - 1) {
+      handleJumpToMove(null);
+    } else {
+      handleJumpToMove(target);
+    }
   }, [history.length, viewHistoryIndex, handleJumpToMove]);
 
   const handleGoLast = useCallback(() => {
-    if (history.length === 0) return;
-    handleJumpToMove(history.length - 1);
-  }, [history.length, handleJumpToMove]);
+    handleJumpToMove(null);
+  }, [handleJumpToMove]);
 
-  const isLivePosition = history.length === 0 || viewHistoryIndex === history.length - 1;
+  const isLivePosition = viewHistoryIndex === null || history.length === 0 || viewHistoryIndex === history.length - 1;
 
   // Memoized board instance for display: shows exact historical position when reviewing
   const displayChess = useMemo(() => {
-    if (history.length === 0) return chess;
+    if (viewHistoryIndex === null || history.length === 0) return chess;
     if (viewHistoryIndex === -1) {
       return new Chess();
     }
@@ -513,6 +528,7 @@ export default function App() {
 
   // Last move squares to highlight on board: updates when stepping backward/forward
   const displayLastMove = useMemo(() => {
+    if (viewHistoryIndex === null) return lastMove;
     if (viewHistoryIndex === -1) return null;
     if (viewHistoryIndex >= 0 && viewHistoryIndex < history.length) {
       const h = history[viewHistoryIndex];
@@ -536,6 +552,7 @@ export default function App() {
     setChess(newGame);
     setBoardFen(newFen);
     setHistory((prev) => prev.slice(0, prev.length - (gameMode === 'ai' ? 2 : 1)));
+    setViewHistoryIndex(null);
     calculateMaterial(newGame);
     setEvalScore(evaluateBoard(newGame));
     runCoachAnalysis(newGame);
@@ -947,9 +964,14 @@ export default function App() {
           {/* 2. MOVE HISTORY & SCORESHEET (Always visible with Forward / Backward navigation) */}
           <MoveHistory
             history={history}
-            currentMoveIndex={viewHistoryIndex}
+            currentMoveIndex={viewHistoryIndex === null ? (history.length - 1) : viewHistoryIndex}
+            isLive={isLivePosition}
             onJumpToMove={handleJumpToMove}
-            fen={boardFen}
+            onGoFirst={handleGoFirst}
+            onGoPrev={handleGoPrev}
+            onGoNext={handleGoNext}
+            onGoLast={handleGoLast}
+            fen={displayChess.fen()}
             pgn={chess.pgn()}
           />
 
