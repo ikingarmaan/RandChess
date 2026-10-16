@@ -80,7 +80,7 @@ export const MoveHistory = ({
   const isAtEnd = isLive || currentMoveIndex >= history.length - 1;
 
   return (
-    <div className="w-full bg-white border-3 border-black flex flex-col h-48 sm:h-52 brutal-shadow select-none">
+    <div className="w-full bg-white border-3 border-black flex flex-col h-48 sm:h-52 brutal-shadow select-none overflow-hidden">
       {/* Brutalist Scoresheet Header */}
       <div className="bg-black text-white px-3 py-1.5 flex items-center justify-between border-b-3 border-black shrink-0">
         <div className="flex items-center gap-2">
@@ -142,9 +142,9 @@ export const MoveHistory = ({
       )}
 
       {/* Move List Body */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto p-1.5 space-y-1 font-mono text-xs">
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto p-1.5 space-y-1 font-mono text-xs">
         {movePairs.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-neutral-500 font-brutal p-3 text-center">
+          <div className="py-6 flex flex-col items-center justify-center text-neutral-500 font-brutal p-3 text-center">
             <span className="font-black text-black text-sm uppercase">[ NO MOVES RECORDED ]</span>
             <span className="text-xs text-neutral-600">Make a move on the board to start match recording</span>
           </div>
@@ -192,7 +192,7 @@ export const MoveHistory = ({
           <button
             onClick={onGoFirst}
             disabled={history.length === 0 || isAtStart}
-            className="brutal-press flex items-center gap-1 px-2 py-1 bg-white hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+            className="brutal-press flex items-center gap-1 px-2 py-1 bg-white hover:bg-neutral-100 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
             title="Jump to initial board position (Move 0)"
           >
             <ChevronFirst className="w-3.5 h-3.5" />
@@ -201,7 +201,7 @@ export const MoveHistory = ({
           <button
             onClick={onGoPrev}
             disabled={history.length === 0 || isAtStart}
-            className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-[#22c55e] disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+            className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-[#22c55e] disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
             title="Step Back one move"
           >
             <ChevronLeft className="w-3.5 h-3.5 stroke-[3]" />
@@ -218,7 +218,7 @@ export const MoveHistory = ({
           <button
             onClick={onGoNext}
             disabled={history.length === 0 || isAtEnd}
-            className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-[#22c55e] disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+            className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-[#22c55e] disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
             title="Step Forward one move"
           >
             <span>Fwd</span>
@@ -227,7 +227,7 @@ export const MoveHistory = ({
           <button
             onClick={onGoLast}
             disabled={history.length === 0 || isAtEnd}
-            className="brutal-press flex items-center gap-1 px-2 py-1 bg-[#22c55e] hover:bg-green-400 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+            className="brutal-press flex items-center gap-1 px-2 py-1 bg-[#22c55e] hover:bg-green-400 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
             title="Jump to latest live move"
           >
             <span className="hidden sm:inline">Live</span>

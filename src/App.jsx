@@ -25,7 +25,8 @@ import {
   Moon,
   Sun,
   Shield,
-  Play
+  Play,
+  Lightbulb
 } from 'lucide-react';
 
 import { ChessBoard, BOARD_THEMES } from './components/ChessBoard';
@@ -721,6 +722,22 @@ export default function App() {
             </button>
           </div>
 
+          {/* Suggest Next Move ON / OFF Toggle in Header */}
+          <button
+            onClick={() => setCoachEnabled(!coachEnabled)}
+            className={`brutal-press flex items-center gap-1.5 px-2.5 sm:px-3 py-1 font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm transition-all ${
+              coachEnabled
+                ? 'bg-[#22c55e] text-black hover:bg-green-400'
+                : 'bg-black text-white hover:bg-neutral-800'
+            }`}
+            title="Turn Next Move Suggestions ON / OFF"
+          >
+            <Lightbulb className={`w-3.5 h-3.5 ${coachEnabled ? 'text-black fill-current' : 'text-[#facc15]'}`} />
+            <span className="hidden sm:inline">SUGGEST MOVE:</span>
+            <span className="sm:hidden">SUGGEST:</span>
+            <span>{coachEnabled ? 'ON' : 'OFF'}</span>
+          </button>
+
           {/* Flip Board Button */}
           <button
             onClick={() => setIsFlipped(!isFlipped)}
@@ -818,7 +835,7 @@ export default function App() {
               <button
                 onClick={handleGoFirst}
                 disabled={history.length === 0 || viewHistoryIndex === -1}
-                className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+                className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-neutral-100 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
                 title="Jump to Initial Board (Move 0)"
               >
                 <ChevronFirst className="w-4 h-4 text-black" />
@@ -827,7 +844,7 @@ export default function App() {
               <button
                 onClick={handleGoPrev}
                 disabled={history.length === 0 || viewHistoryIndex === -1}
-                className="brutal-press flex items-center gap-1 px-3 py-1 bg-white hover:bg-[#22c55e] disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+                className="brutal-press flex items-center gap-1 px-3 py-1 bg-white hover:bg-[#22c55e] disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
                 title="Step Back one move"
               >
                 <ChevronLeft className="w-4 h-4 stroke-[3]" />
@@ -838,7 +855,7 @@ export default function App() {
             {/* Current Move Status */}
             <div>
               {history.length === 0 ? (
-                <div className="px-2.5 py-0.5 border-2 border-black font-mono text-xs font-black bg-black text-white">
+                <div className="px-2.5 py-0.5 border-2 border-black font-mono text-xs font-black bg-neutral-200 text-neutral-600">
                   MOVE 0
                 </div>
               ) : isLivePosition ? (
@@ -862,7 +879,7 @@ export default function App() {
               <button
                 onClick={handleGoNext}
                 disabled={history.length === 0 || isLivePosition}
-                className="brutal-press flex items-center gap-1 px-3 py-1 bg-white hover:bg-[#22c55e] disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+                className="brutal-press flex items-center gap-1 px-3 py-1 bg-white hover:bg-[#22c55e] disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
                 title="Step Forward one move"
               >
                 <span>FWD</span>
@@ -871,7 +888,7 @@ export default function App() {
               <button
                 onClick={handleGoLast}
                 disabled={history.length === 0 || isLivePosition}
-                className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-[#22c55e] hover:bg-green-400 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
+                className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-[#22c55e] hover:bg-green-400 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
                 title="Jump to Latest Live Move"
               >
                 <span className="hidden sm:inline">LIVE</span>
@@ -1047,7 +1064,7 @@ export default function App() {
             <button
               onClick={handleUndoMove}
               disabled={history.length === 0 || gameMode === 'online'}
-              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-white hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
+              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-white hover:bg-neutral-100 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
               title="Take back last move (HotKey: Z)"
             >
               <RotateCcw className="w-4 h-4 text-[#22c55e]" />
@@ -1064,7 +1081,7 @@ export default function App() {
                 });
               }}
               disabled={Boolean(gameOverResult) || history.length === 0}
-              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-[#ef4444] hover:bg-red-400 disabled:opacity-40 disabled:cursor-not-allowed border-3 border-black text-white font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
+              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-[#ef4444] hover:bg-red-400 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-3 border-black text-white font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
               title="Resign current match"
             >
               <Flag className="w-4 h-4 text-white" />
@@ -1080,7 +1097,7 @@ export default function App() {
                 });
               }}
               disabled={Boolean(gameOverResult) || history.length === 0}
-              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-white hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
+              className="brutal-press flex items-center justify-center gap-1.5 py-2.5 bg-white hover:bg-neutral-100 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:border-neutral-400 disabled:shadow-none disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
               title="Offer match draw"
             >
               <Handshake className="w-4 h-4 text-black" />

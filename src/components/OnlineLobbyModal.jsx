@@ -228,7 +228,7 @@ export const OnlineLobbyModal = ({
                 <button
                   type="submit"
                   disabled={!inputCode.trim()}
-                  className="brutal-press w-full py-3 bg-black hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed text-white border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
+                  className="brutal-press w-full py-3 bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:border-neutral-400 disabled:cursor-not-allowed disabled:shadow-none text-white border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
                 >
                   JOIN MATCH NOW ▶
                 </button>

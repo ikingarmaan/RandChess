@@ -54,28 +54,38 @@ export const CoachAdvisor = ({
           </div>
         </div>
 
-        {/* Brutalist Toggle Button */}
+        {/* Brutalist Suggest Next Move Toggle Button */}
         <button
           onClick={() => onToggleCoach(!coachEnabled)}
-          className={`brutal-press flex items-center gap-1.5 px-2.5 py-1 font-mono text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm ${
+          className={`brutal-press flex items-center gap-1.5 px-3 py-1.5 font-brutal text-xs sm:text-sm font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm transition-all ${
             coachEnabled
-              ? 'bg-[#22c55e] text-black'
-              : 'bg-black text-white'
+              ? 'bg-[#22c55e] text-black hover:bg-green-400'
+              : 'bg-black text-white hover:bg-neutral-800'
           }`}
-          title="Toggle AI Coach ON or OFF"
+          title="Turn Suggest Next Move ON or OFF"
         >
-          <Power className="w-3.5 h-3.5" />
-          <span>{coachEnabled ? 'COACH: ON' : 'COACH: OFF'}</span>
+          <Lightbulb className={`w-4 h-4 ${coachEnabled ? 'text-black fill-current' : 'text-[#facc15]'}`} />
+          <span>{coachEnabled ? 'SUGGEST NEXT MOVE: ON' : 'SUGGEST NEXT MOVE: OFF'}</span>
         </button>
       </div>
 
       {/* Main Content Body */}
       {!coachEnabled ? (
-        <div className="py-4 text-center text-neutral-600 font-mono text-xs">
-          <span className="font-bold uppercase">[ TACTICAL ADVICE PAUSED ]</span>
-          <p className="text-[11px] text-neutral-500 mt-1">
-            Turn ON above to calculate real-time best moves and explanations
+        <div className="py-4 px-3 text-center font-mono space-y-2.5 bg-[#f4f4eb] border-2 border-dashed border-black/40 my-1">
+          <div className="flex items-center justify-center gap-2 text-black font-black font-brutal text-xs sm:text-sm uppercase">
+            <Lightbulb className="w-4 h-4 text-neutral-500" />
+            <span>[ MOVE SUGGESTIONS ARE OFF ]</span>
+          </div>
+          <p className="text-xs text-neutral-600 max-w-sm mx-auto">
+            AI move recommendations, tactical reasons, and on-board directional arrows are currently disabled. Click below to turn them on anytime.
           </p>
+          <button
+            onClick={() => onToggleCoach(true)}
+            className="brutal-press inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#22c55e] hover:bg-green-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
+          >
+            <Lightbulb className="w-3.5 h-3.5 fill-current" />
+            <span>TURN ON MOVE SUGGESTIONS</span>
+          </button>
         </div>
       ) : isThinking ? (
         <div className="py-4 flex flex-col items-center justify-center gap-1.5 font-mono text-xs">
