@@ -44,6 +44,20 @@ import { getBestMove, evaluateBoard } from './engine/aiEngine';
 import { analyzeAndExplain } from './engine/coachExplainer';
 import { sound } from './utils/sound';
 
+// Persistent client player identity for resilient room reconnection
+const getPlayerId = () => {
+  try {
+    let id = localStorage.getItem('randchess_player_id');
+    if (!id) {
+      id = 'usr_' + Math.random().toString(36).substring(2, 11);
+      localStorage.setItem('randchess_player_id', id);
+    }
+    return id;
+  } catch (e) {
+    return 'usr_' + Math.random().toString(36).substring(2, 11);
+  }
+};
+
 export default function App() {
   // --- Game Engine State ---
   const [chess, setChess] = useState(() => new Chess());
@@ -199,6 +213,17 @@ export default function App() {
     }, 25);
   }, [coachEnabled, gameMode, playerColor]);
 
+  // Stable references to prevent socket disconnect on re-renders
+  const calculateMaterialRef = useRef(calculateMaterial);
+  useEffect(() => {
+    calculateMaterialRef.current = calculateMaterial;
+  }, [calculateMaterial]);
+
+  const runCoachAnalysisRef = useRef(runCoachAnalysis);
+  useEffect(() => {
+    runCoachAnalysisRef.current = runCoachAnalysis;
+  }, [runCoachAnalysis]);
+
   // Initial coach run on mount
   useEffect(() => {
     runCoachAnalysis(chess, true);
@@ -320,9 +345,18 @@ export default function App() {
         }
       }
 
-      // Online move emission with server ack sync
+      // Online move emission with clean coordinates and server ack
       if (gameMode === 'online' && socket && onlineRoomCode) {
-        socket.emit('make_move', { roomId: onlineRoomCode, move: moveCandidate }, (ack) => {
+        const cleanPayload = {
+          from: moveResult.from,
+          to: moveResult.to,
+          promotion: moveResult.promotion || undefined
+        };
+        socket.emit('make_move', {
+          roomId: onlineRoomCode,
+          move: cleanPayload,
+          playerId: getPlayerId()
+        }, (ack) => {
           if (ack && !ack.success) {
             console.error('Server rejected move:', ack.error);
             if (ack.fen) {
@@ -394,7 +428,7 @@ export default function App() {
       const params = new URLSearchParams(window.location.search);
       const roomParam = params.get('room');
       if (roomParam) {
-        newSocket.emit('join_room', { roomId: roomParam.toUpperCase() }, (res) => {
+        newSocket.emit('join_room', { roomId: roomParam.toUpperCase(), playerId: getPlayerId() }, (res) => {
           if (res && res.success) {
             setOnlineRoomCode(roomParam.toUpperCase());
             setGameMode('online');
@@ -419,7 +453,7 @@ export default function App() {
       setSocketConnected(false);
     });
 
-    newSocket.on('game_started', ({ roomId, whitePlayer, timeControl: tc, fen }) => {
+    newSocket.on('game_started', ({ roomId, whitePlayer, whitePlayerId, blackPlayer, blackPlayerId, timeControl: tc, fen }) => {
       setOnlineRoomCode(roomId);
       setIsWaitingOnline(false);
       setIsSearchingQuickMatch(false);
@@ -430,11 +464,17 @@ export default function App() {
       setRematchOffered(false);
       setRematchSent(false);
 
-      const isWhite = newSocket.id === whitePlayer;
-      const myColor = isWhite ? 'w' : 'b';
+      const myPlayerId = getPlayerId();
+      let myColor = 'w';
+      if (whitePlayerId && blackPlayerId) {
+        myColor = myPlayerId === whitePlayerId ? 'w' : 'b';
+      } else {
+        myColor = newSocket.id === whitePlayer ? 'w' : 'b';
+      }
+
       setOnlineMyColor(myColor);
       setPlayerColor(myColor);
-      setIsFlipped(!isWhite);
+      setIsFlipped(myColor === 'b');
 
       // Fresh game initialization
       const freshGame = fen ? new Chess(fen) : new Chess();
@@ -478,7 +518,9 @@ export default function App() {
           }
         ]);
         setViewHistoryIndex(null);
-        calculateMaterial(nextGame);
+        if (calculateMaterialRef.current) {
+          calculateMaterialRef.current(nextGame);
+        }
         setEvalScore(evaluateBoard(nextGame));
 
         if (move.captured) {
@@ -510,7 +552,9 @@ export default function App() {
           }
         }
 
-        runCoachAnalysis(nextGame);
+        if (runCoachAnalysisRef.current) {
+          runCoachAnalysisRef.current(nextGame);
+        }
       } catch (err) {
         console.error('Error applying opponent move:', err);
       }
@@ -553,7 +597,7 @@ export default function App() {
     return () => {
       newSocket.disconnect();
     };
-  }, [calculateMaterial, runCoachAnalysis]);
+  }, []);
 
   // Restart / New Game
   const startNewGame = useCallback(() => {
@@ -633,7 +677,7 @@ export default function App() {
     }
     setOnlineStatus('');
     setIsSearchingQuickMatch(true);
-    socket.emit('find_quick_match', { timeControl: tc, preferredColor }, (res) => {
+    socket.emit('find_quick_match', { timeControl: tc, preferredColor, playerId: getPlayerId() }, (res) => {
       if (!res || !res.success) {
         setIsSearchingQuickMatch(false);
         setOnlineStatus('Failed to start quick match. Please try again.');
@@ -1503,7 +1547,7 @@ export default function App() {
             return;
           }
           setOnlineStatus('');
-          socket.emit('create_room', { timeControl: tc, preferredColor }, (res) => {
+          socket.emit('create_room', { timeControl: tc, preferredColor, playerId: getPlayerId() }, (res) => {
             if (res && res.success) {
               setOnlineRoomCode(res.roomId);
               setIsWaitingOnline(true);
@@ -1524,7 +1568,7 @@ export default function App() {
           }
           setOnlineStatus('');
           const clean = (code || '').trim().toUpperCase();
-          socket.emit('join_room', { roomId: clean }, (res) => {
+          socket.emit('join_room', { roomId: clean, playerId: getPlayerId() }, (res) => {
             if (res && res.success) {
               setOnlineRoomCode(clean);
               setIsOnlineModalOpen(false);
