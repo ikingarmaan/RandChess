@@ -281,12 +281,9 @@ export default function App() {
         const targetRank = moveCandidate.to[1];
         if ((piece.color === 'w' && targetRank === '8') || (piece.color === 'b' && targetRank === '1')) {
           if (!moveCandidate.promotion) {
-            if (autoQueen) {
-              moveCandidate.promotion = 'q';
-            } else {
-              setPendingPromotion(moveCandidate);
-              return;
-            }
+            // Always show promotion dialog - never auto-queen
+            setPendingPromotion(moveCandidate);
+            return;
           }
         }
       }
@@ -1100,7 +1097,7 @@ export default function App() {
       </div>
 
       {/* Main Body: Dashboard with Left Board and Right Always-Visible Controls */}
-      <main className="flex-1 w-full max-w-7xl mx-auto p-2 sm:p-4 lg:p-6 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-5 min-h-0">
+      <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto p-2 sm:p-4 lg:p-6 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-5 min-h-0">
         {/* Left Column: Top Player + Board with EvalBar + Bottom Player + Step Navigation */}
         <div className="flex flex-col items-center gap-2 w-full max-w-[min(94vw,540px)] shrink-0">
           {/* Top Player Card */}
@@ -1223,7 +1220,7 @@ export default function App() {
         </div>
 
         {/* Right Column: Always-Visible High-Contrast Station */}
-        <div className="w-full lg:w-[410px] xl:w-[440px] flex flex-col gap-3 shrink-0">
+        <div className="relative z-10 w-full lg:w-[410px] xl:w-[440px] flex flex-col gap-3 shrink-0">
           {/* 1. MATCH OPPONENT & GAME MODE (Prominent High-Contrast Buttons) */}
           <div className="bg-[#f4f4eb] text-black border-3 border-black p-3.5 brutal-shadow space-y-3">
             <div className="flex items-center justify-between border-b-2 border-black pb-1.5">
