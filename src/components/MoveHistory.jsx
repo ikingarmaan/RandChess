@@ -1,9 +1,9 @@
-import React, { useRef, useEffect } from 'react';
-import { ChevronFirst, ChevronLeft, ChevronRight, ChevronLast, Copy, Check, BookOpen } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { ChevronFirst, ChevronLeft, ChevronRight, ChevronLast, Copy, Check, Download, BookOpen, Terminal } from 'lucide-react';
 
 export const MoveHistory = ({
-  history = [], // array of { san, from, to, piece, color }
-  currentMoveIndex = -1,
+  history = [], // array of { san, from, to, piece, color, fen }
+  currentMoveIndex = null,
   isLive = true,
   onJumpToMove,
   onGoFirst,
@@ -11,17 +11,21 @@ export const MoveHistory = ({
   onGoNext,
   onGoLast,
   fen,
-  pgn
+  pgn,
+  onLoadFen
 }) => {
   const containerRef = useRef(null);
-  const [copied, setCopied] = React.useState(false);
+  const [copiedFen, setCopiedFen] = useState(false);
+  const [copiedPgn, setCopiedPgn] = useState(false);
+  const [showFenInput, setShowFenInput] = useState(false);
+  const [customFenInput, setCustomFenInput] = useState('');
 
-  // Auto scroll to latest move
+  // Auto scroll to latest move when at live
   useEffect(() => {
-    if (containerRef.current) {
+    if (containerRef.current && isLive) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  }, [history.length]);
+  }, [history.length, isLive]);
 
   // Group into pairs: [ { moveNum: 1, white: 'e4', black: 'e5', wIdx: 0, bIdx: 1 }, ... ]
   const movePairs = [];
@@ -38,73 +42,141 @@ export const MoveHistory = ({
   const handleCopyFEN = () => {
     if (fen) {
       navigator.clipboard.writeText(fen);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedFen(true);
+      setTimeout(() => setCopiedFen(false), 2000);
     }
+  };
+
+  const handleCopyPGN = () => {
+    if (pgn) {
+      navigator.clipboard.writeText(pgn);
+      setCopiedPgn(true);
+      setTimeout(() => setCopiedPgn(false), 2000);
+    }
+  };
+
+  const handleDownloadPGN = () => {
+    if (!pgn) return;
+    const blob = new Blob([pgn], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `brutal-chess-match-${Date.now()}.pgn`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleApplyCustomFen = (e) => {
+    e.preventDefault();
+    if (!customFenInput.trim()) return;
+    if (onLoadFen) {
+      onLoadFen(customFenInput.trim());
+    }
+    setCustomFenInput('');
+    setShowFenInput(false);
   };
 
   const isAtStart = currentMoveIndex === -1;
   const isAtEnd = isLive || currentMoveIndex >= history.length - 1;
 
   return (
-    <div className="w-full bg-[#16161b] border-2 border-neutral-700 rounded-xl p-2.5 sm:p-3 flex flex-col h-48 sm:h-56 shadow-xl">
-      {/* Header styled as FIDE Scoresheet with move count */}
-      <div className="flex items-center justify-between border-b border-neutral-800 pb-1.5 mb-1.5">
+    <div className="w-full bg-white border-3 border-black flex flex-col h-56 sm:h-64 brutal-shadow select-none">
+      {/* Brutalist Scoresheet Header */}
+      <div className="bg-black text-white px-3 py-1.5 flex items-center justify-between border-b-3 border-black shrink-0">
         <div className="flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-emerald-400 stroke-[2.5]" />
-          <h3 className="font-serif-master text-xs font-black text-white uppercase tracking-wider">
+          <BookOpen className="w-4 h-4 text-[#22c55e]" />
+          <span className="font-brutal text-xs font-black uppercase tracking-wider">
             Move Scoresheet
-          </h3>
-          <span className="text-[10px] font-mono font-black px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400">
-            {history.length} {history.length === 1 ? 'move' : 'moves'}
+          </span>
+          <span className="text-[10px] font-mono font-black px-1.5 py-0.2 bg-[#22c55e] text-black">
+            {history.length} {history.length === 1 ? 'MOVE' : 'MOVES'}
           </span>
         </div>
-        <button
-          onClick={handleCopyFEN}
-          className="flex items-center gap-1 text-[11px] font-mono font-bold text-white hover:text-emerald-300 transition-all cursor-pointer px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 shadow-sm"
-          title="Copy current board FEN"
-        >
-          {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-neutral-300" />}
-          <span>{copied ? 'Copied' : 'Copy FEN'}</span>
-        </button>
+
+        {/* Quick Utility Actions */}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setShowFenInput(!showFenInput)}
+            className="flex items-center gap-1 text-[10px] font-mono font-black uppercase px-1.5 py-0.5 bg-white text-black hover:bg-[#facc15] border border-white transition-colors cursor-pointer"
+            title="Load custom FEN position"
+          >
+            <Terminal className="w-3 h-3" />
+            <span className="hidden sm:inline">FEN</span>
+          </button>
+          <button
+            onClick={handleCopyFEN}
+            className="flex items-center gap-1 text-[10px] font-mono font-black uppercase px-1.5 py-0.5 bg-white text-black hover:bg-[#22c55e] border border-white transition-colors cursor-pointer"
+            title="Copy current board FEN"
+          >
+            {copiedFen ? <Check className="w-3 h-3 text-[#15803d]" /> : <Copy className="w-3 h-3" />}
+            <span className="hidden sm:inline">{copiedFen ? 'COPIED' : 'COPY'}</span>
+          </button>
+          <button
+            onClick={handleDownloadPGN}
+            className="flex items-center gap-1 text-[10px] font-mono font-black uppercase px-1.5 py-0.5 bg-[#facc15] text-black hover:bg-yellow-400 border border-black transition-colors cursor-pointer"
+            title="Download PGN match record"
+          >
+            <Download className="w-3 h-3" />
+            <span className="hidden sm:inline">PGN</span>
+          </button>
+        </div>
       </div>
 
-      {/* Move list */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto space-y-0.5 pr-1 font-mono text-xs">
+      {/* Optional Custom FEN Input Bar */}
+      {showFenInput && (
+        <form onSubmit={handleApplyCustomFen} className="p-1.5 bg-[#facc15] border-b-2 border-black flex gap-1 items-center shrink-0">
+          <input
+            type="text"
+            value={customFenInput}
+            onChange={(e) => setCustomFenInput(e.target.value)}
+            placeholder="Paste FEN (e.g. 8/8/8/8/4k3/8/4K3/8 w - - 0 1)"
+            className="flex-1 px-2 py-0.5 text-xs font-mono bg-white text-black border-2 border-black outline-none"
+          />
+          <button
+            type="submit"
+            className="px-2 py-0.5 text-xs font-mono font-black uppercase bg-black text-white hover:bg-neutral-800 border-2 border-black cursor-pointer"
+          >
+            LOAD
+          </button>
+        </form>
+      )}
+
+      {/* Move List Body */}
+      <div ref={containerRef} className="flex-1 overflow-y-auto p-1.5 space-y-1 font-mono text-xs">
         {movePairs.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-neutral-300 text-xs font-sans gap-1 p-2 text-center">
-            <span className="font-bold text-white text-sm">No moves recorded yet</span>
-            <span className="text-xs text-neutral-400">Play a move on the board to begin</span>
+          <div className="h-full flex flex-col items-center justify-center text-neutral-500 font-brutal p-3 text-center">
+            <span className="font-black text-black text-sm uppercase">[ NO MOVES RECORDED ]</span>
+            <span className="text-xs text-neutral-600">Make a move on the board to start match recording</span>
           </div>
         ) : (
           movePairs.map((pair) => (
             <div
               key={pair.moveNum}
-              className="grid grid-cols-12 gap-1 px-2 py-1 rounded hover:bg-neutral-800/70 transition-colors items-center"
+              className="grid grid-cols-12 gap-1 px-2 py-0.5 border border-black/10 hover:border-black items-center transition-colors"
             >
-              <span className="col-span-3 text-emerald-400 font-bold font-mono text-xs">
+              <span className="col-span-3 text-neutral-500 font-mono font-bold text-xs">
                 {pair.moveNum}.
               </span>
               <button
                 onClick={() => onJumpToMove && onJumpToMove(pair.wIdx)}
-                className={`col-span-4 text-left font-black px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
+                className={`col-span-4 text-left font-black px-1.5 py-0.5 transition-all cursor-pointer ${
                   currentMoveIndex === pair.wIdx
-                    ? 'bg-emerald-600 text-white shadow-[0_0_10px_rgba(16,185,129,0.45)] border border-emerald-300'
-                    : 'text-white hover:text-emerald-300 hover:bg-neutral-800'
+                    ? 'bg-[#22c55e] text-black border-2 border-black brutal-shadow-sm font-black'
+                    : 'text-black hover:bg-neutral-200'
                 }`}
-                title={`Inspect move ${pair.moveNum}. ${pair.white?.san}`}
+                title={`Jump to move ${pair.moveNum}. ${pair.white?.san}`}
               >
                 {pair.white?.san}
               </button>
               {pair.black && (
                 <button
                   onClick={() => onJumpToMove && onJumpToMove(pair.bIdx)}
-                  className={`col-span-5 text-left font-black px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
+                  className={`col-span-5 text-left font-black px-1.5 py-0.5 transition-all cursor-pointer ${
                     currentMoveIndex === pair.bIdx
-                      ? 'bg-emerald-600 text-white shadow-[0_0_10px_rgba(16,185,129,0.45)] border border-emerald-300'
-                      : 'text-neutral-100 hover:text-emerald-300 hover:bg-neutral-800'
+                      ? 'bg-[#22c55e] text-black border-2 border-black brutal-shadow-sm font-black'
+                      : 'text-black hover:bg-neutral-200'
                   }`}
-                  title={`Inspect move ${pair.moveNum}... ${pair.black.san}`}
+                  title={`Jump to move ${pair.moveNum}... ${pair.black.san}`}
                 >
                   {pair.black.san}
                 </button>
@@ -114,51 +186,52 @@ export const MoveHistory = ({
         )}
       </div>
 
-      {/* Step Navigation Controls with Clear Labels & High Contrast */}
-      <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-neutral-800 mt-1">
+      {/* Neo-Brutalist Step Navigation Dock */}
+      <div className="bg-[#f4f4eb] border-t-3 border-black p-1.5 flex items-center justify-between gap-1 shrink-0">
         <div className="flex items-center gap-1">
           <button
             onClick={onGoFirst}
             disabled={history.length === 0 || isAtStart}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white disabled:opacity-40 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-neutral-600 font-serif-master text-xs font-bold transition-all cursor-pointer shadow-sm"
+            className="brutal-press flex items-center gap-1 px-2 py-1 bg-white hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
             title="Jump to initial board position (Move 0)"
           >
-            <ChevronFirst className="w-3.5 h-3.5 text-emerald-400" />
+            <ChevronFirst className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Start</span>
           </button>
           <button
             onClick={onGoPrev}
             disabled={history.length === 0 || isAtStart}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-emerald-600 text-white disabled:opacity-40 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-emerald-400 font-serif-master text-xs font-black transition-all cursor-pointer shadow-sm"
+            className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-[#22c55e] disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
             title="Step Back one move"
           >
-            <ChevronLeft className="w-3.5 h-3.5 text-emerald-300 stroke-[3]" />
+            <ChevronLeft className="w-3.5 h-3.5 stroke-[3]" />
             <span>Back</span>
           </button>
         </div>
 
-        <span className="text-xs font-mono font-black text-white px-2 py-0.5 bg-black border-2 border-neutral-600 rounded">
-          {history.length === 0 ? 'Move 0' : isLive ? `Live (${history.length})` : `${currentMoveIndex === -1 ? '0' : currentMoveIndex + 1}/${history.length}`}
-        </span>
+        {/* Current Move Indicator */}
+        <div className="px-2 py-0.5 border-2 border-black font-mono text-xs font-black bg-black text-white">
+          {history.length === 0 ? 'MOVE 0' : isLive ? `LIVE (${history.length})` : `${currentMoveIndex === -1 ? '0' : currentMoveIndex + 1}/${history.length}`}
+        </div>
 
         <div className="flex items-center gap-1">
           <button
             onClick={onGoNext}
             disabled={history.length === 0 || isAtEnd}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-emerald-600 text-white disabled:opacity-40 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-emerald-400 font-serif-master text-xs font-black transition-all cursor-pointer shadow-sm"
+            className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-[#22c55e] disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
             title="Step Forward one move"
           >
             <span>Fwd</span>
-            <ChevronRight className="w-3.5 h-3.5 text-emerald-300 stroke-[3]" />
+            <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
           </button>
           <button
             onClick={onGoLast}
             disabled={history.length === 0 || isAtEnd}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white disabled:opacity-40 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-neutral-600 font-serif-master text-xs font-bold transition-all cursor-pointer shadow-sm"
+            className="brutal-press flex items-center gap-1 px-2 py-1 bg-[#22c55e] hover:bg-green-400 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
             title="Jump to latest live move"
           >
             <span className="hidden sm:inline">Live</span>
-            <ChevronLast className="w-3.5 h-3.5 text-emerald-400" />
+            <ChevronLast className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

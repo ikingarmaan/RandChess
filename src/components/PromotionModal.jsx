@@ -10,33 +10,39 @@ export const PromotionModal = ({ color = 'w', onSelectPiece, onCancel }) => {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
-      <div className="bg-[#121214] border border-neutral-700/80 rounded-3xl p-6 sm:p-7 shadow-[0_25px_60px_rgba(0,0,0,0.95)] max-w-sm w-full text-center space-y-4 ring-1 ring-white/10">
-        <div>
-          <h3 className="font-serif-master text-lg font-bold text-white tracking-wide">
-            Pawn Coronation
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      style={{ overscrollBehavior: 'contain' }}
+    >
+      <div className="bg-white text-black border-4 border-black p-5 sm:p-6 brutal-shadow-lg max-w-sm w-full text-center space-y-4 select-none">
+        <div className="border-b-3 border-black pb-2">
+          <div className="inline-block px-2 py-0.5 bg-[#facc15] border-2 border-black font-mono text-[10px] font-black uppercase mb-1">
+            [ RANK 8 REACHED ]
+          </div>
+          <h3 className="font-brutal text-lg font-black uppercase tracking-tight">
+            Pawn Promotion
           </h3>
-          <p className="text-xs text-neutral-400 mt-1 font-sans">
-            Select a piece of royal stature for promotion
+          <p className="text-xs text-neutral-600 font-mono">
+            Select a piece for promotion
           </p>
         </div>
 
-        <div className="grid grid-cols-4 gap-2.5 py-2">
+        <div className="grid grid-cols-4 gap-2 py-1">
           {pieces.map((p) => {
             const pieceChar = color === 'w' ? p.type.toUpperCase() : p.type;
             return (
               <button
                 key={p.type}
                 onClick={() => onSelectPiece(p.type)}
-                className="flex flex-col items-center justify-center p-3 rounded-2xl bg-neutral-900/90 hover:bg-emerald-500/15 border border-neutral-800 hover:border-emerald-500/50 transition-all hover:scale-105 active:scale-95 group cursor-pointer shadow-md"
+                className="brutal-press flex flex-col items-center justify-center p-2.5 bg-[#f4f4eb] hover:bg-[#22c55e] border-2 border-black transition-all cursor-pointer brutal-shadow-sm group"
               >
-                <div className="w-12 h-12 mb-1.5 group-hover:drop-shadow-[0_0_12px_rgba(16,185,129,0.5)]">
+                <div className="w-10 h-10 mb-1">
                   <PieceIcon piece={pieceChar} />
                 </div>
-                <span className="font-serif-master text-[11px] font-bold text-neutral-300 group-hover:text-emerald-300">
+                <span className="font-brutal text-xs font-black uppercase">
                   {p.name}
                 </span>
-                <span className="text-[10px] text-neutral-500 font-mono">
+                <span className="text-[10px] text-neutral-600 font-mono font-bold">
                   [{p.key}]
                 </span>
               </button>
@@ -47,9 +53,9 @@ export const PromotionModal = ({ color = 'w', onSelectPiece, onCancel }) => {
         {onCancel && (
           <button
             onClick={onCancel}
-            className="text-xs text-neutral-400 hover:text-neutral-200 transition-colors cursor-pointer"
+            className="font-mono text-xs text-neutral-600 hover:text-black underline uppercase font-bold cursor-pointer"
           >
-            Cancel coronation
+            Cancel Move
           </button>
         )}
       </div>

@@ -19,10 +19,16 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronLast,
-  BookOpen
+  BookOpen,
+  Sword,
+  Sliders,
+  Moon,
+  Sun,
+  Shield,
+  Play
 } from 'lucide-react';
 
-import { ChessBoard } from './components/ChessBoard';
+import { ChessBoard, BOARD_THEMES } from './components/ChessBoard';
 import { EvalBar } from './components/EvalBar';
 import { CoachAdvisor } from './components/CoachAdvisor';
 import { PlayerCard } from './components/PlayerCard';
@@ -38,17 +44,17 @@ import { analyzeAndExplain } from './engine/coachExplainer';
 import { sound } from './utils/sound';
 
 export default function App() {
-  // --- Game State ---
+  // --- Game Engine State ---
   const [chess, setChess] = useState(() => new Chess());
   const [boardFen, setBoardFen] = useState(chess.fen());
-  const [evalScore, setEvalScore] = useState(0); // Live, instant evaluation in centipawns (+ = White advantage)
+  const [evalScore, setEvalScore] = useState(0); // Centipawns (+ = White advantage)
   const [gameMode, setGameMode] = useState('ai'); // 'ai' | 'pass_play' | 'online'
   const [aiDifficulty, setAiDifficulty] = useState('medium'); // 'easy' | 'medium' | 'hard' | 'master'
-  const [playerColor, setPlayerColor] = useState('w'); // 'w' or 'b' for human in AI mode
+  const [playerColor, setPlayerColor] = useState('w'); // 'w' or 'b'
   const [isFlipped, setIsFlipped] = useState(false);
   const [lastMove, setLastMove] = useState(null);
   const [history, setHistory] = useState([]);
-  const [viewHistoryIndex, setViewHistoryIndex] = useState(null); // null means live match
+  const [viewHistoryIndex, setViewHistoryIndex] = useState(null); // null = Live match
   const [capturedPieces, setCapturedPieces] = useState({ w: [], b: [] });
   const [materialScore, setMaterialScore] = useState(0); // + = White advantage
   const [gameOverResult, setGameOverResult] = useState(null);
@@ -61,17 +67,25 @@ export default function App() {
   const timerIntervalRef = useRef(null);
 
   // --- AI Coach Mode State ---
-  const [coachEnabled, setCoachEnabled] = useState(true); // ON by default to showcase feature
+  const [coachEnabled, setCoachEnabled] = useState(true);
   const [coachAnalysis, setCoachAnalysis] = useState(null);
   const [showCoachArrow, setShowCoachArrow] = useState(true);
   const [isCoachThinking, setIsCoachThinking] = useState(false);
 
+  // --- Neo-Brutalist Layout & Tabs State ---
+  const [activeTab, setActiveTab] = useState('battle'); // 'battle' | 'scoresheet' | 'coach' | 'settings'
+  const [isDarkTheme, setIsDarkTheme] = useState(false);
+
   // --- Settings State ---
-  const [boardTheme, setBoardTheme] = useState('emerald');
+  const [boardTheme, setBoardTheme] = useState('neo_emerald');
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundVolume, setSoundVolume] = useState(0.7);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [showLegalDots, setShowLegalDots] = useState(true);
+  const [showCoordinates, setShowCoordinates] = useState(true);
+  const [showLastMoveHighlight, setShowLastMoveHighlight] = useState(true);
   const [autoQueen, setAutoQueen] = useState(false);
+  const [blindfoldMode, setBlindfoldMode] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // --- Online Multiplayer State ---
@@ -86,9 +100,10 @@ export default function App() {
   useEffect(() => {
     sound.enabled = soundEnabled;
     sound.voiceEnabled = voiceEnabled;
-  }, [soundEnabled, voiceEnabled]);
+    sound.setVolume(soundVolume);
+  }, [soundEnabled, voiceEnabled, soundVolume]);
 
-  // Compute captured pieces and net material
+  // Compute captured pieces and material score
   const calculateMaterial = useCallback((game) => {
     const counts = { p: 8, n: 2, b: 2, r: 2, q: 1 };
     const board = game.board();
@@ -110,11 +125,9 @@ export default function App() {
     let scoreB = 0;
 
     Object.keys(counts).forEach((p) => {
-      // Pieces White captured from Black
       const diffB = counts[p] - currentCounts.b[p];
       for (let i = 0; i < diffB; i++) capturedW.push(p);
 
-      // Pieces Black captured from White
       const diffW = counts[p] - currentCounts.w[p];
       for (let i = 0; i < diffW; i++) capturedB.push(p.toUpperCase());
 
@@ -136,13 +149,11 @@ export default function App() {
       return;
     }
 
-    // In single player AI mode, only advise when it's the human's turn!
     if (gameMode === 'ai' && gameInstance.turn() !== playerColor) {
       return;
     }
 
     setIsCoachThinking(true);
-    // Asynchronous calculation so UI remains smooth and instant
     setTimeout(() => {
       try {
         const analysis = analyzeAndExplain(gameInstance);
@@ -153,7 +164,7 @@ export default function App() {
       } finally {
         setIsCoachThinking(false);
       }
-    }, 60);
+    }, 50);
   }, [coachEnabled, gameMode, playerColor]);
 
   // Initial coach run on mount
@@ -174,12 +185,11 @@ export default function App() {
         if (!prev) return prev;
         const currentVal = prev[turn];
         if (currentVal <= 1) {
-          // Time expired!
           const winner = turn === 'w' ? 'b' : 'w';
           setGameOverResult({
             type: 'timeout',
             winner,
-            reason: `${turn === 'w' ? 'White' : 'Black'} ran out of time`
+            reason: `${turn === 'w' ? 'White' : 'Black'} ran out of time on clock`
           });
           clearInterval(timerIntervalRef.current);
           return { ...prev, [turn]: 0 };
@@ -197,7 +207,7 @@ export default function App() {
   // Execute a move on the board
   const executeMove = useCallback((moveCandidate) => {
     try {
-      // Check if pawn promotion
+      // Pawn promotion check
       const piece = chess.get(moveCandidate.from);
       if (piece && piece.type === 'p') {
         const targetRank = moveCandidate.to[1];
@@ -213,7 +223,7 @@ export default function App() {
         }
       }
 
-      // Clone chess to create an updated instance for React state
+      // Clone chess instance
       const nextGame = new Chess(chess.fen());
       const movePayload = typeof moveCandidate === 'string'
         ? moveCandidate
@@ -238,7 +248,6 @@ export default function App() {
         sound.playCheck();
       }
 
-      // Update state
       const newFen = nextGame.fen();
       setChess(nextGame);
       setBoardFen(newFen);
@@ -252,13 +261,14 @@ export default function App() {
         color: moveResult.color,
         fen: newFen
       };
+
       setHistory((prev) => [...prev, newHistoryItem]);
-      setViewHistoryIndex(null); // return to live position
+      setViewHistoryIndex(null); // Return to live
 
       calculateMaterial(nextGame);
       setEvalScore(evaluateBoard(nextGame));
 
-      // Check for Game Over conditions
+      // Game over checks
       if (nextGame.isGameOver()) {
         if (nextGame.isCheckmate()) {
           const winner = nextGame.turn() === 'w' ? 'b' : 'w';
@@ -278,21 +288,19 @@ export default function App() {
         }
       }
 
-      // If Online Mode, send move to socket
+      // Online move emission
       if (gameMode === 'online' && socket && onlineRoomCode) {
         socket.emit('make_move', { roomId: onlineRoomCode, move: moveCandidate });
       }
 
-      // Re-run AI Coach
       runCoachAnalysis(nextGame);
-
       return moveResult;
     } catch (err) {
       console.error('Error executing move:', err);
     }
   }, [chess, autoQueen, gameMode, socket, onlineRoomCode, calculateMaterial, runCoachAnalysis]);
 
-  // Handle single player vs computer turn
+  // Computer AI turn calculation
   useEffect(() => {
     if (gameMode !== 'ai' || gameOverResult) {
       setIsBotThinking(false);
@@ -315,7 +323,7 @@ export default function App() {
         } finally {
           setIsBotThinking(false);
         }
-      }, 150); // fast, snappy response
+      }, 120);
 
       return () => clearTimeout(timer);
     } else {
@@ -323,7 +331,7 @@ export default function App() {
     }
   }, [boardFen, gameMode, playerColor, aiDifficulty, gameOverResult, chess, executeMove]);
 
-  // Setup Online Multiplayer Socket connection
+  // Online Multiplayer Socket
   useEffect(() => {
     const newSocket = io(window.location.origin, {
       transports: ['websocket', 'polling'],
@@ -434,6 +442,25 @@ export default function App() {
     sound.playMove();
   }, [timeControl, runCoachAnalysis]);
 
+  // Custom FEN Loader (New Feature!)
+  const handleLoadCustomFen = useCallback((customFen) => {
+    try {
+      const loadedGame = new Chess(customFen);
+      setChess(loadedGame);
+      setBoardFen(loadedGame.fen());
+      setLastMove(null);
+      setHistory([]);
+      setViewHistoryIndex(null);
+      calculateMaterial(loadedGame);
+      setEvalScore(evaluateBoard(loadedGame));
+      setGameOverResult(null);
+      runCoachAnalysis(loadedGame);
+      sound.playCheck();
+    } catch (e) {
+      alert('Invalid FEN format: ' + e.message);
+    }
+  }, [calculateMaterial, runCoachAnalysis]);
+
   // Promotion Selection
   const handleSelectPromotion = (pieceType) => {
     if (!pendingPromotion) return;
@@ -507,7 +534,7 @@ export default function App() {
 
   const isLivePosition = viewHistoryIndex === null || history.length === 0 || viewHistoryIndex === history.length - 1;
 
-  // Memoized board instance for display: shows exact historical position when reviewing
+  // Memoized board instance for display
   const displayChess = useMemo(() => {
     if (viewHistoryIndex === null || history.length === 0) return chess;
     if (viewHistoryIndex === -1) {
@@ -526,7 +553,7 @@ export default function App() {
     return chess;
   }, [chess, history, viewHistoryIndex]);
 
-  // Last move squares to highlight on board: updates when stepping backward/forward
+  // Last move squares to highlight on board
   const displayLastMove = useMemo(() => {
     if (viewHistoryIndex === null) return lastMove;
     if (viewHistoryIndex === -1) return null;
@@ -542,7 +569,6 @@ export default function App() {
     if (gameMode === 'online' || isBotThinking) return;
     const newGame = new Chess(chess.fen());
     if (gameMode === 'ai') {
-      // In vs AI mode, undo twice so it is player's turn again
       newGame.undo();
       newGame.undo();
     } else {
@@ -557,6 +583,34 @@ export default function App() {
     setEvalScore(evaluateBoard(newGame));
     runCoachAnalysis(newGame);
   };
+
+  // Keyboard Hotkeys Listener
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignore if user is typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowLeft') {
+        handleGoPrev();
+      } else if (e.key === 'ArrowRight') {
+        handleGoNext();
+      } else if (e.key === 'ArrowDown') {
+        handleGoFirst();
+      } else if (e.key === 'ArrowUp') {
+        handleGoLast();
+      } else if (e.key === 'f' || e.key === 'F') {
+        setIsFlipped((prev) => !prev);
+      } else if (e.key === 'z' || e.key === 'Z') {
+        handleUndoMove();
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        handleApplyBestMove();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleGoPrev, handleGoNext, handleGoFirst, handleGoLast]);
 
   // Find King square if in check for visual red pulse
   let kingInCheckSq = null;
@@ -585,7 +639,7 @@ export default function App() {
   const player2 = {
     name:
       gameMode === 'ai'
-        ? `Computer AI (${aiDifficulty.toUpperCase()})`
+        ? `Bot AI (${aiDifficulty.toUpperCase()})`
         : gameMode === 'online'
         ? onlineMyColor === 'b'
           ? 'You'
@@ -609,87 +663,96 @@ export default function App() {
   const bottomPlayer = isFlipped ? player2 : player1;
 
   return (
-    <div className="relative min-h-screen bg-[#070708] text-neutral-100 flex flex-col justify-between selection:bg-emerald-500/30 selection:text-emerald-300 overflow-x-hidden">
-      {/* Floating Architectural Chess Pieces & Constellation Background */}
-      <FloatingPiecesBackground />
+    <div className={`relative min-h-screen lg:h-screen lg:max-h-screen flex flex-col justify-between selection:bg-[#22c55e] selection:text-black font-brutal overflow-x-hidden ${isDarkTheme ? 'bg-[#0f0f12] text-white' : 'bg-[#f4f4ec] text-black'}`}>
+      {/* Neo-Brutalist Grid Background */}
+      <FloatingPiecesBackground isDark={isDarkTheme} />
 
-      {/* Top Masthead & Atelier Navigation */}
-      <header className="relative z-30 border-b border-neutral-800 bg-[#0e0e13]/95 backdrop-blur-2xl px-4 sm:px-6 py-2.5 flex items-center justify-between shadow-xl shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-green-500 flex items-center justify-center font-black text-white text-xl shadow-[0_0_15px_rgba(16,185,129,0.35)] ring-1 ring-emerald-300">
+      {/* Top Neo-Brutalist Masthead */}
+      <header className={`relative z-30 border-b-3 border-black px-3 sm:px-5 py-2 flex items-center justify-between shadow-md shrink-0 ${isDarkTheme ? 'bg-[#18181b]' : 'bg-white'}`}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-[#22c55e] border-2 border-black flex items-center justify-center font-black text-black text-lg brutal-shadow-sm">
             ♞
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-serif-master text-base sm:text-lg font-black tracking-[0.12em] uppercase text-white">
-                Atelier Chess
+              <h1 className="font-brutal text-sm sm:text-base font-black uppercase tracking-tight">
+                BRUTAL CHESS 2.0
               </h1>
-              <span className="font-serif-master text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400 shadow-sm">
-                GM Dossier
+              <span className="font-mono text-[9px] font-black uppercase px-1.5 py-0.2 bg-[#facc15] text-black border border-black hidden sm:inline">
+                MINIMAX v2.0
               </span>
             </div>
-            <p className="text-[11px] text-neutral-300 font-sans hidden sm:block tracking-wide">
-              Stockfish-Calibrated Engine • Real-time Tactical Dossier • Zero Blue
+            <p className="text-[10px] font-mono text-neutral-500 hidden md:block">
+              ZERO BLUE • STOCKFISH CALIBRATED • 100% TACTICAL
             </p>
           </div>
         </div>
 
-        {/* Quick Mode Switches & Controls in Header */}
-        <div className="flex items-center gap-2">
+        {/* Header Action Buttons */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Quick Match Mode Switcher */}
-          <div className="flex rounded-xl bg-black/70 border-2 border-neutral-700 p-0.5">
+          <div className="flex border-2 border-black bg-black p-0.5">
             <button
               onClick={() => {
                 setGameMode('ai');
                 setIsFlipped(playerColor === 'b');
               }}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 font-serif-master text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer border ${
-                gameMode === 'ai'
-                  ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
-                  : 'bg-transparent text-neutral-200 hover:text-white border-transparent'
+              className={`px-2 sm:px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
+                gameMode === 'ai' ? 'bg-[#22c55e] text-black' : 'bg-black text-white hover:text-[#22c55e]'
               }`}
             >
-              <Bot className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">vs</span> AI
+              vs AI
             </button>
             <button
               onClick={() => setGameMode('pass_play')}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 font-serif-master text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer border ${
-                gameMode === 'pass_play'
-                  ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
-                  : 'bg-transparent text-neutral-200 hover:text-white border-transparent'
+              className={`px-2 sm:px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
+                gameMode === 'pass_play' ? 'bg-[#22c55e] text-black' : 'bg-black text-white hover:text-[#22c55e]'
               }`}
             >
-              <Users className="w-3.5 h-3.5" />
               1v1
             </button>
             <button
               onClick={() => setIsOnlineModalOpen(true)}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 font-serif-master text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer border ${
-                gameMode === 'online'
-                  ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
-                  : 'bg-transparent text-neutral-200 hover:text-white border-transparent'
+              className={`px-2 sm:px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
+                gameMode === 'online' ? 'bg-[#22c55e] text-black' : 'bg-black text-white hover:text-[#22c55e]'
               }`}
             >
-              <Wifi className="w-3.5 h-3.5" />
-              Online
+              ONLINE
             </button>
           </div>
 
           {/* Flip Board Button */}
           <button
             onClick={() => setIsFlipped(!isFlipped)}
-            className="p-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 border-2 border-neutral-600 text-white hover:text-emerald-300 hover:border-emerald-400 transition-all cursor-pointer shadow-sm"
-            title="Invert Board Perspective (Flip Board)"
+            className="brutal-press p-1.5 sm:p-2 bg-white text-black hover:bg-neutral-100 border-2 border-black cursor-pointer brutal-shadow-sm"
+            title="Flip Board Perspective (HotKey: F)"
           >
             <Repeat className="w-4 h-4" />
+          </button>
+
+          {/* Quick Mute / Sound Toggle */}
+          <button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className="brutal-press p-1.5 sm:p-2 bg-white text-black hover:bg-neutral-100 border-2 border-black cursor-pointer brutal-shadow-sm"
+            title="Toggle Sound Effects"
+          >
+            {soundEnabled ? <Volume2 className="w-4 h-4 text-[#22c55e]" /> : <VolumeX className="w-4 h-4 text-[#ef4444]" />}
+          </button>
+
+          {/* Dark / Light Toggle */}
+          <button
+            onClick={() => setIsDarkTheme(!isDarkTheme)}
+            className="brutal-press p-1.5 sm:p-2 bg-white text-black hover:bg-neutral-100 border-2 border-black cursor-pointer brutal-shadow-sm"
+            title="Toggle Dark / Light Brutalism"
+          >
+            {isDarkTheme ? <Sun className="w-4 h-4 text-[#facc15]" /> : <Moon className="w-4 h-4 text-black" />}
           </button>
 
           {/* Settings Modal Button */}
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="p-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 border-2 border-neutral-600 text-white hover:text-emerald-300 hover:border-emerald-400 transition-all cursor-pointer shadow-sm"
-            title="Atelier Preferences"
+            className="brutal-press p-1.5 sm:p-2 bg-white text-black hover:bg-neutral-100 border-2 border-black cursor-pointer brutal-shadow-sm"
+            title="System Preferences & Blindfold Mode"
           >
             <Settings className="w-4 h-4" />
           </button>
@@ -697,18 +760,18 @@ export default function App() {
           {/* New Game Button */}
           <button
             onClick={startNewGame}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 border-2 border-emerald-300 text-white font-serif-master font-black text-xs uppercase tracking-wider shadow-md hover:shadow-emerald-500/30 transition-all cursor-pointer"
+            className="brutal-press flex items-center gap-1 px-3 py-1.5 bg-[#22c55e] hover:bg-green-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
           >
             <PlusCircle className="w-4 h-4" />
-            <span className="hidden sm:inline">New Match</span>
+            <span className="hidden sm:inline">NEW MATCH</span>
           </button>
         </div>
       </header>
 
-      {/* Main Body: Board on Left, Controls & History on Right */}
-      <main className="flex-1 w-full max-w-7xl mx-auto p-3 sm:p-5 lg:p-6 flex flex-col md:flex-row items-center md:items-start justify-center gap-5 lg:gap-8 min-h-0">
-        {/* Left Column: Player Cards + Chess Board + Step Navigation Dock */}
-        <div className="flex flex-col items-center gap-2.5 w-full max-w-[min(94vw,560px)] shrink-0">
+      {/* Main Body: Compact 2-Column Dashboard (Fits screen without scrolling) */}
+      <main className="flex-1 w-full max-w-7xl mx-auto p-2 sm:p-4 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-4 min-h-0 lg:overflow-hidden">
+        {/* Left Column: Top Player + Board with EvalBar + Bottom Player + Step Navigation */}
+        <div className="flex flex-col items-center gap-2 w-full max-w-[min(94vw,540px)] shrink-0">
           {/* Top Player Card */}
           <PlayerCard
             player={topPlayer}
@@ -719,12 +782,10 @@ export default function App() {
             materialAdvantage={topPlayer.color === 'w' ? Math.max(0, materialScore) : Math.max(0, -materialScore)}
           />
 
-          {/* Chessboard with Evaluation Bar */}
-          <div className="flex items-center gap-2.5 sm:gap-3 w-full">
-            {/* Dynamic Live Evaluation Bar */}
+          {/* Chessboard + Dynamic Eval Bar */}
+          <div className="flex items-center gap-2.5 w-full">
             <EvalBar evalScore={evalScore} isFlipped={isFlipped} />
 
-            {/* Interactive Board (Restored to full 560px max width) */}
             <div className="flex-1">
               <ChessBoard
                 chess={displayChess}
@@ -735,6 +796,9 @@ export default function App() {
                 coachMove={coachAnalysis?.bestMove}
                 showCoachArrow={isLivePosition && coachEnabled && showCoachArrow}
                 showLegalDots={isLivePosition && showLegalDots}
+                showCoordinates={showCoordinates}
+                showLastMoveHighlight={showLastMoveHighlight}
+                blindfoldMode={blindfoldMode}
                 interactive={
                   isLivePosition &&
                   !gameOverResult &&
@@ -748,70 +812,70 @@ export default function App() {
             </div>
           </div>
 
-          {/* Prominent High-Contrast Step Navigation Bar (Start, Back, Status, Forward, Last) */}
-          <div className="w-full rounded-xl py-2 px-3 bg-[#16161f] border-2 border-neutral-700 shadow-md flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+          {/* Board Step Navigation Dock (Start, Back, Status, Fwd, Live) */}
+          <div className="w-full bg-white text-black border-3 border-black p-1.5 flex items-center justify-between gap-1.5 brutal-shadow select-none">
+            <div className="flex items-center gap-1">
               <button
                 onClick={handleGoFirst}
                 disabled={history.length === 0 || viewHistoryIndex === -1}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-neutral-600 text-white font-serif-master text-xs uppercase font-bold transition-all cursor-pointer shadow-sm"
+                className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
                 title="Jump to Initial Board (Move 0)"
               >
-                <ChevronFirst className="w-4 h-4 text-emerald-400" />
-                <span>Start</span>
+                <ChevronFirst className="w-4 h-4 text-black" />
+                <span className="hidden sm:inline">START</span>
               </button>
               <button
                 onClick={handleGoPrev}
                 disabled={history.length === 0 || viewHistoryIndex === -1}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-emerald-600 disabled:opacity-40 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-emerald-400 text-white font-serif-master text-xs font-black uppercase transition-all cursor-pointer shadow-md"
+                className="brutal-press flex items-center gap-1 px-3 py-1 bg-white hover:bg-[#22c55e] disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
                 title="Step Back one move"
               >
-                <ChevronLeft className="w-4 h-4 text-emerald-300 stroke-[3]" />
-                <span>◀ Back</span>
+                <ChevronLeft className="w-4 h-4 stroke-[3]" />
+                <span>BACK</span>
               </button>
             </div>
 
-            {/* Current Move Status Pill */}
-            <div className="flex items-center">
+            {/* Current Move Status */}
+            <div>
               {history.length === 0 ? (
-                <div className="px-3 py-1 rounded-lg bg-neutral-800 border-2 border-neutral-600 text-white font-mono text-xs font-bold">
-                  Move 0 (Start)
+                <div className="px-2.5 py-0.5 border-2 border-black font-mono text-xs font-black bg-black text-white">
+                  MOVE 0
                 </div>
               ) : isLivePosition ? (
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 font-mono text-xs font-black shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-                  <span>Live ({history.length} {history.length === 1 ? 'Move' : 'Moves'})</span>
+                <div className="flex items-center gap-1 px-2.5 py-0.5 border-2 border-black font-mono text-xs font-black bg-[#22c55e] text-black">
+                  <span className="w-2 h-2 rounded-full bg-black animate-ping inline-block" />
+                  <span>LIVE ({history.length}M)</span>
                 </div>
               ) : (
                 <button
                   onClick={handleGoLast}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/25 border-2 border-amber-400 text-amber-200 font-mono text-xs font-black hover:bg-amber-500/35 transition-all cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.35)] animate-pulse"
+                  className="brutal-press flex items-center gap-1 px-2.5 py-0.5 border-2 border-black font-mono text-xs font-black bg-[#facc15] text-black cursor-pointer animate-pulse"
                   title="Click to jump back to live match"
                 >
-                  <span>Move {viewHistoryIndex === -1 ? '0' : `${viewHistoryIndex + 1}/${history.length}`}</span>
-                  <span className="text-[10px] uppercase font-serif-master text-white underline font-black">Live ▶|</span>
+                  <span>MOVE {viewHistoryIndex === -1 ? '0' : `${viewHistoryIndex + 1}/${history.length}`}</span>
+                  <span className="underline font-black">LIVE ▶|</span>
                 </button>
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <button
                 onClick={handleGoNext}
                 disabled={history.length === 0 || isLivePosition}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-emerald-600 disabled:opacity-40 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-emerald-400 text-white font-serif-master text-xs font-black uppercase transition-all cursor-pointer shadow-md"
+                className="brutal-press flex items-center gap-1 px-3 py-1 bg-white hover:bg-[#22c55e] disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
                 title="Step Forward one move"
               >
-                <span>Fwd ▶</span>
-                <ChevronRight className="w-4 h-4 text-emerald-300 stroke-[3]" />
+                <span>FWD</span>
+                <ChevronRight className="w-4 h-4 stroke-[3]" />
               </button>
               <button
                 onClick={handleGoLast}
                 disabled={history.length === 0 || isLivePosition}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed border-2 border-neutral-600 text-white font-serif-master text-xs uppercase font-bold transition-all cursor-pointer shadow-sm"
+                className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-[#22c55e] hover:bg-green-400 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow-sm cursor-pointer"
                 title="Jump to Latest Live Move"
               >
-                <span>Live</span>
-                <ChevronLast className="w-4 h-4 text-emerald-400" />
+                <span className="hidden sm:inline">LIVE</span>
+                <ChevronLast className="w-4 h-4 text-black" />
               </button>
             </div>
           </div>
@@ -827,220 +891,329 @@ export default function App() {
           />
         </div>
 
-        {/* Right Column: AI Mode Controls + Move History + AI Coach + Action Buttons */}
-        <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col gap-3 shrink-0">
-          {/* 1. DEDICATED GAME MODE & AI CONTROL PANEL */}
-          <div className="p-3 sm:p-4 rounded-2xl bg-[#16161f] border-2 border-neutral-700 shadow-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Bot className="w-5 h-5 text-emerald-400" />
-                <h2 className="font-serif-master font-black text-sm uppercase tracking-wider text-white">
-                  Game Mode & Opponent
-                </h2>
-              </div>
-              <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400">
-                {gameMode === 'ai' ? 'Single Player' : gameMode === 'online' ? 'Multiplayer' : 'Pass & Play'}
-              </span>
-            </div>
+        {/* Right Column: High-Density Neo-Brutalist Tactical Station */}
+        <div className="w-full lg:w-[420px] flex flex-col gap-2.5 shrink-0 lg:h-full lg:overflow-y-auto pr-0.5">
+          {/* Tactical Tab Bar (4 Tabs) */}
+          <div className="grid grid-cols-4 gap-1 border-3 border-black p-1 bg-black text-white shrink-0">
+            <button
+              onClick={() => setActiveTab('battle')}
+              className={`py-1.5 font-brutal text-xs font-black uppercase transition-all cursor-pointer ${
+                activeTab === 'battle' ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-transparent text-white hover:text-[#22c55e]'
+              }`}
+            >
+              ⚔️ Battle
+            </button>
+            <button
+              onClick={() => setActiveTab('scoresheet')}
+              className={`py-1.5 font-brutal text-xs font-black uppercase transition-all cursor-pointer ${
+                activeTab === 'scoresheet' ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-transparent text-white hover:text-[#22c55e]'
+              }`}
+            >
+              📜 Moves
+            </button>
+            <button
+              onClick={() => setActiveTab('coach')}
+              className={`py-1.5 font-brutal text-xs font-black uppercase transition-all cursor-pointer ${
+                activeTab === 'coach' ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-transparent text-white hover:text-[#22c55e]'
+              }`}
+            >
+              🧠 Coach
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`py-1.5 font-brutal text-xs font-black uppercase transition-all cursor-pointer ${
+                activeTab === 'settings' ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-transparent text-white hover:text-[#22c55e]'
+              }`}
+            >
+              ⚙️ Tools
+            </button>
+          </div>
 
-            {/* 3 Main Game Mode Buttons */}
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => {
-                  setGameMode('ai');
-                  setIsFlipped(playerColor === 'b');
-                }}
-                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border-2 transition-all cursor-pointer ${
-                  gameMode === 'ai'
-                    ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
-                    : 'bg-neutral-800 text-neutral-200 border-neutral-600 hover:border-neutral-400 hover:text-white'
-                }`}
-              >
-                <Bot className="w-4 h-4 mb-0.5" />
-                <span className="font-serif-master text-xs font-black">vs Computer</span>
-                <span className="text-[9px] font-mono opacity-80">AI Engine</span>
-              </button>
-
-              <button
-                onClick={() => setGameMode('pass_play')}
-                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border-2 transition-all cursor-pointer ${
-                  gameMode === 'pass_play'
-                    ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
-                    : 'bg-neutral-800 text-neutral-200 border-neutral-600 hover:border-neutral-400 hover:text-white'
-                }`}
-              >
-                <Users className="w-4 h-4 mb-0.5" />
-                <span className="font-serif-master text-xs font-black">1v1 Local</span>
-                <span className="text-[9px] font-mono opacity-80">Pass & Play</span>
-              </button>
-
-              <button
-                onClick={() => setIsOnlineModalOpen(true)}
-                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border-2 transition-all cursor-pointer ${
-                  gameMode === 'online'
-                    ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
-                    : 'bg-neutral-800 text-neutral-200 border-neutral-600 hover:border-neutral-400 hover:text-white'
-                }`}
-              >
-                <Wifi className="w-4 h-4 mb-0.5" />
-                <span className="font-serif-master text-xs font-black">Online</span>
-                <span className="text-[9px] font-mono opacity-80">Multiplayer</span>
-              </button>
-            </div>
-
-            {/* AI Settings Sub-Panel (Visible in AI Mode) */}
-            {gameMode === 'ai' && (
-              <div className="pt-2 border-t border-neutral-800 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-serif-master font-black text-neutral-200 uppercase tracking-wide">
-                    Computer AI Difficulty
+          {/* TAB 1: BATTLE (Game Mode, AI Controls, Clocks, Actions) */}
+          {activeTab === 'battle' && (
+            <div className="space-y-2.5">
+              {/* Game Mode Chooser Card */}
+              <div className="bg-white text-black border-3 border-black p-3 brutal-shadow space-y-2.5">
+                <div className="flex items-center justify-between border-b-2 border-black pb-1.5">
+                  <span className="font-brutal text-xs font-black uppercase">
+                    Opponent Selection
                   </span>
-                  <span className="font-mono text-emerald-300 font-bold text-[11px]">
-                    ~{aiDifficulty === 'easy' ? '800' : aiDifficulty === 'medium' ? '1200' : aiDifficulty === 'hard' ? '1600' : '2100'} ELO
+                  <span className="font-mono text-[10px] font-black uppercase px-1.5 bg-[#facc15] border border-black">
+                    {gameMode === 'ai' ? 'SINGLE PLAYER' : gameMode === 'online' ? 'MULTIPLAYER' : 'PASS & PLAY'}
                   </span>
                 </div>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {[
-                    { id: 'easy', label: 'Novice', elo: '800' },
-                    { id: 'medium', label: 'Club', elo: '1200' },
-                    { id: 'hard', label: 'Expert', elo: '1600' },
-                    { id: 'master', label: 'Master', elo: '2100' }
-                  ].map((d) => (
-                    <button
-                      key={d.id}
-                      onClick={() => setAiDifficulty(d.id)}
-                      className={`flex flex-col items-center py-1.5 px-1 rounded-lg border-2 transition-all cursor-pointer ${
-                        aiDifficulty === d.id
-                          ? 'bg-emerald-600 text-white border-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
-                          : 'bg-neutral-800 text-neutral-200 border-neutral-600 hover:border-neutral-400 hover:text-white'
-                      }`}
-                    >
-                      <span className="font-serif-master text-xs font-black">{d.label}</span>
-                      <span className="text-[10px] font-mono text-emerald-300 font-bold">~{d.elo}</span>
-                    </button>
-                  ))}
+
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    onClick={() => {
+                      setGameMode('ai');
+                      setIsFlipped(playerColor === 'b');
+                    }}
+                    className={`brutal-press py-2 px-1 border-2 border-black flex flex-col items-center justify-center cursor-pointer ${
+                      gameMode === 'ai' ? 'bg-[#22c55e] text-black brutal-shadow-sm font-black' : 'bg-[#f4f4eb] hover:bg-neutral-200'
+                    }`}
+                  >
+                    <Bot className="w-4 h-4 mb-0.5" />
+                    <span className="font-brutal text-xs font-black">vs BOT AI</span>
+                  </button>
+
+                  <button
+                    onClick={() => setGameMode('pass_play')}
+                    className={`brutal-press py-2 px-1 border-2 border-black flex flex-col items-center justify-center cursor-pointer ${
+                      gameMode === 'pass_play' ? 'bg-[#22c55e] text-black brutal-shadow-sm font-black' : 'bg-[#f4f4eb] hover:bg-neutral-200'
+                    }`}
+                  >
+                    <Users className="w-4 h-4 mb-0.5" />
+                    <span className="font-brutal text-xs font-black">1v1 LOCAL</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsOnlineModalOpen(true)}
+                    className={`brutal-press py-2 px-1 border-2 border-black flex flex-col items-center justify-center cursor-pointer ${
+                      gameMode === 'online' ? 'bg-[#22c55e] text-black brutal-shadow-sm font-black' : 'bg-[#f4f4eb] hover:bg-neutral-200'
+                    }`}
+                  >
+                    <Wifi className="w-4 h-4 mb-0.5" />
+                    <span className="font-brutal text-xs font-black">ONLINE</span>
+                  </button>
                 </div>
 
-                {/* Player Side Chooser */}
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-xs text-neutral-300 font-serif-master font-bold uppercase">
-                    Play As:
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => {
-                        setPlayerColor('w');
-                        setIsFlipped(false);
-                        startNewGame();
-                      }}
-                      className={`px-3 py-1 rounded-lg text-xs font-black font-serif-master uppercase border-2 transition-all cursor-pointer ${
-                        playerColor === 'w'
-                          ? 'bg-white text-neutral-900 border-white shadow-sm'
-                          : 'bg-neutral-800 text-neutral-300 border-neutral-600 hover:text-white'
-                      }`}
-                    >
-                      ⚪ White (First)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setPlayerColor('b');
-                        setIsFlipped(true);
-                        startNewGame();
-                      }}
-                      className={`px-3 py-1 rounded-lg text-xs font-black font-serif-master uppercase border-2 transition-all cursor-pointer ${
-                        playerColor === 'b'
-                          ? 'bg-neutral-900 text-white border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                          : 'bg-neutral-800 text-neutral-300 border-neutral-600 hover:text-white'
-                      }`}
-                    >
-                      ⚫ Black (Second)
-                    </button>
+                {/* AI Difficulty Sub-panel */}
+                {gameMode === 'ai' && (
+                  <div className="border-t-2 border-black pt-2 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-mono font-black">
+                      <span>ENGINE DIFFICULTY:</span>
+                      <span className="text-[#15803d]">
+                        ~{aiDifficulty === 'easy' ? '800' : aiDifficulty === 'medium' ? '1200' : aiDifficulty === 'hard' ? '1600' : '2100'} ELO
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-1 font-mono text-xs font-black">
+                      {[
+                        { id: 'easy', label: 'NOVICE', elo: '800' },
+                        { id: 'medium', label: 'CLUB', elo: '1200' },
+                        { id: 'hard', label: 'EXPERT', elo: '1600' },
+                        { id: 'master', label: 'MASTER', elo: '2100' }
+                      ].map((d) => (
+                        <button
+                          key={d.id}
+                          onClick={() => setAiDifficulty(d.id)}
+                          className={`brutal-press py-1.5 border-2 border-black cursor-pointer flex flex-col items-center ${
+                            aiDifficulty === d.id ? 'bg-[#22c55e] text-black brutal-shadow-sm font-black' : 'bg-[#f4f4eb] text-neutral-700'
+                          }`}
+                        >
+                          <span className="text-[10px]">{d.label}</span>
+                          <span className="text-[9px] opacity-75">{d.elo}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Side Chooser */}
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="font-brutal text-xs font-black uppercase">Play As:</span>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => {
+                            setPlayerColor('w');
+                            setIsFlipped(false);
+                            startNewGame();
+                          }}
+                          className={`brutal-press px-2.5 py-1 text-xs font-black border-2 border-black cursor-pointer ${
+                            playerColor === 'w' ? 'bg-white text-black brutal-shadow-sm font-black' : 'bg-neutral-200 text-neutral-600'
+                          }`}
+                        >
+                          ⚪ WHITE (FIRST)
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPlayerColor('b');
+                            setIsFlipped(true);
+                            startNewGame();
+                          }}
+                          className={`brutal-press px-2.5 py-1 text-xs font-black border-2 border-black cursor-pointer ${
+                            playerColor === 'b' ? 'bg-black text-white brutal-shadow-sm font-black' : 'bg-neutral-200 text-neutral-600'
+                          }`}
+                        >
+                          ⚫ BLACK (SECOND)
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* 2. MOVE HISTORY & SCORESHEET (Always visible with Forward / Backward navigation) */}
-          <MoveHistory
-            history={history}
-            currentMoveIndex={viewHistoryIndex === null ? (history.length - 1) : viewHistoryIndex}
-            isLive={isLivePosition}
-            onJumpToMove={handleJumpToMove}
-            onGoFirst={handleGoFirst}
-            onGoPrev={handleGoPrev}
-            onGoNext={handleGoNext}
-            onGoLast={handleGoLast}
-            fen={displayChess.fen()}
-            pgn={chess.pgn()}
-          />
+              {/* In-Game Action Buttons: Takeback, Resign, Draw */}
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={handleUndoMove}
+                  disabled={history.length === 0 || gameMode === 'online'}
+                  className="brutal-press flex items-center justify-center gap-1 py-2.5 bg-white hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
+                  title="Take back last move (HotKey: Z)"
+                >
+                  <RotateCcw className="w-4 h-4 text-[#22c55e]" />
+                  TAKEBACK
+                </button>
 
-          {/* 3. THE AI COACH & MOVE ADVISOR (Explains Best Move & Why in Real-Time) */}
-          <CoachAdvisor
-            coachEnabled={coachEnabled}
-            onToggleCoach={setCoachEnabled}
-            analysis={coachAnalysis}
-            onApplyBestMove={handleApplyBestMove}
-            showArrow={showCoachArrow}
-            onToggleArrow={() => setShowCoachArrow(!showCoachArrow)}
-            turnColor={chess.turn() === 'w' ? 'White' : 'Black'}
-            isThinking={isCoachThinking}
-          />
+                <button
+                  onClick={() => {
+                    const currentTurn = chess.turn();
+                    setGameOverResult({
+                      type: 'resignation',
+                      winner: currentTurn === 'w' ? 'b' : 'w',
+                      reason: `${currentTurn === 'w' ? 'White' : 'Black'} surrendered the match`
+                    });
+                  }}
+                  disabled={Boolean(gameOverResult) || history.length === 0}
+                  className="brutal-press flex items-center justify-center gap-1 py-2.5 bg-[#ef4444] hover:bg-red-400 disabled:opacity-40 disabled:cursor-not-allowed border-3 border-black text-white font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
+                  title="Resign current match"
+                >
+                  <Flag className="w-4 h-4 text-white" />
+                  RESIGN
+                </button>
 
-          {/* 4. Action Buttons: Takeback, Resign, Draw */}
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={handleUndoMove}
-              disabled={history.length === 0 || gameMode === 'online'}
-              className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-neutral-600 text-white font-serif-master font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm"
-              title="Undo last move"
-            >
-              <RotateCcw className="w-4 h-4 text-emerald-400" />
-              Takeback
-            </button>
+                <button
+                  onClick={() => {
+                    setGameOverResult({
+                      type: 'draw',
+                      winner: null,
+                      reason: 'Draw concluded by mutual consent'
+                    });
+                  }}
+                  disabled={Boolean(gameOverResult) || history.length === 0}
+                  className="brutal-press flex items-center justify-center gap-1 py-2.5 bg-white hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed border-3 border-black text-black font-brutal text-xs font-black uppercase brutal-shadow cursor-pointer"
+                  title="Offer match draw"
+                >
+                  <Handshake className="w-4 h-4 text-black" />
+                  DRAW
+                </button>
+              </div>
 
-            <button
-              onClick={() => {
-                const currentTurn = chess.turn();
-                setGameOverResult({
-                  type: 'resignation',
-                  winner: currentTurn === 'w' ? 'b' : 'w',
-                  reason: `${currentTurn === 'w' ? 'White' : 'Black'} surrendered the match`
-                });
-              }}
-              disabled={Boolean(gameOverResult) || history.length === 0}
-              className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-neutral-800 hover:bg-red-900/60 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-red-500 text-red-200 hover:text-white font-serif-master font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm"
-              title="Resign current match"
-            >
-              <Flag className="w-4 h-4 text-red-400" />
-              Resign
-            </button>
+              {/* Quick AI Coach Preview in Battle Tab */}
+              <CoachAdvisor
+                coachEnabled={coachEnabled}
+                onToggleCoach={setCoachEnabled}
+                analysis={coachAnalysis}
+                onApplyBestMove={handleApplyBestMove}
+                showArrow={showCoachArrow}
+                onToggleArrow={() => setShowCoachArrow(!showCoachArrow)}
+                turnColor={chess.turn() === 'w' ? 'White' : 'Black'}
+                isThinking={isCoachThinking}
+              />
+            </div>
+          )}
 
-            <button
-              onClick={() => {
-                setGameOverResult({
-                  type: 'draw',
-                  winner: null,
-                  reason: 'Draw concluded by mutual consent'
-                });
-              }}
-              disabled={Boolean(gameOverResult) || history.length === 0}
-              className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-neutral-600 text-white font-serif-master font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm"
-              title="Offer a draw to opponent"
-            >
-              <Handshake className="w-4 h-4 text-neutral-300" />
-              Offer Draw
-            </button>
-          </div>
+          {/* TAB 2: SCORESHEET (Move History, Click to Jump, FEN/PGN) */}
+          {activeTab === 'scoresheet' && (
+            <div className="space-y-2">
+              <MoveHistory
+                history={history}
+                currentMoveIndex={viewHistoryIndex === null ? (history.length - 1) : viewHistoryIndex}
+                isLive={isLivePosition}
+                onJumpToMove={handleJumpToMove}
+                onGoFirst={handleGoFirst}
+                onGoPrev={handleGoPrev}
+                onGoNext={handleGoNext}
+                onGoLast={handleGoLast}
+                fen={displayChess.fen()}
+                pgn={chess.pgn()}
+                onLoadFen={handleLoadCustomFen}
+              />
+            </div>
+          )}
+
+          {/* TAB 3: AI COACH (Detailed Tactical Dossier) */}
+          {activeTab === 'coach' && (
+            <div className="space-y-2">
+              <CoachAdvisor
+                coachEnabled={coachEnabled}
+                onToggleCoach={setCoachEnabled}
+                analysis={coachAnalysis}
+                onApplyBestMove={handleApplyBestMove}
+                showArrow={showCoachArrow}
+                onToggleArrow={() => setShowCoachArrow(!showCoachArrow)}
+                turnColor={chess.turn() === 'w' ? 'White' : 'Black'}
+                isThinking={isCoachThinking}
+              />
+            </div>
+          )}
+
+          {/* TAB 4: SETTINGS & TOOLS */}
+          {activeTab === 'settings' && (
+            <div className="bg-white text-black border-3 border-black p-3.5 brutal-shadow space-y-3">
+              <div className="flex items-center justify-between border-b-2 border-black pb-2">
+                <span className="font-brutal text-sm font-black uppercase">
+                  Engine & Visual Preferences
+                </span>
+                <span className="font-mono text-[10px] font-black px-1.5 bg-[#22c55e] text-black">
+                  ACTIVE
+                </span>
+              </div>
+
+              {/* Master Volume */}
+              <div className="bg-[#f4f4eb] border-2 border-black p-2 space-y-1">
+                <div className="flex items-center justify-between font-mono text-xs font-black">
+                  <span>MASTER AUDIO VOLUME</span>
+                  <span>{Math.round(soundVolume * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={soundVolume}
+                  onChange={(e) => setSoundVolume(parseFloat(e.target.value))}
+                  className="w-full accent-black cursor-pointer"
+                />
+              </div>
+
+              {/* Helpers */}
+              <div className="grid grid-cols-2 gap-1.5 font-mono text-xs font-black uppercase">
+                <button
+                  onClick={() => setShowCoordinates(!showCoordinates)}
+                  className={`brutal-press p-2 border-2 border-black cursor-pointer ${
+                    showCoordinates ? 'bg-[#22c55e] text-black' : 'bg-neutral-200 text-neutral-600'
+                  }`}
+                >
+                  COORDINATES: {showCoordinates ? 'ON' : 'OFF'}
+                </button>
+
+                <button
+                  onClick={() => setShowLegalDots(!showLegalDots)}
+                  className={`brutal-press p-2 border-2 border-black cursor-pointer ${
+                    showLegalDots ? 'bg-[#22c55e] text-black' : 'bg-neutral-200 text-neutral-600'
+                  }`}
+                >
+                  LEGAL DOTS: {showLegalDots ? 'ON' : 'OFF'}
+                </button>
+
+                <button
+                  onClick={() => setBlindfoldMode(!blindfoldMode)}
+                  className={`brutal-press col-span-2 p-2 border-2 border-black cursor-pointer ${
+                    blindfoldMode ? 'bg-[#facc15] text-black' : 'bg-neutral-200 text-neutral-600'
+                  }`}
+                >
+                  BLINDFOLD TRAINING: {blindfoldMode ? 'ACTIVE (PIECES HIDDEN)' : 'OFF'}
+                </button>
+              </div>
+
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="brutal-press w-full py-2 bg-black text-white hover:bg-neutral-800 font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm"
+              >
+                OPEN FULL PREFERENCES MODAL ▶
+              </button>
+            </div>
+          )}
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-neutral-800 py-2.5 text-center font-serif-master text-[11px] uppercase tracking-widest text-neutral-400 shrink-0">
-        Atelier Grandmaster Chess • Master Emerald & Crimson Ruby • High-Contrast Ergonomics
+      {/* Brutalist Footer Strip */}
+      <footer className={`border-t-3 border-black py-1.5 px-4 flex items-center justify-between text-[10px] font-mono font-black uppercase tracking-widest shrink-0 ${isDarkTheme ? 'bg-black text-white' : 'bg-white text-black'}`}>
+        <span>BRUTAL CHESS v2.0 // HIGH-EFFICIENCY MINIMAX</span>
+        <span className="hidden sm:inline">NO BLUE • 64 SQUARES • TACTICAL RADAR</span>
       </footer>
 
-      {/* Modals */}
+      {/* Modals with overscroll-behavior: contain per modern-web-guidance */}
       {pendingPromotion && (
         <PromotionModal
           color={chess.turn()}
@@ -1065,12 +1238,22 @@ export default function App() {
         onSelectTheme={setBoardTheme}
         soundEnabled={soundEnabled}
         onToggleSound={setSoundEnabled}
+        soundVolume={soundVolume}
+        onChangeVolume={setSoundVolume}
         voiceEnabled={voiceEnabled}
         onToggleVoice={setVoiceEnabled}
         showLegalDots={showLegalDots}
         onToggleLegalDots={setShowLegalDots}
+        showCoordinates={showCoordinates}
+        onToggleCoordinates={setShowCoordinates}
+        showLastMoveHighlight={showLastMoveHighlight}
+        onToggleLastMoveHighlight={setShowLastMoveHighlight}
         autoQueen={autoQueen}
         onToggleAutoQueen={setAutoQueen}
+        blindfoldMode={blindfoldMode}
+        onToggleBlindfold={setBlindfoldMode}
+        isDarkTheme={isDarkTheme}
+        onToggleDarkTheme={setIsDarkTheme}
       />
 
       <OnlineLobbyModal
@@ -1105,7 +1288,7 @@ export default function App() {
                 setTimers({ w: res.timeControl, b: res.timeControl });
               }
             } else {
-              setOnlineStatus(res.error || 'Failed to join');
+              setOnlineStatus(res.error || 'Failed to join room');
             }
           });
         }}

@@ -14,7 +14,8 @@ export const OnlineLobbyModal = ({
   const [inputCode, setInputCode] = useState('');
   const [timeChoice, setTimeChoice] = useState(300); // 5 mins
   const [colorChoice, setColorChoice] = useState('random');
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   if (!isOpen) return null;
 
@@ -23,16 +24,16 @@ export const OnlineLobbyModal = ({
   const handleCopyLink = () => {
     if (shareUrl) {
       navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
     }
   };
 
   const handleCopyCode = () => {
     if (roomCode) {
       navigator.clipboard.writeText(roomCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
     }
   };
 
@@ -48,18 +49,31 @@ export const OnlineLobbyModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
-      <div className="bg-[#121214] border border-neutral-700/80 rounded-3xl p-6 sm:p-7 shadow-[0_25px_60px_rgba(0,0,0,0.95)] max-w-md w-full space-y-5 relative ring-1 ring-white/10">
-        <div className="flex items-center justify-between border-b border-neutral-800/80 pb-3.5">
-          <div className="flex items-center gap-2.5">
-            <Wifi className="w-5 h-5 text-emerald-400" />
-            <h2 className="font-serif-master text-base sm:text-lg font-bold text-white tracking-wide">
-              Online Grandmaster Salon
-            </h2>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      style={{ overscrollBehavior: 'contain' }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="bg-white text-black border-4 border-black p-5 sm:p-6 brutal-shadow-xl max-w-md w-full space-y-5 relative select-none">
+        <div className="flex items-center justify-between border-b-3 border-black pb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-[#22c55e] border-2 border-black flex items-center justify-center">
+              <Wifi className="w-5 h-5 text-black" />
+            </div>
+            <div>
+              <h2 className="font-brutal text-base sm:text-lg font-black uppercase tracking-tight">
+                Online Multiplayer
+              </h2>
+              <p className="text-[11px] font-mono text-neutral-600">
+                P2P low-latency WebSockets matchmaker
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+            className="brutal-press p-1.5 bg-black text-white hover:bg-neutral-800 border-2 border-black cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -67,100 +81,89 @@ export const OnlineLobbyModal = ({
 
         {/* If waiting for opponent in an active room */}
         {isWaiting && roomCode ? (
-          <div className="py-6 text-center space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center mx-auto text-emerald-400 animate-pulse shadow-[0_0_20px_rgba(16,185,129,0.25)]">
-              <Users className="w-8 h-8" />
+          <div className="py-4 text-center space-y-4">
+            <div className="w-14 h-14 bg-[#22c55e] border-3 border-black flex items-center justify-center mx-auto brutal-shadow-sm">
+              <Users className="w-7 h-7 text-black animate-pulse" />
             </div>
 
             <div>
-              <h3 className="font-serif-master text-base font-bold text-white tracking-wide">
-                Awaiting Opponent's Arrival
-              </h3>
-              <p className="text-xs text-neutral-400 mt-1">
-                Share this match code or invitation link with your adversary
+              <span className="font-mono text-xs font-black uppercase px-2 py-0.5 bg-[#facc15] border-2 border-black">
+                [ ROOM ACTIVE // WAITING FOR OPPONENT ]
+              </span>
+              <p className="text-xs text-neutral-600 font-mono mt-2">
+                Share this match code or direct URL with your opponent:
               </p>
             </div>
 
-            {/* Room Code Display */}
-            <div className="p-4 rounded-2xl bg-black/50 border border-neutral-800 space-y-3 tray-inset">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-neutral-400 font-medium">Room Code:</span>
-                <span className="text-xl font-mono font-black text-emerald-400 tracking-wider">
-                  {roomCode}
-                </span>
-                <button
-                  onClick={handleCopyCode}
-                  className="px-2.5 py-1 text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 flex items-center gap-1 transition-all cursor-pointer border border-neutral-700"
-                >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copied ? 'Copied' : 'Copy'}</span>
-                </button>
+            {/* Room Code Display Block */}
+            <div className="p-3 bg-black text-white border-3 border-black flex items-center justify-between">
+              <div className="text-left font-mono">
+                <span className="text-[10px] text-neutral-400 uppercase">Match Code</span>
+                <div className="text-2xl font-black text-[#22c55e] tracking-widest">{roomCode}</div>
               </div>
-
-              <div className="border-t border-neutral-800 pt-2 flex items-center justify-between text-xs">
-                <span className="text-neutral-400 truncate max-w-[200px] font-mono text-[11px]">{shareUrl}</span>
-                <button
-                  onClick={handleCopyLink}
-                  className="text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer"
-                >
-                  Copy Link
-                </button>
-              </div>
+              <button
+                onClick={handleCopyCode}
+                className="brutal-press px-3 py-1.5 bg-white text-black hover:bg-[#22c55e] font-mono text-xs font-black uppercase border-2 border-white flex items-center gap-1.5 cursor-pointer"
+              >
+                {copiedCode ? <Check className="w-3.5 h-3.5 text-black" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedCode ? 'COPIED' : 'COPY'}</span>
+              </button>
             </div>
 
-            <div className="text-[11px] text-neutral-500 flex items-center justify-center gap-1.5 font-mono">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>Low-latency WebSocket channel active</span>
-            </div>
+            {/* Share Link Button */}
+            <button
+              onClick={handleCopyLink}
+              className="brutal-press w-full py-2 bg-[#f4f4eb] hover:bg-neutral-200 border-2 border-black font-mono text-xs font-black uppercase flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {copiedLink ? <Check className="w-4 h-4 text-[#15803d]" /> : <Copy className="w-4 h-4" />}
+              <span>{copiedLink ? 'INVITE LINK COPIED!' : 'COPY DIRECT INVITATION LINK'}</span>
+            </button>
           </div>
         ) : (
-          <div>
-            {/* Tabs */}
-            <div className="flex rounded-xl bg-neutral-900 border border-neutral-800 p-1 mb-4">
+          <div className="space-y-4">
+            {/* Tab Chooser */}
+            <div className="grid grid-cols-2 gap-2 border-2 border-black p-1 bg-[#f4f4eb]">
               <button
                 onClick={() => setTab('create')}
-                className={`flex-1 py-2 text-xs font-serif-master font-bold tracking-wider uppercase rounded-lg transition-all cursor-pointer ${
+                className={`py-1.5 font-brutal text-xs font-black uppercase transition-all cursor-pointer ${
                   tab === 'create'
-                    ? 'bg-emerald-600 text-white shadow-md'
-                    : 'text-neutral-400 hover:text-neutral-200'
+                    ? 'bg-black text-white brutal-shadow-sm'
+                    : 'bg-transparent text-black hover:bg-neutral-200'
                 }`}
               >
                 Create Room
               </button>
               <button
                 onClick={() => setTab('join')}
-                className={`flex-1 py-2 text-xs font-serif-master font-bold tracking-wider uppercase rounded-lg transition-all cursor-pointer ${
+                className={`py-1.5 font-brutal text-xs font-black uppercase transition-all cursor-pointer ${
                   tab === 'join'
-                    ? 'bg-emerald-600 text-white shadow-md'
-                    : 'text-neutral-400 hover:text-neutral-200'
+                    ? 'bg-black text-white brutal-shadow-sm'
+                    : 'bg-transparent text-black hover:bg-neutral-200'
                 }`}
               >
-                Join Match
+                Join with Code
               </button>
             </div>
 
             {tab === 'create' ? (
-              <div className="space-y-4">
+              <div className="space-y-3.5">
                 {/* Time Control */}
-                <div className="space-y-2">
-                  <label className="font-serif-master text-xs font-bold text-neutral-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                    Chronometer Control
+                <div className="space-y-1">
+                  <label className="font-brutal text-xs font-black uppercase">
+                    Clock Duration
                   </label>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-4 gap-1.5 font-mono text-xs font-black">
                     {[
-                      { label: '1 min', val: 60 },
-                      { label: '3 min', val: 180 },
-                      { label: '5 min', val: 300 },
-                      { label: '10 min', val: 600 }
+                      { label: '1 MIN', val: 60 },
+                      { label: '3 MIN', val: 180 },
+                      { label: '5 MIN', val: 300 },
+                      { label: '10 MIN', val: 600 }
                     ].map((t) => (
                       <button
                         key={t.val}
                         onClick={() => setTimeChoice(t.val)}
-                        className={`py-2 rounded-xl text-xs font-bold font-mono border transition-all cursor-pointer ${
-                          timeChoice === t.val
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.25)]'
-                            : 'bg-neutral-900 text-neutral-300 border-neutral-800 hover:border-neutral-700'
+                        className={`brutal-press py-1.5 border-2 border-black cursor-pointer ${
+                          timeChoice === t.val ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-[#f4f4eb] text-black'
                         }`}
                       >
                         {t.label}
@@ -169,24 +172,22 @@ export const OnlineLobbyModal = ({
                   </div>
                 </div>
 
-                {/* Color Choice */}
-                <div className="space-y-2">
-                  <label className="font-serif-master text-xs font-bold text-neutral-300 uppercase tracking-wider">
+                {/* Preferred Color */}
+                <div className="space-y-1">
+                  <label className="font-brutal text-xs font-black uppercase">
                     Play As
                   </label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-1.5 font-mono text-xs font-black">
                     {[
-                      { id: 'w', label: 'White' },
-                      { id: 'random', label: 'Random' },
-                      { id: 'b', label: 'Black' }
+                      { label: 'WHITE', val: 'w' },
+                      { label: 'RANDOM', val: 'random' },
+                      { label: 'BLACK', val: 'b' }
                     ].map((c) => (
                       <button
-                        key={c.id}
-                        onClick={() => setColorChoice(c.id)}
-                        className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                          colorChoice === c.id
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.25)]'
-                            : 'bg-neutral-900 text-neutral-300 border-neutral-800 hover:border-neutral-700'
+                        key={c.val}
+                        onClick={() => setColorChoice(c.val)}
+                        className={`brutal-press py-1.5 border-2 border-black cursor-pointer ${
+                          colorChoice === c.val ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-[#f4f4eb] text-black'
                         }`}
                       >
                         {c.label}
@@ -197,40 +198,39 @@ export const OnlineLobbyModal = ({
 
                 <button
                   onClick={handleCreate}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-serif-master font-bold text-xs uppercase tracking-wider shadow-lg hover:shadow-emerald-500/25 transition-all cursor-pointer"
+                  className="brutal-press w-full py-3 bg-[#22c55e] hover:bg-green-400 text-black border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
                 >
-                  Create & Launch Match Room
+                  CREATE MATCH ROOM ▶
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleJoin} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="font-serif-master text-xs font-bold text-neutral-300 uppercase tracking-wider">
-                    Enter Invitation Code
+              <form onSubmit={handleJoin} className="space-y-3.5">
+                <div className="space-y-1">
+                  <label className="font-brutal text-xs font-black uppercase">
+                    Enter 6-Character Room Code
                   </label>
                   <input
                     type="text"
-                    maxLength={10}
                     value={inputCode}
-                    onChange={(e) => setInputCode(e.target.value)}
-                    placeholder="e.g. GRAND-88"
-                    className="w-full px-4 py-3 rounded-xl bg-black/50 border border-neutral-800 text-white font-mono uppercase text-center tracking-widest text-lg focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 tray-inset"
+                    onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. A9X4K2"
+                    maxLength={6}
+                    className="w-full p-2.5 text-center font-mono text-lg font-black uppercase bg-[#f4f4eb] text-black border-3 border-black outline-none tracking-widest placeholder:text-neutral-400"
                   />
                 </div>
 
                 {onlineStatus && (
-                  <p className="text-xs text-amber-400 text-center font-medium font-sans">
+                  <div className="p-2 bg-red-100 border-2 border-red-600 font-mono text-xs text-red-700 font-black">
                     {onlineStatus}
-                  </p>
+                  </div>
                 )}
 
                 <button
                   type="submit"
                   disabled={!inputCode.trim()}
-                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-serif-master font-bold text-xs uppercase tracking-wider shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="brutal-press w-full py-3 bg-black hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed text-white border-3 border-black font-brutal text-sm font-black uppercase tracking-wider cursor-pointer brutal-shadow-sm"
                 >
-                  <span>Connect to Match</span>
-                  <ArrowRight className="w-4 h-4" />
+                  JOIN MATCH NOW ▶
                 </button>
               </form>
             )}
