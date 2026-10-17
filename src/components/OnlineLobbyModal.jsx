@@ -95,13 +95,13 @@ export const OnlineLobbyModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 modal-backdrop-anim"
       style={{ overscrollBehavior: 'contain' }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !isWaiting && !isSearchingQuickMatch) onClose();
       }}
     >
-      <div className="bg-white text-black border-4 border-black p-4 sm:p-6 brutal-shadow-xl max-w-md w-full space-y-3.5 relative select-none max-h-[92vh] overflow-y-auto">
+      <div className="bg-white text-black border-4 border-black p-4 sm:p-6 brutal-shadow-xl max-w-md w-full space-y-3.5 relative select-none max-h-[92vh] overflow-y-auto modal-content-anim">
         {/* Header Bar */}
         <div className="flex items-center justify-between border-b-3 border-black pb-3">
           <div className="flex items-center gap-2">

@@ -20,10 +20,13 @@ export const MoveHistory = ({
   const [showFenInput, setShowFenInput] = useState(false);
   const [customFenInput, setCustomFenInput] = useState('');
 
-  // Auto scroll to latest move when at live
+  // Auto scroll smoothly to latest move when at live
   useEffect(() => {
     if (containerRef.current && isLive) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+      containerRef.current.scrollTo({
+        top: containerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
     }
   }, [history.length, isLive]);
 

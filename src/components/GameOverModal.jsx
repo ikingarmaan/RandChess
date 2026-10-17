@@ -49,10 +49,10 @@ export const GameOverModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 modal-backdrop-anim"
       style={{ overscrollBehavior: 'contain' }}
     >
-      <div className="bg-white text-black border-4 border-black p-5 sm:p-7 brutal-shadow-xl max-w-md w-full text-center space-y-4 relative select-none max-h-[92vh] overflow-y-auto">
+      <div className="bg-white text-black border-4 border-black p-5 sm:p-7 brutal-shadow-xl max-w-md w-full text-center space-y-4 relative select-none max-h-[92vh] overflow-y-auto modal-content-anim">
         <button
           onClick={onClose}
           className="brutal-press absolute top-4 right-4 bg-black text-white hover:bg-neutral-800 p-1.5 border-2 border-black cursor-pointer"

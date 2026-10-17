@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { PieceIcon } from '../utils/pieceSvgs';
 
 export const BOARD_THEMES = {
@@ -49,7 +49,10 @@ export const ChessBoard = ({
 }) => {
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [legalMoves, setLegalMoves] = useState([]);
-  const [draggedSquare, setDraggedSquare] = useState(null);
+  const [dragOverlay, setDragOverlay] = useState(null); // { piece, x, y, fromSq, hoverSq }
+
+  const boardRef = useRef(null);
+  const pointerTrackerRef = useRef(null); // { startX, startY, sq, piece, isDragging }
 
   const theme = BOARD_THEMES[boardTheme] || BOARD_THEMES.neo_emerald;
 
@@ -60,67 +63,110 @@ export const ChessBoard = ({
   const displayFiles = isFlipped ? [...files].reverse() : files;
   const displayRanks = isFlipped ? [...ranks].reverse() : ranks;
 
-  const handleSquareClick = (sq) => {
-    if (!interactive) return;
+  // Global Pointer Event Listeners for Butter-Smooth Drag & Drop across Desktop and Mobile
+  useEffect(() => {
+    const handleWindowPointerMove = (e) => {
+      if (!pointerTrackerRef.current) return;
+      const { startX, startY, sq, piece, isDragging } = pointerTrackerRef.current;
+      const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
 
-    // If clicking a valid target square after selecting a piece
-    const moveCandidate = legalMoves.find((m) => m.to === sq);
-    if (moveCandidate) {
-      onMove(moveCandidate);
-      setSelectedSquare(null);
-      setLegalMoves([]);
-      return;
-    }
+      if (dist > 5 || isDragging) {
+        pointerTrackerRef.current.isDragging = true;
+        if (boardRef.current) {
+          const rect = boardRef.current.getBoundingClientRect();
+          const col = Math.floor(((e.clientX - rect.left) / rect.width) * 8);
+          const row = Math.floor(((e.clientY - rect.top) / rect.height) * 8);
+          let hoverSq = null;
+          if (col >= 0 && col < 8 && row >= 0 && row < 8) {
+            hoverSq = `${displayFiles[col]}${displayRanks[row]}`;
+          }
+          setDragOverlay({
+            piece,
+            x: e.clientX,
+            y: e.clientY,
+            fromSq: sq,
+            hoverSq
+          });
+        }
+      }
+    };
 
-    // Otherwise check if clicking own piece
-    const piece = chess.get(sq);
-    if (piece && piece.color === chess.turn()) {
-      if (selectedSquare === sq) {
+    const handleWindowPointerUp = () => {
+      if (!pointerTrackerRef.current) return;
+      const { isDragging } = pointerTrackerRef.current;
+      const currentDrag = dragOverlay;
+
+      pointerTrackerRef.current = null;
+      setDragOverlay(null);
+
+      // If user was actively dragging and released over a destination square
+      if (isDragging && currentDrag && currentDrag.hoverSq) {
+        const targetSq = currentDrag.hoverSq;
+        const moveCandidate = legalMoves.find((m) => m.to === targetSq);
+        if (moveCandidate) {
+          onMove(moveCandidate);
+          setSelectedSquare(null);
+          setLegalMoves([]);
+          return;
+        }
+        // Dropped on invalid square
         setSelectedSquare(null);
         setLegalMoves([]);
+      }
+    };
+
+    window.addEventListener('pointermove', handleWindowPointerMove, { passive: true });
+    window.addEventListener('pointerup', handleWindowPointerUp);
+    window.addEventListener('pointercancel', handleWindowPointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handleWindowPointerMove);
+      window.removeEventListener('pointerup', handleWindowPointerUp);
+      window.removeEventListener('pointercancel', handleWindowPointerUp);
+    };
+  }, [displayFiles, displayRanks, legalMoves, onMove, dragOverlay]);
+
+  // Pointer Down on a Board Square: unified click-to-move & drag-to-move
+  const handleSquarePointerDown = (e, sq) => {
+    if (!interactive) return;
+
+    // 1. If clicking a valid destination square after selecting a piece (Click-to-move)
+    if (selectedSquare) {
+      const moveCandidate = legalMoves.find((m) => m.to === sq);
+      if (moveCandidate) {
+        onMove(moveCandidate);
+        setSelectedSquare(null);
+        setLegalMoves([]);
+        pointerTrackerRef.current = null;
+        return;
+      }
+    }
+
+    // 2. Otherwise check if touching/clicking own piece
+    const piece = chess.get(sq);
+    if (piece && piece.color === chess.turn()) {
+      if (selectedSquare === sq && !pointerTrackerRef.current?.isDragging) {
+        // Toggle selection off if tapped again
+        setSelectedSquare(null);
+        setLegalMoves([]);
+        pointerTrackerRef.current = null;
       } else {
         setSelectedSquare(sq);
         const moves = chess.moves({ square: sq, verbose: true });
         setLegalMoves(moves);
+        pointerTrackerRef.current = {
+          startX: e.clientX,
+          startY: e.clientY,
+          sq,
+          piece,
+          isDragging: false
+        };
       }
     } else {
       setSelectedSquare(null);
       setLegalMoves([]);
+      pointerTrackerRef.current = null;
     }
-  };
-
-  // Drag and drop handlers
-  const handleDragStart = (e, sq) => {
-    if (!interactive) return;
-    const piece = chess.get(sq);
-    if (!piece || piece.color !== chess.turn()) {
-      e.preventDefault();
-      return;
-    }
-    setDraggedSquare(sq);
-    setSelectedSquare(sq);
-    const moves = chess.moves({ square: sq, verbose: true });
-    setLegalMoves(moves);
-    e.dataTransfer.setData('text/plain', sq);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e, targetSq) => {
-    e.preventDefault();
-    if (!draggedSquare || !interactive) return;
-
-    const moveCandidate = legalMoves.find((m) => m.to === targetSq);
-    if (moveCandidate) {
-      onMove(moveCandidate);
-    }
-    setDraggedSquare(null);
-    setSelectedSquare(null);
-    setLegalMoves([]);
   };
 
   // Calculate coordinates in percentage for the Coach Arrow
@@ -137,7 +183,7 @@ export const ChessBoard = ({
     };
   };
 
-  // Sleek Tactical Vector Arrow (Sleek, proportional, non-intrusive)
+  // Sleek Tactical Vector Arrow (Proportional, non-intrusive)
   let arrowSvg = null;
   if (showCoachArrow && coachMove && coachMove.from && coachMove.to) {
     const start = getSquareCenter(coachMove.from);
@@ -221,11 +267,15 @@ export const ChessBoard = ({
   return (
     <div
       className="relative w-full flex flex-col items-center select-none"
-      style={{ touchAction: 'manipulation', WebkitTouchCallout: 'none' }}
+      style={{ touchAction: 'none', WebkitTouchCallout: 'none' }}
     >
       {/* Outer Brutalist Frame with Thick 4px Black Border & Hard Offset Shadow */}
       <div className="relative w-full max-w-[min(94vw,540px)] aspect-square border-4 border-black bg-black brutal-shadow-lg transition-transform">
-        <div className="relative w-full h-full bg-black overflow-hidden" style={{ touchAction: 'manipulation' }}>
+        <div
+          ref={boardRef}
+          className="relative w-full h-full bg-black overflow-hidden"
+          style={{ touchAction: 'none' }}
+        >
           {/* 8x8 Chessboard Grid */}
           <div className="grid grid-cols-8 grid-rows-8 w-full h-full">
             {displayRanks.map((rank, rIdx) =>
@@ -239,7 +289,13 @@ export const ChessBoard = ({
                 const isLastMove =
                   showLastMoveHighlight && lastMove && (lastMove.from === sq || lastMove.to === sq);
 
-                // Smooth kinetic sliding animation
+                const legalMove = legalMoves.find((m) => m.to === sq);
+                const isCapture = legalMove && (piece || (legalMove.flags && legalMove.flags.includes('e')));
+                const isKingInCheck = sq === kingInCheckSq;
+                const isMyPiece = piece && piece.color === chess.turn();
+                const isHoveredTarget = dragOverlay && dragOverlay.hoverSq === sq && legalMove;
+
+                // Smooth kinetic sliding animation (100% square-relative coordinate offsets)
                 let isMovedPiece = false;
                 let slideStyle = {};
                 if (lastMove && lastMove.to === sq && piece) {
@@ -258,24 +314,44 @@ export const ChessBoard = ({
                   }
                 }
 
-                const legalMove = legalMoves.find((m) => m.to === sq);
-                const isCapture = legalMove && (piece || (legalMove.flags && legalMove.flags.includes('e')));
-                const isKingInCheck = sq === kingInCheckSq;
-                const isMyPiece = piece && piece.color === chess.turn();
+                // Animate castling rook smoothly alongside king
+                if (lastMove && piece && piece.type === 'r') {
+                  let rookFrom = null;
+                  if (lastMove.from === 'e1' && lastMove.to === 'g1' && sq === 'f1') rookFrom = 'h1';
+                  else if (lastMove.from === 'e1' && lastMove.to === 'c1' && sq === 'd1') rookFrom = 'a1';
+                  else if (lastMove.from === 'e8' && lastMove.to === 'g8' && sq === 'f8') rookFrom = 'h8';
+                  else if (lastMove.from === 'e8' && lastMove.to === 'c8' && sq === 'd8') rookFrom = 'a8';
+
+                  if (rookFrom) {
+                    const rFromFile = rookFrom[0];
+                    const rFromRank = rookFrom[1];
+                    const rFromFIdx = displayFiles.indexOf(rFromFile);
+                    const rFromRIdx = displayRanks.indexOf(rFromRank);
+                    if (rFromFIdx !== -1 && rFromRIdx !== -1) {
+                      slideStyle = {
+                        '--slide-x': `${(rFromFIdx - fIdx) * 100}%`,
+                        '--slide-y': `${(rFromRIdx - rIdx) * 100}%`
+                      };
+                      isMovedPiece = true;
+                    }
+                  }
+                }
 
                 return (
                   <div
                     key={sq}
-                    onClick={() => handleSquareClick(sq)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, sq)}
-                    className={`relative flex items-center justify-center cursor-pointer transition-colors duration-100 ${bgClass} ${
+                    onPointerDown={(e) => handleSquarePointerDown(e, sq)}
+                    className={`relative flex items-center justify-center cursor-pointer transition-colors duration-150 ${bgClass} ${
                       isSelected
                         ? '!bg-[#facc15] ring-4 ring-black ring-inset z-10'
                         : ''
                     } ${
+                      isHoveredTarget
+                        ? '!bg-[#22c55e] ring-4 ring-black ring-inset z-20'
+                        : ''
+                    } ${
                       isLastMove
-                        ? 'after:absolute after:inset-0 after:bg-[#facc15]/30 after:border-2 after:border-black/50'
+                        ? 'after:absolute after:inset-0 after:bg-[#facc15]/35 after:border-2 after:border-black/60'
                         : ''
                     } ${
                       isKingInCheck ? 'king-in-check-alarm z-20 border-2 border-black' : ''
@@ -284,7 +360,7 @@ export const ChessBoard = ({
                     {/* Rank Coordinate */}
                     {showCoordinates && fIdx === 0 && (
                       <span
-                        className={`absolute top-0.5 left-1 font-mono text-[10px] sm:text-xs font-black select-none pointer-events-none ${
+                        className={`absolute top-0.5 left-1 font-mono text-[10px] sm:text-xs font-black select-none pointer-events-none z-10 ${
                           isLightSquare ? 'text-black' : 'text-white'
                         }`}
                       >
@@ -295,7 +371,7 @@ export const ChessBoard = ({
                     {/* File Coordinate */}
                     {showCoordinates && rIdx === 7 && (
                       <span
-                        className={`absolute bottom-0.5 right-1 font-mono text-[10px] sm:text-xs font-black select-none pointer-events-none ${
+                        className={`absolute bottom-0.5 right-1 font-mono text-[10px] sm:text-xs font-black select-none pointer-events-none z-10 ${
                           isLightSquare ? 'text-black' : 'text-white'
                         }`}
                       >
@@ -303,39 +379,40 @@ export const ChessBoard = ({
                       </span>
                     )}
 
-                    {/* Piece Vector Icon */}
+                    {/* Piece Vector Container: 100% Dimensions for Exact 1:1 GPU Slide Glide */}
                     {piece && !blindfoldMode && (
                       <div
-                        key={`${sq}-${piece.type}-${isMovedPiece ? `${lastMove.from}-${lastMove.to}` : 'static'}`}
-                        draggable={interactive && isMyPiece}
-                        onDragStart={(e) => handleDragStart(e, sq)}
-                        onDragEnd={() => setDraggedSquare(null)}
+                        key={`${sq}-${piece.type}-${piece.color}-${isMovedPiece ? `${lastMove.from}-${lastMove.to}` : 'static'}`}
                         style={slideStyle}
-                        className={`w-[88%] h-[88%] flex items-center justify-center select-none ${
-                          isMovedPiece ? 'piece-slide-anim' : 'transition-transform duration-150'
-                        } ${
-                          interactive && isMyPiece
-                            ? 'hover:scale-110 hover:-translate-y-0.5 cursor-grab active:cursor-grabbing active:scale-95'
-                            : ''
-                        } ${draggedSquare === sq ? 'opacity-25 scale-90' : 'opacity-100'}`}
+                        className={`absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none select-none z-10 ${
+                          isMovedPiece ? 'piece-slide-anim' : ''
+                        } ${dragOverlay && dragOverlay.fromSq === sq ? 'opacity-20' : 'opacity-100'}`}
                       >
-                        <PieceIcon piece={piece.color === 'w' ? piece.type.toUpperCase() : piece.type} />
+                        <div
+                          className={`w-[88%] h-[88%] flex items-center justify-center pointer-events-auto transition-transform duration-150 ${
+                            interactive && isMyPiece
+                              ? 'hover:scale-108 active:scale-95 cursor-grab active:cursor-grabbing'
+                              : ''
+                          }`}
+                        >
+                          <PieceIcon piece={piece.color === 'w' ? piece.type.toUpperCase() : piece.type} />
+                        </div>
                       </div>
                     )}
 
                     {/* Blindfold Mode Silhouette (When blindfold mode enabled) */}
                     {piece && blindfoldMode && (
-                      <div className="w-2.5 h-2.5 rounded-full bg-black/40 ring-1 ring-white/60 pointer-events-none" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-black/40 ring-1 ring-white/60 pointer-events-none z-10" />
                     )}
 
                     {/* Legal Move Indicators (Neo-Brutalist Solid Discs / Hazard Target Rings) */}
                     {showLegalDots && legalMove && !isCapture && (
-                      <div className="absolute w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-black ring-2 ring-white pointer-events-none z-20 brutal-shadow-sm" />
+                      <div className="absolute w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-black ring-2 ring-white pointer-events-none z-20 brutal-shadow-sm transition-transform duration-150 hover:scale-125" />
                     )}
 
                     {showLegalDots && legalMove && isCapture && (
-                      <div className="absolute inset-1 border-[3px] border-black bg-red-500/40 pointer-events-none z-20 flex items-center justify-center">
-                        <div className="w-2 h-2 bg-red-600 rounded-full" />
+                      <div className="absolute inset-1 border-[3px] border-black bg-red-500/35 pointer-events-none z-20 flex items-center justify-center">
+                        <div className="w-2.5 h-2.5 bg-red-600 rounded-full" />
                       </div>
                     )}
                   </div>
@@ -348,6 +425,21 @@ export const ChessBoard = ({
           {arrowSvg}
         </div>
       </div>
+
+      {/* Ultra-Smooth Floating Drag Overlay (60/120fps GPU transform) */}
+      {dragOverlay && (
+        <div
+          className="fixed pointer-events-none z-50 flex items-center justify-center w-14 h-14 sm:w-18 sm:h-18 -translate-x-1/2 -translate-y-1/2 drop-shadow-2xl"
+          style={{
+            left: `${dragOverlay.x}px`,
+            top: `${dragOverlay.y}px`,
+            transform: 'translate(-50%, -50%) scale(1.18)',
+            willChange: 'left, top, transform'
+          }}
+        >
+          <PieceIcon piece={dragOverlay.piece.color === 'w' ? dragOverlay.piece.type.toUpperCase() : dragOverlay.piece.type} />
+        </div>
+      )}
     </div>
   );
 };

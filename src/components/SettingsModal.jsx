@@ -30,13 +30,13 @@ export const SettingsModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 modal-backdrop-anim"
       style={{ overscrollBehavior: 'contain' }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white text-black border-4 border-black p-5 sm:p-6 brutal-shadow-lg max-w-lg w-full space-y-5 relative select-none max-h-[90vh] overflow-y-auto">
+      <div className="bg-white text-black border-4 border-black p-5 sm:p-6 brutal-shadow-lg max-w-lg w-full space-y-5 relative select-none max-h-[90vh] overflow-y-auto modal-content-anim">
         {/* Header with Hazard Accent */}
         <div className="flex items-center justify-between border-b-3 border-black pb-3">
           <div className="flex items-center gap-2">

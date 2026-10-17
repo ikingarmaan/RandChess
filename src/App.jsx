@@ -408,7 +408,7 @@ export default function App() {
         } finally {
           setIsBotThinking(false);
         }
-      }, 120);
+      }, 260);
 
       return () => clearTimeout(timer);
     } else {

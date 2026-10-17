@@ -23,10 +23,13 @@ export const EvalBar = ({ evalScore = 0, isFlipped = false }) => {
     <div className="relative w-6 sm:w-7.5 self-stretch border-3 border-black bg-black flex flex-col brutal-shadow select-none overflow-hidden">
       {/* Top Half (Black by default / White if flipped) */}
       <div
-        className={`w-full transition-all duration-200 ease-out flex items-start justify-center pt-1.5 ${
+        className={`w-full flex items-start justify-center pt-1.5 ${
           isFlipped ? 'bg-white text-black font-black' : 'bg-[#18181b] text-white font-bold'
         }`}
-        style={{ height: `${topPct}%` }}
+        style={{
+          height: `${topPct}%`,
+          transition: 'height 0.35s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}
       >
         {!isFlipped && evalScore < -40 && (
           <span className="text-[10px] sm:text-xs font-mono font-black px-0.5 bg-black text-white border border-white/40">
@@ -45,10 +48,13 @@ export const EvalBar = ({ evalScore = 0, isFlipped = false }) => {
 
       {/* Bottom Half (White by default / Black if flipped) */}
       <div
-        className={`w-full transition-all duration-200 ease-out flex items-end justify-center pb-1.5 ${
+        className={`w-full flex items-end justify-center pb-1.5 ${
           isFlipped ? 'bg-[#18181b] text-white font-bold' : 'bg-white text-black font-black'
         }`}
-        style={{ height: `${100 - topPct}%` }}
+        style={{
+          height: `${100 - topPct}%`,
+          transition: 'height 0.35s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}
       >
         {!isFlipped && evalScore >= -40 && (
           <span className="text-[10px] sm:text-xs font-mono font-black px-0.5 bg-white text-black border border-black">

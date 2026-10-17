@@ -11,10 +11,10 @@ export const PromotionModal = ({ color = 'w', onSelectPiece, onCancel }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 modal-backdrop-anim"
       style={{ overscrollBehavior: 'contain' }}
     >
-      <div className="bg-white text-black border-4 border-black p-5 sm:p-6 brutal-shadow-lg max-w-sm w-full text-center space-y-4 select-none">
+      <div className="bg-white text-black border-4 border-black p-5 sm:p-6 brutal-shadow-lg max-w-sm w-full text-center space-y-4 select-none modal-content-anim">
         <div className="border-b-3 border-black pb-2">
           <div className="inline-block px-2 py-0.5 bg-[#facc15] border-2 border-black font-mono text-[10px] font-black uppercase mb-1">
             [ RANK 8 REACHED ]
