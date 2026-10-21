@@ -63,17 +63,18 @@ io.on('connection', (socket) => {
         else if (opponent.preferredColor === 'b') hostColor = 'w';
         else hostColor = Math.random() < 0.5 ? 'w' : 'b';
 
+        const chosenTC = timeControl !== undefined ? timeControl : (opponent.timeControl !== undefined ? opponent.timeControl : 300);
         const roomData = {
           id: roomId,
           chess: new Chess(),
-          timeControl: timeControl || opponent.timeControl || 300,
+          timeControl: chosenTC,
           whitePlayer: hostColor === 'w' ? socket.id : opponent.socketId,
           blackPlayer: hostColor === 'b' ? socket.id : opponent.socketId,
           whitePlayerId: hostColor === 'w' ? playerId : opponent.playerId,
           blackPlayerId: hostColor === 'b' ? playerId : opponent.playerId,
           timers: {
-            w: timeControl,
-            b: timeControl,
+            w: chosenTC,
+            b: chosenTC,
             lastTurnTimestamp: Date.now()
           },
           status: 'playing',
@@ -322,11 +323,13 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // Update timer deduction
-      const now = Date.now();
-      const elapsed = Math.floor((now - room.timers.lastTurnTimestamp) / 1000);
-      room.timers[currentTurn] = Math.max(0, room.timers[currentTurn] - elapsed);
-      room.timers.lastTurnTimestamp = now;
+      // Update timer deduction if game is timed
+      if (room.timeControl !== null && room.timeControl !== undefined) {
+        const now = Date.now();
+        const elapsed = Math.floor((now - room.timers.lastTurnTimestamp) / 1000);
+        room.timers[currentTurn] = Math.max(0, (room.timers[currentTurn] ?? room.timeControl) - elapsed);
+        room.timers.lastTurnTimestamp = now;
+      }
 
       const isGameOver = room.chess.isGameOver();
       let gameOverInfo = null;
@@ -336,7 +339,7 @@ io.on('connection', (socket) => {
         } else if (room.chess.isDraw()) {
           gameOverInfo = { type: 'draw', winner: null, reason: 'Draw' };
         }
-      } else if (room.timers[currentTurn] <= 0) {
+      } else if (room.timeControl !== null && room.timeControl !== undefined && room.timers[currentTurn] <= 0) {
         gameOverInfo = {
           type: 'timeout',
           winner: currentTurn === 'w' ? 'b' : 'w',

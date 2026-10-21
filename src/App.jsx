@@ -39,6 +39,7 @@ import { GameOverModal } from './components/GameOverModal';
 import { SettingsModal } from './components/SettingsModal';
 import { OnlineLobbyModal } from './components/OnlineLobbyModal';
 import { FloatingPiecesBackground } from './components/FloatingPiecesBackground';
+import { TimerSelector } from './components/TimerSelector';
 
 import { getBestMove, evaluateBoard } from './engine/aiEngine';
 import { analyzeAndExplain } from './engine/coachExplainer';
@@ -607,6 +608,16 @@ export default function App() {
     };
   }, []);
 
+  // Update match timer and reset clocks
+  const handleUpdateTimeControl = useCallback((newSeconds) => {
+    setTimeControl(newSeconds);
+    if (newSeconds === null) {
+      setTimers({ w: null, b: null });
+    } else {
+      setTimers({ w: newSeconds, b: newSeconds });
+    }
+  }, []);
+
   // Restart / New Game
   const startNewGame = useCallback(() => {
     const newGame = new Chess();
@@ -622,6 +633,8 @@ export default function App() {
     setPendingPromotion(null);
     if (timeControl !== null) {
       setTimers({ w: timeControl, b: timeControl });
+    } else {
+      setTimers({ w: null, b: null });
     }
     runCoachAnalysis(newGame);
     sound.playMove();
@@ -1347,6 +1360,72 @@ export default function App() {
                     </button>
                   </div>
                 </div>
+
+                {/* Customizable Timer for vs BOT AI */}
+                <div className="border-t-2 border-black pt-2">
+                  <TimerSelector
+                    value={timeControl}
+                    onChange={handleUpdateTimeControl}
+                    label="Bot Match Clock"
+                    compact={true}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 1v1 Local Pass & Play Sub-panel */}
+            {gameMode === 'pass_play' && (
+              <div className="border-t-2 border-black pt-2 space-y-2.5">
+                <div className="flex items-center justify-between text-xs font-mono font-black">
+                  <span className="uppercase text-black">PASS & PLAY (1v1 LOCAL):</span>
+                  <span className="bg-black text-[#22c55e] px-2 py-0.5 border border-black font-mono font-black">
+                    2 PLAYERS ON 1 DEVICE
+                  </span>
+                </div>
+
+                <TimerSelector
+                  value={timeControl}
+                  onChange={handleUpdateTimeControl}
+                  label="1v1 Match Clock"
+                  compact={true}
+                />
+
+                <div className="pt-1">
+                  <button
+                    onClick={startNewGame}
+                    className="brutal-press w-full py-2 bg-[#facc15] hover:bg-yellow-400 text-black font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-black" />
+                    <span>START NEW 1v1 MATCH</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Online Multiplayer Sub-panel */}
+            {gameMode === 'online' && (
+              <div className="border-t-2 border-black pt-2 space-y-2.5">
+                <div className="flex items-center justify-between text-xs font-mono font-black">
+                  <span className="uppercase text-black">ONLINE MULTIPLAYER:</span>
+                  <span className="bg-black text-[#22c55e] px-2 py-0.5 border border-black font-mono font-black">
+                    {onlineRoomCode ? `ROOM: ${onlineRoomCode}` : 'LOBBY READY'}
+                  </span>
+                </div>
+
+                <TimerSelector
+                  value={timeControl}
+                  onChange={handleUpdateTimeControl}
+                  label="Online Default Timer"
+                  compact={true}
+                />
+
+                <button
+                  onClick={() => setIsOnlineModalOpen(true)}
+                  className="brutal-press w-full py-2.5 bg-[#22c55e] hover:bg-green-400 text-black font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm flex items-center justify-center gap-1.5"
+                >
+                  <Wifi className="w-4 h-4 text-black" />
+                  <span>OPEN ONLINE LOBBY (CUSTOM ROOM / QUICK MATCH) ▶</span>
+                </button>
               </div>
             )}
           </div>
@@ -1528,6 +1607,8 @@ export default function App() {
         onClose={() => setIsSettingsOpen(false)}
         boardTheme={boardTheme}
         onSelectTheme={setBoardTheme}
+        timeControl={timeControl}
+        onChangeTimeControl={handleUpdateTimeControl}
         soundEnabled={soundEnabled}
         onToggleSound={setSoundEnabled}
         soundVolume={soundVolume}

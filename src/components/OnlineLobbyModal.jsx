@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Wifi, Copy, Check, Users, ArrowRight, X, Clock, Zap, Clipboard, Loader2, Sparkles } from 'lucide-react';
+import { TimerSelector } from './TimerSelector';
 
 export const OnlineLobbyModal = ({
   isOpen,
@@ -268,30 +269,13 @@ export const OnlineLobbyModal = ({
                 </div>
 
                 {/* Clock Duration */}
-                <div className="space-y-1">
-                  <label className="font-brutal text-[11px] font-black uppercase">
-                    Clock Duration
-                  </label>
-                  <div className="grid grid-cols-4 gap-1.5 font-mono text-xs font-black">
-                    {[
-                      { label: '1 MIN', val: 60 },
-                      { label: '3 MIN', val: 180 },
-                      { label: '5 MIN', val: 300 },
-                      { label: '10 MIN', val: 600 }
-                    ].map((t) => (
-                      <button
-                        key={t.val}
-                        type="button"
-                        onClick={() => setTimeChoice(t.val)}
-                        className={`brutal-press py-1.5 border-2 border-black cursor-pointer ${
-                          timeChoice === t.val ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-[#f4f4eb] text-black'
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <TimerSelector
+                  value={timeChoice}
+                  onChange={setTimeChoice}
+                  label="Clock Duration"
+                  allowUnlimited={true}
+                  compact={true}
+                />
 
                 {/* Preferred Color */}
                 <div className="space-y-1">
@@ -343,30 +327,13 @@ export const OnlineLobbyModal = ({
             {tab === 'create' && (
               <div className="space-y-3">
                 {/* Time Control */}
-                <div className="space-y-1">
-                  <label className="font-brutal text-[11px] font-black uppercase">
-                    Clock Duration
-                  </label>
-                  <div className="grid grid-cols-4 gap-1.5 font-mono text-xs font-black">
-                    {[
-                      { label: '1 MIN', val: 60 },
-                      { label: '3 MIN', val: 180 },
-                      { label: '5 MIN', val: 300 },
-                      { label: '10 MIN', val: 600 }
-                    ].map((t) => (
-                      <button
-                        key={t.val}
-                        type="button"
-                        onClick={() => setTimeChoice(t.val)}
-                        className={`brutal-press py-1.5 border-2 border-black cursor-pointer ${
-                          timeChoice === t.val ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-[#f4f4eb] text-black'
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <TimerSelector
+                  value={timeChoice}
+                  onChange={setTimeChoice}
+                  label="Room Match Clock"
+                  allowUnlimited={true}
+                  compact={true}
+                />
 
                 {/* Preferred Color */}
                 <div className="space-y-1">

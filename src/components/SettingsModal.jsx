@@ -1,12 +1,15 @@
 import React from 'react';
-import { Settings as SettingsIcon, Volume2, VolumeX, Eye, Palette, X, Check, Sliders, Moon, Sun, Keyboard, Shield } from 'lucide-react';
+import { Settings as SettingsIcon, Volume2, VolumeX, Eye, Palette, X, Check, Sliders, Moon, Sun, Keyboard, Shield, Clock } from 'lucide-react';
 import { BOARD_THEMES } from './ChessBoard';
+import { TimerSelector } from './TimerSelector';
 
 export const SettingsModal = ({
   isOpen,
   onClose,
   boardTheme,
   onSelectTheme,
+  timeControl = 300,
+  onChangeTimeControl,
   soundEnabled,
   onToggleSound,
   soundVolume = 0.7,
@@ -99,7 +102,23 @@ export const SettingsModal = ({
           </div>
         </div>
 
-        {/* 2. Audio & Master Volume */}
+        {/* 2. Match Clock & Custom Timer Settings */}
+        <div className="space-y-2.5 border-t-2 border-black pt-3">
+          <label className="font-brutal text-xs font-black uppercase tracking-wider flex items-center gap-2">
+            <Clock className="w-4 h-4 text-black" />
+            Match Clock & Default Timer
+          </label>
+          <div className="bg-[#f4f4eb] border-2 border-black p-3">
+            <TimerSelector
+              value={timeControl}
+              onChange={onChangeTimeControl}
+              label="Default Game Clock"
+              allowUnlimited={true}
+            />
+          </div>
+        </div>
+
+        {/* 3. Audio & Master Volume */}
         <div className="space-y-2.5 border-t-2 border-black pt-3">
           <label className="font-brutal text-xs font-black uppercase tracking-wider flex items-center gap-2">
             <Volume2 className="w-4 h-4 text-black" />

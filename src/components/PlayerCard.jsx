@@ -12,11 +12,15 @@ export const PlayerCard = ({
 }) => {
   const isWhite = player.color === 'w';
 
-  // Format time MM:SS
+  // Format time MM:SS or HH:MM:SS
   const formatTime = (seconds) => {
     if (seconds === null || seconds === undefined) return '∞';
-    const mins = Math.floor(seconds / 60);
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
+    if (hours > 0) {
+      return `${hours}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
