@@ -26,7 +26,8 @@ import {
   Sun,
   Shield,
   Play,
-  Lightbulb
+  Lightbulb,
+  Gamepad2
 } from 'lucide-react';
 
 import { ChessBoard, BOARD_THEMES } from './components/ChessBoard';
@@ -40,6 +41,8 @@ import { SettingsModal } from './components/SettingsModal';
 import { OnlineLobbyModal } from './components/OnlineLobbyModal';
 import { FloatingPiecesBackground } from './components/FloatingPiecesBackground';
 import { TimerSelector } from './components/TimerSelector';
+import { GameCatalogueModal } from './components/GameCatalogueModal';
+import { TicTacToeGame } from './components/TicTacToeGame';
 
 import { getBestMove, evaluateBoard } from './engine/aiEngine';
 import { analyzeAndExplain } from './engine/coachExplainer';
@@ -60,6 +63,10 @@ const getPlayerId = () => {
 };
 
 export default function App() {
+  // --- Game Selection & Catalogue State ---
+  const [activeGame, setActiveGame] = useState('chess'); // 'chess' | 'tictactoe'
+  const [isCatalogueOpen, setIsCatalogueOpen] = useState(false);
+
   // --- Game Engine State ---
   const [chess, setChess] = useState(() => new Chess());
   const [boardFen, setBoardFen] = useState(chess.fen());
@@ -934,86 +941,113 @@ export default function App() {
       {/* Top Neo-Brutalist Masthead */}
       <header className={`relative z-30 border-b-3 border-black px-2.5 sm:px-5 py-2 flex items-center justify-between shadow-md shrink-0 ${isDarkTheme ? 'bg-[#18181b]' : 'bg-white'}`}>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#22c55e] border-2 border-black flex items-center justify-center font-black text-black text-base sm:text-lg brutal-shadow-sm shrink-0">
-            ♞
+          {/* Active Game Brand Icon */}
+          <div className={`w-7 h-7 sm:w-8 sm:h-8 border-2 border-black flex items-center justify-center font-black text-black text-base sm:text-lg brutal-shadow-sm shrink-0 font-mono ${activeGame === 'chess' ? 'bg-[#22c55e]' : 'bg-[#facc15]'}`}>
+            {activeGame === 'chess' ? '♞' : '✕◯'}
           </div>
           <div>
             <div className="flex items-center gap-1.5">
               <h1 className="font-brutal text-xs sm:text-base font-black uppercase tracking-tight">
-                RandChess
+                {activeGame === 'chess' ? 'RandChess' : 'Brutal Tic-Tac-Toe'}
               </h1>
               <span className="font-mono text-[9px] font-black uppercase px-1 py-0.2 bg-[#facc15] text-black border border-black hidden sm:inline">
-                MINIMAX v2.0
+                {activeGame === 'chess' ? 'MINIMAX v2.0' : 'UNBEATABLE AI'}
               </span>
             </div>
             <p className="text-[9px] sm:text-[10px] font-mono text-neutral-500 hidden md:block">
-              ZERO BLUE • STOCKFISH CALIBRATED • 100% TACTICAL
+              {activeGame === 'chess'
+                ? 'ZERO BLUE • STOCKFISH CALIBRATED • 100% TACTICAL'
+                : 'ZERO BLUE • 3x3 TACTICAL GRID • FAST ACTION'}
             </p>
           </div>
-        </div>
 
-        {/* Desktop Match Mode Switcher + Suggest Move (Hidden on mobile, shown in sub-bar below) */}
-        <div className="hidden md:flex items-center gap-2">
-          <div className="flex border-2 border-black bg-black p-0.5">
-            <button
-              onClick={() => {
-                setGameMode('ai');
-                setIsFlipped(playerColor === 'b');
-              }}
-              className={`px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
-                gameMode === 'ai' ? 'bg-[#22c55e] text-black' : 'bg-black text-white hover:text-[#22c55e]'
-              }`}
-            >
-              vs AI
-            </button>
-            <button
-              onClick={() => setGameMode('pass_play')}
-              className={`px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
-                gameMode === 'pass_play' ? 'bg-[#22c55e] text-black' : 'bg-black text-white hover:text-[#22c55e]'
-              }`}
-            >
-              1v1
-            </button>
-            <button
-              onClick={() => setIsOnlineModalOpen(true)}
-              className={`px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
-                gameMode === 'online' ? 'bg-[#22c55e] text-black' : 'bg-black text-white hover:text-[#22c55e]'
-              }`}
-            >
-              ONLINE
-            </button>
-          </div>
-
+          {/* GAME CATALOGUE BUTTON (Prominent High-Visibility Switcher) */}
           <button
-            onClick={() => {
-              const nextVal = !coachEnabled;
-              setCoachEnabled(nextVal);
-              if (nextVal) {
-                runCoachAnalysis(chess, true);
-              }
-            }}
-            className={`brutal-press flex items-center gap-1.5 px-2.5 py-1 font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm transition-all ${
-              coachEnabled
-                ? 'bg-[#22c55e] text-black hover:bg-green-400'
-                : 'bg-black text-white hover:bg-neutral-800'
-            }`}
-            title="Turn Next Move Suggestions ON / OFF"
+            onClick={() => setIsCatalogueOpen(true)}
+            className="brutal-press flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-[#facc15] hover:bg-yellow-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm shrink-0 ml-1 sm:ml-3"
+            title="Browse All Games in the Catalogue"
           >
-            <Lightbulb className={`w-3.5 h-3.5 ${coachEnabled ? 'text-black fill-current' : 'text-[#facc15]'}`} />
-            <span>SUGGEST MOVE: {coachEnabled ? 'ON' : 'OFF'}</span>
+            <Gamepad2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="font-black">CATALOGUE</span>
           </button>
         </div>
+
+        {/* Center Mode Controls (Chess specific or Tic-Tac-Toe quick action) */}
+        {activeGame === 'chess' ? (
+          <div className="hidden md:flex items-center gap-2">
+            <div className="flex border-2 border-black bg-black p-0.5">
+              <button
+                onClick={() => {
+                  setGameMode('ai');
+                  setIsFlipped(playerColor === 'b');
+                }}
+                className={`px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
+                  gameMode === 'ai' ? 'bg-[#22c55e] text-black' : 'bg-black text-white hover:text-[#22c55e]'
+                }`}
+              >
+                vs AI
+              </button>
+              <button
+                onClick={() => setGameMode('pass_play')}
+                className={`px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
+                  gameMode === 'pass_play' ? 'bg-[#22c55e] text-black' : 'bg-black text-white hover:text-[#22c55e]'
+                }`}
+              >
+                1v1
+              </button>
+              <button
+                onClick={() => setIsOnlineModalOpen(true)}
+                className={`px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
+                  gameMode === 'online' ? 'bg-[#22c55e] text-black' : 'bg-black text-white hover:text-[#22c55e]'
+                }`}
+              >
+                ONLINE
+              </button>
+            </div>
+
+            <button
+              onClick={() => {
+                const nextVal = !coachEnabled;
+                setCoachEnabled(nextVal);
+                if (nextVal) {
+                  runCoachAnalysis(chess, true);
+                }
+              }}
+              className={`brutal-press flex items-center gap-1.5 px-2.5 py-1 font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm transition-all ${
+                coachEnabled
+                  ? 'bg-[#22c55e] text-black hover:bg-green-400'
+                  : 'bg-black text-white hover:bg-neutral-800'
+              }`}
+              title="Turn Next Move Suggestions ON / OFF"
+            >
+              <Lightbulb className={`w-3.5 h-3.5 ${coachEnabled ? 'text-black fill-current' : 'text-[#facc15]'}`} />
+              <span>SUGGEST MOVE: {coachEnabled ? 'ON' : 'OFF'}</span>
+            </button>
+          </div>
+        ) : (
+          <div className="hidden md:flex items-center gap-2">
+            <button
+              onClick={() => setActiveGame('chess')}
+              className="brutal-press flex items-center gap-1.5 px-3 py-1 bg-black text-white hover:text-[#22c55e] border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer transition-colors"
+              title="Return to RandChess"
+            >
+              <span>♞ PLAY RANDCHESS</span>
+            </button>
+          </div>
+        )}
 
         {/* Global Quick Action Buttons */}
         <div className="flex items-center gap-1 sm:gap-1.5">
-          {/* Flip Board Button */}
-          <button
-            onClick={() => setIsFlipped(!isFlipped)}
-            className="brutal-press p-1.5 sm:p-2 bg-white text-black hover:bg-neutral-100 border-2 border-black cursor-pointer brutal-shadow-sm"
-            title="Flip Board Perspective (HotKey: F)"
-          >
-            <Repeat className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </button>
+          {/* Flip Board Button (Chess only) */}
+          {activeGame === 'chess' && (
+            <button
+              onClick={() => setIsFlipped(!isFlipped)}
+              className="brutal-press p-1.5 sm:p-2 bg-white text-black hover:bg-neutral-100 border-2 border-black cursor-pointer brutal-shadow-sm"
+              title="Flip Board Perspective (HotKey: F)"
+            >
+              <Repeat className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </button>
+          )}
 
           {/* Quick Mute / Sound Toggle */}
           <button
@@ -1037,80 +1071,101 @@ export default function App() {
           <button
             onClick={() => setIsSettingsOpen(true)}
             className="brutal-press p-1.5 sm:p-2 bg-white text-black hover:bg-neutral-100 border-2 border-black cursor-pointer brutal-shadow-sm"
-            title="System Preferences & Blindfold Mode"
+            title="System Preferences & Board Themes"
           >
             <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
 
-          {/* New Game Button */}
-          <button
-            onClick={startNewGame}
-            className="brutal-press flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-[#22c55e] hover:bg-green-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
-            title="Start New Match"
-          >
-            <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">NEW MATCH</span>
-            <span className="sm:hidden">NEW</span>
-          </button>
+          {/* New Game Button (Chess only) */}
+          {activeGame === 'chess' && (
+            <button
+              onClick={startNewGame}
+              className="brutal-press flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-[#22c55e] hover:bg-green-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
+              title="Start New Match"
+            >
+              <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">NEW MATCH</span>
+              <span className="sm:hidden">NEW</span>
+            </button>
+          )}
         </div>
       </header>
 
-      {/* Mobile Sub-Header Bar (Pivotal for Mobile UX: Mode Switcher & Suggest Move) */}
-      <div className={`md:hidden border-b-2 border-black px-2 py-1.5 flex items-center justify-between gap-1.5 shrink-0 z-20 ${isDarkTheme ? 'bg-[#18181b]' : 'bg-[#e5e5dc]'}`}>
-        {/* Mobile Mode Switcher */}
-        <div className="flex border-2 border-black bg-black p-0.5 shrink-0">
+      {/* Mobile Sub-Header Bar (Pivotal for Mobile UX) */}
+      {activeGame === 'chess' ? (
+        <div className={`md:hidden border-b-2 border-black px-2 py-1.5 flex items-center justify-between gap-1.5 shrink-0 z-20 ${isDarkTheme ? 'bg-[#18181b]' : 'bg-[#e5e5dc]'}`}>
+          {/* Mobile Mode Switcher */}
+          <div className="flex border-2 border-black bg-black p-0.5 shrink-0">
+            <button
+              onClick={() => {
+                setGameMode('ai');
+                setIsFlipped(playerColor === 'b');
+              }}
+              className={`px-2 py-0.5 font-brutal text-[11px] font-black uppercase cursor-pointer transition-colors ${
+                gameMode === 'ai' ? 'bg-[#22c55e] text-black' : 'bg-black text-white'
+              }`}
+            >
+              vs AI
+            </button>
+            <button
+              onClick={() => setGameMode('pass_play')}
+              className={`px-2 py-0.5 font-brutal text-[11px] font-black uppercase cursor-pointer transition-colors ${
+                gameMode === 'pass_play' ? 'bg-[#22c55e] text-black' : 'bg-black text-white'
+              }`}
+            >
+              1v1
+            </button>
+            <button
+              onClick={() => setIsOnlineModalOpen(true)}
+              className={`px-2 py-0.5 font-brutal text-[11px] font-black uppercase cursor-pointer transition-colors ${
+                gameMode === 'online' ? 'bg-[#22c55e] text-black' : 'bg-black text-white'
+              }`}
+            >
+              ONLINE
+            </button>
+          </div>
+
+          {/* Mobile Suggest Next Move Toggle */}
           <button
             onClick={() => {
-              setGameMode('ai');
-              setIsFlipped(playerColor === 'b');
+              const nextVal = !coachEnabled;
+              setCoachEnabled(nextVal);
+              if (nextVal) {
+                runCoachAnalysis(chess, true);
+              }
             }}
-            className={`px-2 py-0.5 font-brutal text-[11px] font-black uppercase cursor-pointer transition-colors ${
-              gameMode === 'ai' ? 'bg-[#22c55e] text-black' : 'bg-black text-white'
+            className={`brutal-press flex items-center gap-1 px-2 py-1 font-brutal text-[11px] font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm shrink-0 transition-all ${
+              coachEnabled
+                ? 'bg-[#22c55e] text-black'
+                : 'bg-black text-white'
             }`}
+            title="Toggle Move Suggestion on Mobile"
           >
-            vs AI
-          </button>
-          <button
-            onClick={() => setGameMode('pass_play')}
-            className={`px-2 py-0.5 font-brutal text-[11px] font-black uppercase cursor-pointer transition-colors ${
-              gameMode === 'pass_play' ? 'bg-[#22c55e] text-black' : 'bg-black text-white'
-            }`}
-          >
-            1v1
-          </button>
-          <button
-            onClick={() => setIsOnlineModalOpen(true)}
-            className={`px-2 py-0.5 font-brutal text-[11px] font-black uppercase cursor-pointer transition-colors ${
-              gameMode === 'online' ? 'bg-[#22c55e] text-black' : 'bg-black text-white'
-            }`}
-          >
-            ONLINE
+            <Lightbulb className={`w-3 h-3 ${coachEnabled ? 'text-black fill-current' : 'text-[#facc15]'}`} />
+            <span>SUGGEST: {coachEnabled ? 'ON' : 'OFF'}</span>
           </button>
         </div>
+      ) : (
+        <div className={`md:hidden border-b-2 border-black px-2 py-1.5 flex items-center justify-between gap-1.5 shrink-0 z-20 ${isDarkTheme ? 'bg-[#18181b]' : 'bg-[#e5e5dc]'}`}>
+          <button
+            onClick={() => setIsCatalogueOpen(true)}
+            className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-[#facc15] text-black border-2 border-black font-brutal text-[11px] font-black uppercase cursor-pointer brutal-shadow-sm"
+          >
+            <Gamepad2 className="w-3.5 h-3.5" />
+            <span>CATALOGUE</span>
+          </button>
+          <button
+            onClick={() => setActiveGame('chess')}
+            className="brutal-press px-2.5 py-1 bg-black text-white hover:text-[#22c55e] border-2 border-black font-brutal text-[11px] font-black uppercase cursor-pointer"
+          >
+            ♞ PLAY CHESS
+          </button>
+        </div>
+      )}
 
-        {/* Mobile Suggest Next Move Toggle */}
-        <button
-          onClick={() => {
-            const nextVal = !coachEnabled;
-            setCoachEnabled(nextVal);
-            if (nextVal) {
-              runCoachAnalysis(chess, true);
-            }
-          }}
-          className={`brutal-press flex items-center gap-1 px-2 py-1 font-brutal text-[11px] font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm shrink-0 transition-all ${
-            coachEnabled
-              ? 'bg-[#22c55e] text-black'
-              : 'bg-black text-white'
-          }`}
-          title="Toggle Move Suggestion on Mobile"
-        >
-          <Lightbulb className={`w-3 h-3 ${coachEnabled ? 'text-black fill-current' : 'text-[#facc15]'}`} />
-          <span>SUGGEST: {coachEnabled ? 'ON' : 'OFF'}</span>
-        </button>
-      </div>
-
-      {/* Main Body: Dashboard with Left Board and Right Always-Visible Controls */}
-      <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto p-2 sm:p-4 lg:p-6 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-5 min-h-0">
+      {/* Main Body: Active Game Area */}
+      {activeGame === 'chess' ? (
+        <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto p-2 sm:p-4 lg:p-6 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-5 min-h-0">
         {/* Left Column: Top Player + Board with EvalBar + Bottom Player + Step Navigation */}
         <div className="flex flex-col items-center gap-2 w-full max-w-[min(94vw,540px)] shrink-0">
           {/* Top Player Card */}
@@ -1523,11 +1578,18 @@ export default function App() {
           </div>
         </div>
       </main>
+      ) : (
+        <TicTacToeGame
+          isDarkTheme={isDarkTheme}
+          soundEnabled={soundEnabled}
+          onOpenCatalogue={() => setIsCatalogueOpen(true)}
+        />
+      )}
 
       {/* Brutalist Footer Strip */}
       <footer className={`border-t-3 border-black py-1.5 px-4 flex items-center justify-between text-[10px] font-mono font-black uppercase tracking-widest shrink-0 ${isDarkTheme ? 'bg-black text-white' : 'bg-white text-black'}`}>
-        <span>RandChess v2.0 // HIGH-EFFICIENCY MINIMAX</span>
-        <span className="hidden sm:inline">NO BLUE • 64 SQUARES • TACTICAL RADAR</span>
+        <span>{activeGame === 'chess' ? 'RandChess v2.0 // HIGH-EFFICIENCY MINIMAX' : 'Brutal Tic-Tac-Toe // 3x3 UNBEATABLE MINIMAX'}</span>
+        <span className="hidden sm:inline">{activeGame === 'chess' ? 'NO BLUE • 64 SQUARES • TACTICAL RADAR' : 'NO BLUE • 3x3 TACTICAL GRID • FAST ACTION'}</span>
       </footer>
 
       {/* Draw Offer Banners */}
@@ -1687,6 +1749,17 @@ export default function App() {
         isWaiting={isWaitingOnline}
         onlineStatus={onlineStatus}
         isConnected={socketConnected}
+      />
+
+      {/* Game Catalogue Modal */}
+      <GameCatalogueModal
+        isOpen={isCatalogueOpen}
+        onClose={() => setIsCatalogueOpen(false)}
+        activeGame={activeGame}
+        onSelectGame={(gameId) => {
+          setActiveGame(gameId);
+          setIsCatalogueOpen(false);
+        }}
       />
     </div>
   );
