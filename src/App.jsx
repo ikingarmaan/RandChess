@@ -45,6 +45,7 @@ import { GameCatalogueModal } from './components/GameCatalogueModal';
 import { GameCatalogueHub } from './components/GameCatalogueHub';
 import { TicTacToeGame } from './components/TicTacToeGame';
 import { LudoGame } from './components/LudoGame';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 import { getBestMove, evaluateBoard } from './engine/aiEngine';
 import { analyzeAndExplain } from './engine/coachExplainer';
@@ -1209,13 +1210,14 @@ export default function App() {
       ) : null}
 
       {/* Main Body: Active Game Area or Game Hub */}
-      {activeGame === null ? (
-        <GameCatalogueHub
-          onSelectGame={(id) => setActiveGame(id)}
-          isDarkTheme={isDarkTheme}
-        />
-      ) : activeGame === 'chess' ? (
-        <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto p-2 sm:p-4 lg:p-6 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-5 min-h-0">
+      <ErrorBoundary onReturnHub={() => setActiveGame(null)}>
+        {activeGame === null ? (
+          <GameCatalogueHub
+            onSelectGame={(id) => setActiveGame(id)}
+            isDarkTheme={isDarkTheme}
+          />
+        ) : activeGame === 'chess' ? (
+          <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto p-2 sm:p-4 lg:p-6 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-5 min-h-0">
         {/* Left Column: Top Player + Board with EvalBar + Bottom Player + Step Navigation */}
         <div className="flex flex-col items-center gap-2 w-full max-w-[min(94vw,540px)] shrink-0">
           {/* Top Player Card */}
@@ -1644,6 +1646,7 @@ export default function App() {
           playerId={getPlayerId()}
         />
       )}
+      </ErrorBoundary>
 
       {/* Brutalist Footer Strip */}
       <footer className={`border-t-3 border-black py-1.5 px-4 flex items-center justify-between text-[10px] font-mono font-black uppercase tracking-widest shrink-0 ${isDarkTheme ? 'bg-black text-white' : 'bg-white text-black'}`}>

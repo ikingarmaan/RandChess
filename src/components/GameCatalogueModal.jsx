@@ -186,7 +186,7 @@ export const GameCatalogueModal = ({
           </div>
 
           <span className="font-mono text-[10px] font-bold text-neutral-500">
-            ACTIVE: <span className="bg-black text-[#22c55e] px-1.5 py-0.5">{activeGame.toUpperCase()}</span>
+            ACTIVE: <span className="bg-black text-[#22c55e] px-1.5 py-0.5">{activeGame ? activeGame.toUpperCase() : 'HUB'}</span>
           </span>
         </div>
 

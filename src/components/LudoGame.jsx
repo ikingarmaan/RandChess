@@ -25,7 +25,8 @@ import {
   ArrowRight,
   Crown,
   ChevronRight,
-  Sliders
+  Sliders,
+  Dice5
 } from 'lucide-react';
 import { sound } from '../utils/sound';
 import { LudoOnlineLobbyModal } from './LudoOnlineLobbyModal';
@@ -501,20 +502,20 @@ export const LudoGame = ({
 
   // Helper to translate token position into board [row, col] coordinates
   const getTokenPositionCoord = (pIdx, tokenStep, tokenIdx) => {
-    const config = activeConfig[pIdx] || activeConfig[0];
+    const config = activeConfig[pIdx] || activeConfig[0] || LUDO_CONFIGS[4][0];
     if (tokenStep === -1) {
       // In base slot
-      const [rOffset, cOffset] = YARD_SLOT_OFFSETS[tokenIdx];
-      return [config.yardR + rOffset, config.yardC + cOffset];
+      const offset = (YARD_SLOT_OFFSETS && YARD_SLOT_OFFSETS[tokenIdx]) || [1.7, 1.7];
+      return [(config.yardR ?? 1) + offset[0], (config.yardC ?? 1) + offset[1]];
     }
     if (tokenStep < 51) {
       // On outer track
-      const trackIdx = (config.startIdx + tokenStep) % 52;
-      return LUDO_TRACK[trackIdx];
+      const trackIdx = ((config.startIdx ?? 0) + tokenStep) % 52;
+      return LUDO_TRACK[trackIdx] || [7, 7];
     }
     // In Home Column or Goal
     const homeStep = tokenStep - 51;
-    return config.homePath[homeStep] || [7, 7];
+    return (config.homePath && config.homePath[homeStep]) || [7, 7];
   };
 
   // Reset Match (Local)
@@ -717,7 +718,14 @@ export const LudoGame = ({
           <div className="relative w-full max-w-[560px] aspect-square p-2 bg-black border-4 border-black brutal-shadow-lg select-none">
             
             {/* 15x15 CSS Grid Cells */}
-            <div className="grid grid-cols-15 grid-rows-15 w-full h-full gap-[1px] bg-black">
+            <div
+              className="w-full h-full gap-[1px] bg-black"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(15, minmax(0, 1fr))',
+                gridTemplateRows: 'repeat(15, minmax(0, 1fr))'
+              }}
+            >
               {Array.from({ length: 15 * 15 }).map((_, idx) => {
                 const r = Math.floor(idx / 15);
                 const c = idx % 15;
@@ -882,6 +890,28 @@ export const LudoGame = ({
                 </div>
               );
             })}
+
+            {/* Inactive Base Overlays for 2-Player and 3-Player modes */}
+            {playerCount === 2 && (
+              <div className="absolute w-[39.5%] h-[39.5%] top-[0.5%] right-[0.5%] p-2.5 border-3 border-black bg-neutral-200/60 backdrop-blur-[1px] flex flex-col items-center justify-center text-center select-none pointer-events-none brutal-shadow-sm">
+                <span className="font-brutal font-black text-xs text-neutral-600 uppercase tracking-tight">
+                  GREEN // INACTIVE
+                </span>
+                <span className="font-mono text-[9px] text-neutral-500 font-bold uppercase mt-0.5">
+                  2-PLAYER MATCH
+                </span>
+              </div>
+            )}
+            {playerCount <= 3 && (
+              <div className="absolute w-[39.5%] h-[39.5%] bottom-[0.5%] left-[0.5%] p-2.5 border-3 border-black bg-neutral-200/60 backdrop-blur-[1px] flex flex-col items-center justify-center text-center select-none pointer-events-none brutal-shadow-sm">
+                <span className="font-brutal font-black text-xs text-neutral-600 uppercase tracking-tight">
+                  ORANGE // INACTIVE
+                </span>
+                <span className="font-mono text-[9px] text-neutral-500 font-bold uppercase mt-0.5">
+                  {playerCount === 2 ? '2-PLAYER MATCH' : '3-PLAYER MATCH'}
+                </span>
+              </div>
+            )}
 
             {/* OVERLAY: Dynamic Tokens Moving Across the 52 Track & Home Run */}
             {activeConfig.map((cfg, pIdx) => {
