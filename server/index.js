@@ -32,6 +32,10 @@ const rooms = new Map();
 // Active Ludo multiplayer rooms storage
 const ludoRooms = new Map();
 
+// Quick match matchmaking for Ludo
+let ludoQuickMatchRoom = null;
+let ludoQuickMatchTimer = null;
+
 const LUDO_SAFE_TRACK = [0, 8, 13, 21, 26, 34, 39, 47];
 
 const LUDO_COLOR_CONFIG = {
@@ -52,6 +56,17 @@ const LUDO_COLOR_CONFIG = {
   ]
 };
 
+// Dynamically updates player seats and colors in waiting room
+function updateLudoWaitingRoomSeats(room) {
+  const count = Math.min(4, Math.max(2, room.players.length));
+  const config = LUDO_COLOR_CONFIG[count];
+  room.players.forEach((p, idx) => {
+    p.seatIndex = idx;
+    p.color = config[idx].name.toLowerCase();
+    p.colorHex = config[idx].hex;
+  });
+}
+
 function getLegalLudoTokens(tokens, dice, playerIdx) {
   const legal = [];
   const playerTokens = tokens[playerIdx] || [];
@@ -69,7 +84,7 @@ function getLegalLudoTokens(tokens, dice, playerIdx) {
 function checkLudoCapture(room, movingPlayerIdx, newStep) {
   if (newStep >= 51) return null;
 
-  const config = LUDO_COLOR_CONFIG[room.maxPlayers];
+  const config = LUDO_COLOR_CONFIG[room.maxPlayers] || LUDO_COLOR_CONFIG[4];
   const movingStart = config[movingPlayerIdx].startIdx;
   const globalTrackIdx = (movingStart + newStep) % 52;
 
@@ -108,7 +123,7 @@ function advanceLudoTurn(room) {
 function pickBestBotToken(room, botIdx, legalTokens, dice) {
   if (legalTokens.length === 1) return legalTokens[0];
 
-  const config = LUDO_COLOR_CONFIG[room.maxPlayers];
+  const config = LUDO_COLOR_CONFIG[room.maxPlayers] || LUDO_COLOR_CONFIG[4];
   const myStart = config[botIdx].startIdx;
 
   let bestToken = legalTokens[0];
@@ -757,9 +772,10 @@ io.on('connection', (socket) => {
       {
         id: socket.id,
         playerId,
-        name: playerName || 'Player 1',
+        name: playerName || 'Player 1 (Host)',
         seatIndex: 0,
         color: config[0].name.toLowerCase(),
+        colorHex: config[0].hex,
         isBot: false,
         connected: true
       }
@@ -797,7 +813,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 2. Join Ludo Room
+  // 2. Join Ludo Room (Dynamic seat adaptation)
   socket.on('ludo_join_room', ({ roomId, playerId, playerName }, callback) => {
     const cleanId = (roomId || '').trim().toUpperCase();
     const room = ludoRooms.get(cleanId);
@@ -823,19 +839,19 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (room.players.length >= room.maxPlayers) {
+    if (room.players.length >= 4) {
       if (callback) callback({ success: false, error: 'Room is already full.' });
       return;
     }
 
-    const config = LUDO_COLOR_CONFIG[room.maxPlayers];
     const newSeatIndex = room.players.length;
     const newPlayer = {
       id: socket.id,
       playerId,
       name: playerName || `Player ${newSeatIndex + 1}`,
       seatIndex: newSeatIndex,
-      color: config[newSeatIndex].name.toLowerCase(),
+      color: 'yellow',
+      colorHex: '#facc15',
       isBot: false,
       connected: true
     };
@@ -844,8 +860,13 @@ io.on('connection', (socket) => {
     socket.join(cleanId);
     socket.ludoRoomId = cleanId;
 
-    // If room is full, start match automatically!
-    if (room.players.length === room.maxPlayers) {
+    // Dynamically update seats and colors according to current count
+    updateLudoWaitingRoomSeats(room);
+
+    // Auto-launch if full (4 players)
+    if (room.players.length === 4) {
+      room.maxPlayers = 4;
+      room.tokens = Array.from({ length: 4 }, () => [-1, -1, -1, -1]);
       room.status = 'playing';
       room.turnIndex = 0;
     }
@@ -863,17 +884,20 @@ io.on('connection', (socket) => {
   });
 
   // 3. Start Ludo Match with Current Players (+ Optional Bots)
-  socket.on('ludo_start_match', ({ roomId, fillBots = false }, callback) => {
+  // Dynamically switches to 2, 3, or 4 players based on lobby count
+  socket.on('ludo_start_match', ({ roomId, fillBots = false, targetCount }, callback) => {
     const cleanId = (roomId || '').trim().toUpperCase();
     const room = ludoRooms.get(cleanId);
-    if (!room || room.status !== 'waiting') {
+    if (!room || (room.status !== 'waiting' && room.status !== 'playing')) {
       if (callback) callback({ success: false, error: 'Cannot start match.' });
       return;
     }
 
-    const config = LUDO_COLOR_CONFIG[room.maxPlayers];
+    let activeCount = room.players.length;
     if (fillBots) {
-      while (room.players.length < room.maxPlayers) {
+      const desired = Math.min(4, Math.max(2, Number(targetCount) || 4));
+      const config = LUDO_COLOR_CONFIG[desired];
+      while (room.players.length < desired) {
         const botIndex = room.players.length;
         room.players.push({
           id: `bot_${botIndex}_${Math.random().toString(36).substring(2, 7)}`,
@@ -881,19 +905,35 @@ io.on('connection', (socket) => {
           name: `Bot ${config[botIndex].name}`,
           seatIndex: botIndex,
           color: config[botIndex].name.toLowerCase(),
+          colorHex: config[botIndex].hex,
           isBot: true,
           connected: true
         });
       }
+      activeCount = desired;
+    } else {
+      activeCount = Math.min(4, Math.max(2, room.players.length));
     }
 
-    if (room.players.length < 2) {
+    if (activeCount < 2) {
       if (callback) callback({ success: false, error: 'Need at least 2 players to start.' });
       return;
     }
 
+    // Dynamically reconfigure room and colors
+    room.maxPlayers = activeCount;
+    const finalConfig = LUDO_COLOR_CONFIG[activeCount];
+    room.players.forEach((p, idx) => {
+      p.seatIndex = idx;
+      p.color = finalConfig[idx].name.toLowerCase();
+      p.colorHex = finalConfig[idx].hex;
+    });
+
+    room.tokens = Array.from({ length: activeCount }, () => [-1, -1, -1, -1]);
     room.status = 'playing';
     room.turnIndex = 0;
+    room.winner = null;
+    room.rankings = [];
 
     if (callback) callback({ success: true, room });
     io.to(cleanId).emit('ludo_state_update', room);
@@ -902,6 +942,130 @@ io.on('connection', (socket) => {
     if (room.players[0].isBot) {
       triggerServerBotTurn(room);
     }
+  });
+
+  // 4. Quick Match (Instant Matchmaking with dynamic countdown)
+  socket.on('ludo_find_quick_match', ({ playerId, playerName } = {}, callback) => {
+    // Check if open quick match room exists
+    if (ludoQuickMatchRoom && ludoRooms.has(ludoQuickMatchRoom.id)) {
+      const room = ludoRooms.get(ludoQuickMatchRoom.id);
+      const existingIndex = room.players.findIndex(p => p.playerId === playerId || p.id === socket.id);
+      if (existingIndex === -1 && room.players.length < 4) {
+        const newSeatIndex = room.players.length;
+        room.players.push({
+          id: socket.id,
+          playerId,
+          name: playerName || `Player ${newSeatIndex + 1}`,
+          seatIndex: newSeatIndex,
+          color: 'yellow',
+          colorHex: '#facc15',
+          isBot: false,
+          connected: true
+        });
+        socket.join(room.id);
+        socket.ludoRoomId = room.id;
+        updateLudoWaitingRoomSeats(room);
+
+        // If 4 players, launch instantly
+        if (room.players.length === 4) {
+          if (ludoQuickMatchTimer) clearTimeout(ludoQuickMatchTimer);
+          ludoQuickMatchTimer = null;
+          ludoQuickMatchRoom = null;
+          room.maxPlayers = 4;
+          room.tokens = Array.from({ length: 4 }, () => [-1, -1, -1, -1]);
+          room.status = 'playing';
+          room.turnIndex = 0;
+          io.to(room.id).emit('ludo_state_update', room);
+        } else if (room.players.length >= 2) {
+          // Dynamic launch countdown
+          if (ludoQuickMatchTimer) clearTimeout(ludoQuickMatchTimer);
+          io.to(room.id).emit('ludo_quick_countdown', { seconds: 4, playerCount: room.players.length });
+          ludoQuickMatchTimer = setTimeout(() => {
+            if (room.status === 'waiting' && room.players.length >= 2) {
+              const count = room.players.length;
+              room.maxPlayers = count;
+              const finalConfig = LUDO_COLOR_CONFIG[count];
+              room.players.forEach((p, idx) => {
+                p.seatIndex = idx;
+                p.color = finalConfig[idx].name.toLowerCase();
+                p.colorHex = finalConfig[idx].hex;
+              });
+              room.tokens = Array.from({ length: count }, () => [-1, -1, -1, -1]);
+              room.status = 'playing';
+              room.turnIndex = 0;
+              ludoQuickMatchRoom = null;
+              ludoQuickMatchTimer = null;
+              io.to(room.id).emit('ludo_state_update', room);
+            }
+          }, 4000);
+        }
+
+        if (callback) callback({ success: true, roomId: room.id, seatIndex: newSeatIndex, room });
+        io.to(room.id).emit('ludo_state_update', room);
+        return;
+      }
+    }
+
+    // Create a new Quick Match room
+    let roomId = 'LUDO-' + generateRoomCode().substring(0, 4);
+    while (ludoRooms.has(roomId)) {
+      roomId = 'LUDO-' + generateRoomCode().substring(0, 4);
+    }
+
+    const newRoom = {
+      id: roomId,
+      maxPlayers: 4,
+      timeControl: 30,
+      players: [
+        {
+          id: socket.id,
+          playerId,
+          name: playerName || 'Player 1',
+          seatIndex: 0,
+          color: 'red',
+          colorHex: '#ef4444',
+          isBot: false,
+          connected: true
+        }
+      ],
+      hostId: socket.id,
+      hostPlayerId: playerId,
+      tokens: Array.from({ length: 4 }, () => [-1, -1, -1, -1]),
+      turnIndex: 0,
+      dice: null,
+      diceRolled: false,
+      consecutiveSixes: 0,
+      status: 'waiting',
+      winner: null,
+      rankings: [],
+      createdAt: Date.now()
+    };
+
+    ludoRooms.set(roomId, newRoom);
+    ludoQuickMatchRoom = newRoom;
+    socket.join(roomId);
+    socket.ludoRoomId = roomId;
+
+    if (callback) {
+      callback({
+        success: true,
+        roomId,
+        seatIndex: 0,
+        room: newRoom
+      });
+    }
+  });
+
+  socket.on('ludo_cancel_quick_match', (callback) => {
+    if (ludoQuickMatchRoom && socket.ludoRoomId === ludoQuickMatchRoom.id) {
+      if (ludoQuickMatchRoom.players.length <= 1) {
+        if (ludoQuickMatchTimer) clearTimeout(ludoQuickMatchTimer);
+        ludoQuickMatchTimer = null;
+        ludoRooms.delete(ludoQuickMatchRoom.id);
+        ludoQuickMatchRoom = null;
+      }
+    }
+    if (callback) callback({ success: true });
   });
 
   // 4. Roll Dice
