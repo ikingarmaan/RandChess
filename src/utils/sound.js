@@ -116,6 +116,29 @@ class SoundEffects {
     setTimeout(() => this.playMove(), 110);
   }
 
+  playDiceRoll() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx || !this.masterGain) return;
+
+    const now = this.ctx.currentTime;
+    [0, 0.05, 0.11, 0.17, 0.24].forEach((offset) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(260 + Math.random() * 180, now + offset);
+      osc.frequency.exponentialRampToValueAtTime(80, now + offset + 0.045);
+
+      gain.gain.setValueAtTime(0.35, now + offset);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.045);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now + offset);
+      osc.stop(now + offset + 0.045);
+    });
+  }
+
   playCoachAdvice() {
     if (!this.enabled) return;
     this.init();

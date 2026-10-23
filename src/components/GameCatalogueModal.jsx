@@ -31,12 +31,25 @@ export const GameCatalogueModal = ({
       shortTitle: 'TIC TAC TOE',
       category: 'QUICK PLAY // TACTICAL',
       icon: '✕ ◯',
-      badge: 'NEW',
+      badge: 'POPULAR',
       badgeColor: 'bg-[#facc15]',
       playable: true,
       players: '1 - 2 Players',
       description: 'Classic high-voltage 3-in-a-row with an Unbeatable Minimax AI bot, 1v1 local pass & play, win streak tracking, celebration confetti, and match clocks.',
       tags: ['Unbeatable Minimax', '1v1 Pass & Play', 'Streak Tracker', 'Custom Clock', 'Victory FX']
+    },
+    {
+      id: 'ludo',
+      title: 'Neo-Brutal Ludo',
+      shortTitle: 'LUDO',
+      category: 'CLASSIC // MULTIPLAYER',
+      icon: '🎲',
+      badge: 'NEW • 2-4 PLAYERS',
+      badgeColor: 'bg-[#f97316] text-white',
+      playable: true,
+      players: '2 - 4 Players',
+      description: 'The ancient 4-corner board game reimagined in high-contrast brutalism. Live online multiplayer rooms, smart bots, 2 to 4 player pass & play, tactile 3D dice, token captures, and safe zones.',
+      tags: ['2-4 Players', 'Online PvP', 'Smart Bots', 'Tactile Dice', 'Safe Zones', 'Zero Blue']
     },
     {
       id: 'connect4',
@@ -286,3 +299,4 @@ export const GameCatalogueModal = ({
     </div>
   );
 };
+

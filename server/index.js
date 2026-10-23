@@ -29,6 +29,218 @@ const PORT = process.env.PORT || 3000;
 // Active rooms storage: roomId -> { chess, whitePlayer, blackPlayer, whitePlayerId, blackPlayerId, timeControl, timers, startedAt, status }
 const rooms = new Map();
 
+// Active Ludo multiplayer rooms storage
+const ludoRooms = new Map();
+
+const LUDO_SAFE_TRACK = [0, 8, 13, 21, 26, 34, 39, 47];
+
+const LUDO_COLOR_CONFIG = {
+  2: [
+    { name: 'Red', hex: '#ef4444', startIdx: 0 },
+    { name: 'Yellow', hex: '#facc15', startIdx: 26 }
+  ],
+  3: [
+    { name: 'Red', hex: '#ef4444', startIdx: 0 },
+    { name: 'Green', hex: '#22c55e', startIdx: 13 },
+    { name: 'Yellow', hex: '#facc15', startIdx: 26 }
+  ],
+  4: [
+    { name: 'Red', hex: '#ef4444', startIdx: 0 },
+    { name: 'Green', hex: '#22c55e', startIdx: 13 },
+    { name: 'Yellow', hex: '#facc15', startIdx: 26 },
+    { name: 'Orange', hex: '#f97316', startIdx: 39 }
+  ]
+};
+
+function getLegalLudoTokens(tokens, dice, playerIdx) {
+  const legal = [];
+  const playerTokens = tokens[playerIdx] || [];
+  for (let t = 0; t < 4; t++) {
+    const step = playerTokens[t];
+    if (step === -1) {
+      if (dice === 6) legal.push(t);
+    } else if (step >= 0 && step < 56) {
+      if (step + dice <= 56) legal.push(t);
+    }
+  }
+  return legal;
+}
+
+function checkLudoCapture(room, movingPlayerIdx, newStep) {
+  if (newStep >= 51) return null;
+
+  const config = LUDO_COLOR_CONFIG[room.maxPlayers];
+  const movingStart = config[movingPlayerIdx].startIdx;
+  const globalTrackIdx = (movingStart + newStep) % 52;
+
+  if (LUDO_SAFE_TRACK.includes(globalTrackIdx)) return null;
+
+  for (let p = 0; p < room.players.length; p++) {
+    if (p === movingPlayerIdx) continue;
+    const oppStart = config[p].startIdx;
+    for (let t = 0; t < 4; t++) {
+      const oppStep = room.tokens[p][t];
+      if (oppStep >= 0 && oppStep < 51) {
+        const oppGlobalIdx = (oppStart + oppStep) % 52;
+        if (oppGlobalIdx === globalTrackIdx) {
+          room.tokens[p][t] = -1;
+          return { capturedPlayer: p, capturedToken: t };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function advanceLudoTurn(room) {
+  let next = (room.turnIndex + 1) % room.players.length;
+  let attempts = 0;
+  while (attempts < room.players.length && room.tokens[next].every(st => st === 56)) {
+    next = (next + 1) % room.players.length;
+    attempts++;
+  }
+  room.turnIndex = next;
+  room.dice = null;
+  room.diceRolled = false;
+  room.consecutiveSixes = 0;
+}
+
+function pickBestBotToken(room, botIdx, legalTokens, dice) {
+  if (legalTokens.length === 1) return legalTokens[0];
+
+  const config = LUDO_COLOR_CONFIG[room.maxPlayers];
+  const myStart = config[botIdx].startIdx;
+
+  let bestToken = legalTokens[0];
+  let bestScore = -Infinity;
+
+  for (const t of legalTokens) {
+    const currentStep = room.tokens[botIdx][t];
+    let score = 0;
+
+    if (currentStep === -1) {
+      score += 70;
+    } else {
+      const nextStep = currentStep + dice;
+      if (nextStep === 56) {
+        score += 150;
+      } else if (nextStep >= 51) {
+        score += 85;
+      } else {
+        const nextGlobalIdx = (myStart + nextStep) % 52;
+        if (LUDO_SAFE_TRACK.includes(nextGlobalIdx)) {
+          score += 65;
+        }
+
+        for (let p = 0; p < room.players.length; p++) {
+          if (p === botIdx) continue;
+          const oppStart = config[p].startIdx;
+          for (let ot = 0; ot < 4; ot++) {
+            const oppStep = room.tokens[p][ot];
+            if (oppStep >= 0 && oppStep < 51) {
+              const oppGlobal = (oppStart + oppStep) % 52;
+              if (oppGlobal === nextGlobalIdx) {
+                score += 120;
+              }
+            }
+          }
+        }
+        score += nextStep * 2;
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestToken = t;
+    }
+  }
+
+  return bestToken;
+}
+
+function triggerServerBotTurn(room) {
+  if (room.status !== 'playing') return;
+  const active = room.players[room.turnIndex];
+  if (!active || !active.isBot) return;
+
+  setTimeout(() => {
+    if (room.status !== 'playing') return;
+    const currentActive = room.players[room.turnIndex];
+    if (!currentActive || !currentActive.isBot) return;
+
+    const dice = 1 + Math.floor(Math.random() * 6);
+    room.dice = dice;
+    room.diceRolled = true;
+
+    if (dice === 6) {
+      room.consecutiveSixes = (room.consecutiveSixes || 0) + 1;
+    } else {
+      room.consecutiveSixes = 0;
+    }
+
+    if (room.consecutiveSixes >= 3) {
+      room.consecutiveSixes = 0;
+      room.dice = null;
+      room.diceRolled = false;
+      advanceLudoTurn(room);
+      io.to(room.id).emit('ludo_dice_rolled', { dice, legalTokens: [], forfeit: true });
+      io.to(room.id).emit('ludo_state_update', room);
+      if (room.players[room.turnIndex]?.isBot) {
+        triggerServerBotTurn(room);
+      }
+      return;
+    }
+
+    const legalTokens = getLegalLudoTokens(room.tokens, dice, room.turnIndex);
+    io.to(room.id).emit('ludo_dice_rolled', { dice, legalTokens, turnIndex: room.turnIndex });
+
+    if (legalTokens.length === 0) {
+      setTimeout(() => {
+        advanceLudoTurn(room);
+        io.to(room.id).emit('ludo_state_update', room);
+        if (room.players[room.turnIndex]?.isBot) {
+          triggerServerBotTurn(room);
+        }
+      }, 1000);
+      return;
+    }
+
+    const chosenToken = pickBestBotToken(room, room.turnIndex, legalTokens, dice);
+
+    setTimeout(() => {
+      const currentStep = room.tokens[room.turnIndex][chosenToken];
+      const newStep = currentStep === -1 ? 0 : currentStep + dice;
+      room.tokens[room.turnIndex][chosenToken] = newStep;
+
+      let extraTurn = dice === 6;
+      const captured = checkLudoCapture(room, room.turnIndex, newStep);
+      if (captured) extraTurn = true;
+
+      if (newStep === 56) {
+        extraTurn = true;
+        if (room.tokens[room.turnIndex].every(st => st === 56)) {
+          if (!room.rankings.includes(room.turnIndex)) room.rankings.push(room.turnIndex);
+          if (room.winner === null) room.winner = room.turnIndex;
+          if (room.rankings.length >= room.players.length - 1) room.status = 'ended';
+        }
+      }
+
+      room.dice = null;
+      room.diceRolled = false;
+
+      if (!extraTurn) {
+        advanceLudoTurn(room);
+      }
+
+      io.to(room.id).emit('ludo_state_update', room);
+
+      if (room.status === 'playing' && room.players[room.turnIndex]?.isBot) {
+        triggerServerBotTurn(room);
+      }
+    }, 700);
+  }, 650);
+}
+
 // Quick match queue: { socketId, socket, playerId, timeControl, preferredColor }
 let quickMatchQueue = null;
 
@@ -497,6 +709,347 @@ io.on('connection', (socket) => {
             }
           }
         }, 30000);
+      }
+    }
+
+    // Ludo room disconnect handler
+    const ludoRoomId = socket.ludoRoomId;
+    if (ludoRoomId && ludoRooms.has(ludoRoomId)) {
+      const ludoRoom = ludoRooms.get(ludoRoomId);
+      const playerIdx = ludoRoom.players.findIndex(p => p.id === socket.id);
+      if (playerIdx !== -1) {
+        if (ludoRoom.status === 'waiting') {
+          // If in waiting room, remove player or clean up if empty
+          ludoRoom.players = ludoRoom.players.filter(p => p.id !== socket.id);
+          if (ludoRoom.players.length === 0) {
+            ludoRooms.delete(ludoRoomId);
+          } else {
+            io.to(ludoRoomId).emit('ludo_state_update', ludoRoom);
+          }
+        } else {
+          // If match is active, convert disconnected human player into an AI bot
+          ludoRoom.players[playerIdx].connected = false;
+          ludoRoom.players[playerIdx].isBot = true;
+          io.to(ludoRoomId).emit('ludo_state_update', ludoRoom);
+          if (ludoRoom.turnIndex === playerIdx) {
+            triggerServerBotTurn(ludoRoom);
+          }
+        }
+      }
+    }
+  });
+
+  // ==========================================
+  // LUDO MULTIPLAYER SOCKET PROTOCOL
+  // ==========================================
+
+  // 1. Create Ludo Room
+  socket.on('ludo_create_room', ({ maxPlayers = 4, timeControl = 30, playerId, playerName }, callback) => {
+    const validCount = Math.min(4, Math.max(2, Number(maxPlayers) || 4));
+    let roomId = 'LUDO-' + generateRoomCode().substring(0, 4);
+    while (ludoRooms.has(roomId)) {
+      roomId = 'LUDO-' + generateRoomCode().substring(0, 4);
+    }
+
+    const config = LUDO_COLOR_CONFIG[validCount];
+    const initialTokens = Array.from({ length: validCount }, () => [-1, -1, -1, -1]);
+    const players = [
+      {
+        id: socket.id,
+        playerId,
+        name: playerName || 'Player 1',
+        seatIndex: 0,
+        color: config[0].name.toLowerCase(),
+        isBot: false,
+        connected: true
+      }
+    ];
+
+    const roomData = {
+      id: roomId,
+      maxPlayers: validCount,
+      timeControl: Number(timeControl),
+      players,
+      hostId: socket.id,
+      hostPlayerId: playerId,
+      tokens: initialTokens,
+      turnIndex: 0,
+      dice: null,
+      diceRolled: false,
+      consecutiveSixes: 0,
+      status: 'waiting',
+      winner: null,
+      rankings: [],
+      createdAt: Date.now()
+    };
+
+    ludoRooms.set(roomId, roomData);
+    socket.join(roomId);
+    socket.ludoRoomId = roomId;
+
+    if (callback) {
+      callback({
+        success: true,
+        roomId,
+        seatIndex: 0,
+        room: roomData
+      });
+    }
+  });
+
+  // 2. Join Ludo Room
+  socket.on('ludo_join_room', ({ roomId, playerId, playerName }, callback) => {
+    const cleanId = (roomId || '').trim().toUpperCase();
+    const room = ludoRooms.get(cleanId);
+    if (!room) {
+      if (callback) callback({ success: false, error: 'Ludo room not found. Check code.' });
+      return;
+    }
+
+    // Reconnection check
+    const existingIndex = room.players.findIndex(p => p.playerId === playerId);
+    if (existingIndex !== -1) {
+      room.players[existingIndex].id = socket.id;
+      room.players[existingIndex].connected = true;
+      socket.join(cleanId);
+      socket.ludoRoomId = cleanId;
+      if (callback) callback({ success: true, roomId: cleanId, seatIndex: existingIndex, room });
+      io.to(cleanId).emit('ludo_state_update', room);
+      return;
+    }
+
+    if (room.status !== 'waiting') {
+      if (callback) callback({ success: false, error: 'Match already in progress.' });
+      return;
+    }
+
+    if (room.players.length >= room.maxPlayers) {
+      if (callback) callback({ success: false, error: 'Room is already full.' });
+      return;
+    }
+
+    const config = LUDO_COLOR_CONFIG[room.maxPlayers];
+    const newSeatIndex = room.players.length;
+    const newPlayer = {
+      id: socket.id,
+      playerId,
+      name: playerName || `Player ${newSeatIndex + 1}`,
+      seatIndex: newSeatIndex,
+      color: config[newSeatIndex].name.toLowerCase(),
+      isBot: false,
+      connected: true
+    };
+
+    room.players.push(newPlayer);
+    socket.join(cleanId);
+    socket.ludoRoomId = cleanId;
+
+    // If room is full, start match automatically!
+    if (room.players.length === room.maxPlayers) {
+      room.status = 'playing';
+      room.turnIndex = 0;
+    }
+
+    if (callback) {
+      callback({
+        success: true,
+        roomId: cleanId,
+        seatIndex: newSeatIndex,
+        room
+      });
+    }
+
+    io.to(cleanId).emit('ludo_state_update', room);
+  });
+
+  // 3. Start Ludo Match with Current Players (+ Optional Bots)
+  socket.on('ludo_start_match', ({ roomId, fillBots = false }, callback) => {
+    const cleanId = (roomId || '').trim().toUpperCase();
+    const room = ludoRooms.get(cleanId);
+    if (!room || room.status !== 'waiting') {
+      if (callback) callback({ success: false, error: 'Cannot start match.' });
+      return;
+    }
+
+    const config = LUDO_COLOR_CONFIG[room.maxPlayers];
+    if (fillBots) {
+      while (room.players.length < room.maxPlayers) {
+        const botIndex = room.players.length;
+        room.players.push({
+          id: `bot_${botIndex}_${Math.random().toString(36).substring(2, 7)}`,
+          playerId: `bot_${botIndex}`,
+          name: `Bot ${config[botIndex].name}`,
+          seatIndex: botIndex,
+          color: config[botIndex].name.toLowerCase(),
+          isBot: true,
+          connected: true
+        });
+      }
+    }
+
+    if (room.players.length < 2) {
+      if (callback) callback({ success: false, error: 'Need at least 2 players to start.' });
+      return;
+    }
+
+    room.status = 'playing';
+    room.turnIndex = 0;
+
+    if (callback) callback({ success: true, room });
+    io.to(cleanId).emit('ludo_state_update', room);
+
+    // If first turn is a bot, trigger it
+    if (room.players[0].isBot) {
+      triggerServerBotTurn(room);
+    }
+  });
+
+  // 4. Roll Dice
+  socket.on('ludo_roll_dice', ({ roomId }, callback) => {
+    const cleanId = (roomId || '').trim().toUpperCase();
+    const room = ludoRooms.get(cleanId);
+    if (!room || room.status !== 'playing') {
+      if (callback) callback({ success: false, error: 'Invalid game state.' });
+      return;
+    }
+
+    const activePlayer = room.players[room.turnIndex];
+    if (!activePlayer || activePlayer.id !== socket.id) {
+      if (callback) callback({ success: false, error: 'Not your turn.' });
+      return;
+    }
+
+    if (room.diceRolled) {
+      if (callback) callback({ success: false, error: 'Dice already rolled.' });
+      return;
+    }
+
+    const dice = 1 + Math.floor(Math.random() * 6);
+    room.dice = dice;
+    room.diceRolled = true;
+
+    if (dice === 6) {
+      room.consecutiveSixes = (room.consecutiveSixes || 0) + 1;
+    } else {
+      room.consecutiveSixes = 0;
+    }
+
+    // 3 consecutive sixes forfeits turn
+    if (room.consecutiveSixes >= 3) {
+      room.consecutiveSixes = 0;
+      room.dice = null;
+      room.diceRolled = false;
+      advanceLudoTurn(room);
+      io.to(cleanId).emit('ludo_dice_rolled', { dice, legalTokens: [], forfeit: true });
+      io.to(cleanId).emit('ludo_state_update', room);
+      if (callback) callback({ success: true, dice, legalTokens: [] });
+      return;
+    }
+
+    const legalTokens = getLegalLudoTokens(room.tokens, dice, room.turnIndex);
+
+    io.to(cleanId).emit('ludo_dice_rolled', { dice, legalTokens, turnIndex: room.turnIndex });
+
+    if (callback) callback({ success: true, dice, legalTokens });
+
+    // If no legal moves, advance turn after brief 1s pause
+    if (legalTokens.length === 0) {
+      setTimeout(() => {
+        advanceLudoTurn(room);
+        io.to(cleanId).emit('ludo_state_update', room);
+      }, 1000);
+    }
+  });
+
+  // 5. Move Token
+  socket.on('ludo_move_token', ({ roomId, tokenIndex }, callback) => {
+    const cleanId = (roomId || '').trim().toUpperCase();
+    const room = ludoRooms.get(cleanId);
+    if (!room || room.status !== 'playing' || !room.diceRolled) {
+      if (callback) callback({ success: false, error: 'Cannot move right now.' });
+      return;
+    }
+
+    const activePlayer = room.players[room.turnIndex];
+    if (!activePlayer || activePlayer.id !== socket.id) {
+      if (callback) callback({ success: false, error: 'Not your turn.' });
+      return;
+    }
+
+    const legalTokens = getLegalLudoTokens(room.tokens, room.dice, room.turnIndex);
+    if (!legalTokens.includes(tokenIndex)) {
+      if (callback) callback({ success: false, error: 'Illegal token move.' });
+      return;
+    }
+
+    const dice = room.dice;
+    const currentStep = room.tokens[room.turnIndex][tokenIndex];
+    let newStep = currentStep === -1 ? 0 : currentStep + dice;
+    room.tokens[room.turnIndex][tokenIndex] = newStep;
+
+    let extraTurn = dice === 6;
+
+    // Check Capture
+    const captured = checkLudoCapture(room, room.turnIndex, newStep);
+    if (captured) {
+      extraTurn = true;
+    }
+
+    // Check if token reached Home goal (56)
+    if (newStep === 56) {
+      extraTurn = true;
+      // Check if all 4 tokens finished
+      if (room.tokens[room.turnIndex].every(st => st === 56)) {
+        if (!room.rankings.includes(room.turnIndex)) {
+          room.rankings.push(room.turnIndex);
+        }
+        if (room.winner === null) {
+          room.winner = room.turnIndex;
+        }
+        if (room.rankings.length >= room.players.length - 1) {
+          room.status = 'ended';
+        }
+      }
+    }
+
+    room.dice = null;
+    room.diceRolled = false;
+
+    if (!extraTurn) {
+      advanceLudoTurn(room);
+    }
+
+    if (callback) callback({ success: true, room });
+    io.to(cleanId).emit('ludo_state_update', room);
+
+    // If next turn is a bot and match is active, trigger bot
+    if (room.status === 'playing' && room.players[room.turnIndex]?.isBot) {
+      triggerServerBotTurn(room);
+    }
+  });
+
+  // 6. Leave Ludo Room
+  socket.on('ludo_leave_room', ({ roomId }) => {
+    const cleanId = (roomId || '').trim().toUpperCase();
+    const room = ludoRooms.get(cleanId);
+    if (room) {
+      const idx = room.players.findIndex(p => p.id === socket.id);
+      if (idx !== -1) {
+        if (room.status === 'waiting') {
+          room.players = room.players.filter(p => p.id !== socket.id);
+          if (room.players.length === 0) {
+            ludoRooms.delete(cleanId);
+          } else {
+            io.to(cleanId).emit('ludo_state_update', room);
+          }
+        } else {
+          room.players[idx].connected = false;
+          room.players[idx].isBot = true;
+          io.to(cleanId).emit('ludo_state_update', room);
+          if (room.turnIndex === idx) {
+            triggerServerBotTurn(room);
+          }
+        }
       }
     }
   });

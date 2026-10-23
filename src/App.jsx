@@ -42,7 +42,9 @@ import { OnlineLobbyModal } from './components/OnlineLobbyModal';
 import { FloatingPiecesBackground } from './components/FloatingPiecesBackground';
 import { TimerSelector } from './components/TimerSelector';
 import { GameCatalogueModal } from './components/GameCatalogueModal';
+import { GameCatalogueHub } from './components/GameCatalogueHub';
 import { TicTacToeGame } from './components/TicTacToeGame';
+import { LudoGame } from './components/LudoGame';
 
 import { getBestMove, evaluateBoard } from './engine/aiEngine';
 import { analyzeAndExplain } from './engine/coachExplainer';
@@ -63,8 +65,8 @@ const getPlayerId = () => {
 };
 
 export default function App() {
-  // --- Game Selection & Catalogue State ---
-  const [activeGame, setActiveGame] = useState('chess'); // 'chess' | 'tictactoe'
+  // --- Game Selection & Catalogue State (Always open catalogue hub first by default) ---
+  const [activeGame, setActiveGame] = useState(null); // null (Catalogue Hub) | 'chess' | 'tictactoe' | 'ludo'
   const [isCatalogueOpen, setIsCatalogueOpen] = useState(false);
 
   // --- Game Engine State ---
@@ -942,37 +944,72 @@ export default function App() {
       <header className={`relative z-30 border-b-3 border-black px-2.5 sm:px-5 py-2 flex items-center justify-between shadow-md shrink-0 ${isDarkTheme ? 'bg-[#18181b]' : 'bg-white'}`}>
         <div className="flex items-center gap-2">
           {/* Active Game Brand Icon */}
-          <div className={`w-7 h-7 sm:w-8 sm:h-8 border-2 border-black flex items-center justify-center font-black text-black text-base sm:text-lg brutal-shadow-sm shrink-0 font-mono ${activeGame === 'chess' ? 'bg-[#22c55e]' : 'bg-[#facc15]'}`}>
-            {activeGame === 'chess' ? '♞' : '✕◯'}
+          <div className={`w-7 h-7 sm:w-8 sm:h-8 border-2 border-black flex items-center justify-center font-black text-base sm:text-lg brutal-shadow-sm shrink-0 font-mono ${
+            activeGame === 'chess'
+              ? 'bg-[#22c55e] text-black'
+              : activeGame === 'tictactoe'
+              ? 'bg-[#facc15] text-black'
+              : activeGame === 'ludo'
+              ? 'bg-[#f97316] text-white'
+              : 'bg-black text-[#22c55e]'
+          }`}>
+            {activeGame === 'chess' ? '♞' : activeGame === 'tictactoe' ? '✕◯' : activeGame === 'ludo' ? '🎲' : '🎮'}
           </div>
           <div>
             <div className="flex items-center gap-1.5">
               <h1 className="font-brutal text-xs sm:text-base font-black uppercase tracking-tight">
-                {activeGame === 'chess' ? 'RandChess' : 'Brutal Tic-Tac-Toe'}
+                {activeGame === 'chess'
+                  ? 'RandChess'
+                  : activeGame === 'tictactoe'
+                  ? 'Brutal Tic-Tac-Toe'
+                  : activeGame === 'ludo'
+                  ? 'Neo-Brutal Ludo'
+                  : 'RandGames Arena'}
               </h1>
               <span className="font-mono text-[9px] font-black uppercase px-1 py-0.2 bg-[#facc15] text-black border border-black hidden sm:inline">
-                {activeGame === 'chess' ? 'MINIMAX v2.0' : 'UNBEATABLE AI'}
+                {activeGame === 'chess'
+                  ? 'MINIMAX v2.0'
+                  : activeGame === 'tictactoe'
+                  ? 'UNBEATABLE AI'
+                  : activeGame === 'ludo'
+                  ? '2-4 PLAYERS'
+                  : 'GAME HUB'}
               </span>
             </div>
             <p className="text-[9px] sm:text-[10px] font-mono text-neutral-500 hidden md:block">
               {activeGame === 'chess'
                 ? 'ZERO BLUE • STOCKFISH CALIBRATED • 100% TACTICAL'
-                : 'ZERO BLUE • 3x3 TACTICAL GRID • FAST ACTION'}
+                : activeGame === 'tictactoe'
+                ? 'ZERO BLUE • 3x3 TACTICAL GRID • FAST ACTION'
+                : activeGame === 'ludo'
+                ? 'ZERO BLUE • 15x15 BATTLEFIELD • ONLINE ROOMS'
+                : 'ZERO BLUE • MULTIPLAYER GAMING ARENA • MINIMAX ENGINES'}
             </p>
           </div>
 
-          {/* GAME CATALOGUE BUTTON (Prominent High-Visibility Switcher) */}
-          <button
-            onClick={() => setIsCatalogueOpen(true)}
-            className="brutal-press flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-[#facc15] hover:bg-yellow-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm shrink-0 ml-1 sm:ml-3"
-            title="Browse All Games in the Catalogue"
-          >
-            <Gamepad2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="font-black">CATALOGUE</span>
-          </button>
+          {/* ALL GAMES / CATALOGUE BUTTON */}
+          {activeGame !== null ? (
+            <button
+              onClick={() => setActiveGame(null)}
+              className="brutal-press flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-[#facc15] hover:bg-yellow-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm shrink-0 ml-1 sm:ml-3"
+              title="Return to Game Hub & Browse All Games"
+            >
+              <Gamepad2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="font-black">ALL GAMES</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsCatalogueOpen(true)}
+              className="brutal-press flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-[#facc15] hover:bg-yellow-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm shrink-0 ml-1 sm:ml-3"
+              title="Quick Game Catalogue"
+            >
+              <Gamepad2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="font-black">CATALOGUE</span>
+            </button>
+          )}
         </div>
 
-        {/* Center Mode Controls (Chess specific or Tic-Tac-Toe quick action) */}
+        {/* Center Mode Controls (Chess specific or Hub quick switcher) */}
         {activeGame === 'chess' ? (
           <div className="hidden md:flex items-center gap-2">
             <div className="flex border-2 border-black bg-black p-0.5">
@@ -1024,17 +1061,25 @@ export default function App() {
               <span>SUGGEST MOVE: {coachEnabled ? 'ON' : 'OFF'}</span>
             </button>
           </div>
-        ) : (
+        ) : activeGame !== null ? (
           <div className="hidden md:flex items-center gap-2">
+            <button
+              onClick={() => setActiveGame(null)}
+              className="brutal-press flex items-center gap-1.5 px-3 py-1 bg-black text-white hover:text-[#facc15] border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer transition-colors"
+              title="Return to Game Hub"
+            >
+              <Gamepad2 className="w-3.5 h-3.5 text-[#facc15]" />
+              <span>ALL GAMES</span>
+            </button>
             <button
               onClick={() => setActiveGame('chess')}
               className="brutal-press flex items-center gap-1.5 px-3 py-1 bg-black text-white hover:text-[#22c55e] border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer transition-colors"
-              title="Return to RandChess"
+              title="Play RandChess"
             >
-              <span>♞ PLAY RANDCHESS</span>
+              <span>♞ PLAY CHESS</span>
             </button>
           </div>
-        )}
+        ) : null}
 
         {/* Global Quick Action Buttons */}
         <div className="flex items-center gap-1 sm:gap-1.5">
@@ -1145,14 +1190,14 @@ export default function App() {
             <span>SUGGEST: {coachEnabled ? 'ON' : 'OFF'}</span>
           </button>
         </div>
-      ) : (
+      ) : activeGame !== null ? (
         <div className={`md:hidden border-b-2 border-black px-2 py-1.5 flex items-center justify-between gap-1.5 shrink-0 z-20 ${isDarkTheme ? 'bg-[#18181b]' : 'bg-[#e5e5dc]'}`}>
           <button
-            onClick={() => setIsCatalogueOpen(true)}
+            onClick={() => setActiveGame(null)}
             className="brutal-press flex items-center gap-1 px-2.5 py-1 bg-[#facc15] text-black border-2 border-black font-brutal text-[11px] font-black uppercase cursor-pointer brutal-shadow-sm"
           >
             <Gamepad2 className="w-3.5 h-3.5" />
-            <span>CATALOGUE</span>
+            <span>ALL GAMES</span>
           </button>
           <button
             onClick={() => setActiveGame('chess')}
@@ -1161,10 +1206,15 @@ export default function App() {
             ♞ PLAY CHESS
           </button>
         </div>
-      )}
+      ) : null}
 
-      {/* Main Body: Active Game Area */}
-      {activeGame === 'chess' ? (
+      {/* Main Body: Active Game Area or Game Hub */}
+      {activeGame === null ? (
+        <GameCatalogueHub
+          onSelectGame={(id) => setActiveGame(id)}
+          isDarkTheme={isDarkTheme}
+        />
+      ) : activeGame === 'chess' ? (
         <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto p-2 sm:p-4 lg:p-6 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-5 min-h-0">
         {/* Left Column: Top Player + Board with EvalBar + Bottom Player + Step Navigation */}
         <div className="flex flex-col items-center gap-2 w-full max-w-[min(94vw,540px)] shrink-0">
@@ -1578,18 +1628,43 @@ export default function App() {
           </div>
         </div>
       </main>
-      ) : (
+      ) : activeGame === 'tictactoe' ? (
         <TicTacToeGame
           isDarkTheme={isDarkTheme}
           soundEnabled={soundEnabled}
-          onOpenCatalogue={() => setIsCatalogueOpen(true)}
+          onOpenCatalogue={() => setActiveGame(null)}
+        />
+      ) : (
+        <LudoGame
+          isDarkTheme={isDarkTheme}
+          soundEnabled={soundEnabled}
+          onOpenCatalogue={() => setActiveGame(null)}
+          socket={socket}
+          socketConnected={socketConnected}
+          playerId={getPlayerId()}
         />
       )}
 
       {/* Brutalist Footer Strip */}
       <footer className={`border-t-3 border-black py-1.5 px-4 flex items-center justify-between text-[10px] font-mono font-black uppercase tracking-widest shrink-0 ${isDarkTheme ? 'bg-black text-white' : 'bg-white text-black'}`}>
-        <span>{activeGame === 'chess' ? 'RandChess v2.0 // HIGH-EFFICIENCY MINIMAX' : 'Brutal Tic-Tac-Toe // 3x3 UNBEATABLE MINIMAX'}</span>
-        <span className="hidden sm:inline">{activeGame === 'chess' ? 'NO BLUE • 64 SQUARES • TACTICAL RADAR' : 'NO BLUE • 3x3 TACTICAL GRID • FAST ACTION'}</span>
+        <span>
+          {activeGame === 'chess'
+            ? 'RandChess v2.0 // HIGH-EFFICIENCY MINIMAX'
+            : activeGame === 'tictactoe'
+            ? 'Brutal Tic-Tac-Toe // 3x3 UNBEATABLE MINIMAX'
+            : activeGame === 'ludo'
+            ? 'Neo-Brutal Ludo // 2-4 PLAYERS ONLINE ARENA'
+            : 'RandGames Arena // MULTI-GAME BATTLEGROUND'}
+        </span>
+        <span className="hidden sm:inline">
+          {activeGame === 'chess'
+            ? 'NO BLUE • 64 SQUARES • TACTICAL RADAR'
+            : activeGame === 'tictactoe'
+            ? 'NO BLUE • 3x3 GRID • INSTANT ACTION'
+            : activeGame === 'ludo'
+            ? 'NO BLUE • 15x15 BATTLEFIELD • ONLINE ROOMS'
+            : 'NO BLUE • 3 PLAYABLE ARENAS • MINIMAX ENGINES'}
+        </span>
       </footer>
 
       {/* Draw Offer Banners */}
