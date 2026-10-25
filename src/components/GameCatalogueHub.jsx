@@ -19,7 +19,7 @@ export const GameCatalogueHub = ({
   onSelectGame,
   isDarkTheme = false
 }) => {
-  const [filter, setFilter] = useState('all'); // 'all' | 'playable' | 'upcoming'
+  const [filter, setFilter] = useState('all'); // 'all' | 'strategy' | 'arcade' | 'board'
 
   const games = [
     {
@@ -33,7 +33,7 @@ export const GameCatalogueHub = ({
       playable: true,
       players: '1 - 2 Players',
       highlightBorder: 'hover:border-[#22c55e]',
-      btnBg: 'bg-[#22c55e] hover:bg-green-400',
+      btnBg: 'bg-[#22c55e] hover:bg-green-400 text-black',
       description: 'Stockfish-calibrated Minimax engine (800-2100 ELO), real-time online PvP with 6-char room codes, GM coach explainer, and customizable timers.',
       features: [
         'Minimax AI with 4 Difficulty Tiers',
@@ -49,7 +49,7 @@ export const GameCatalogueHub = ({
       shortTitle: 'LUDO',
       category: 'CLASSIC BATTLE // 2-4 PLAYERS',
       icon: '🎲',
-      badge: 'NEW // 2-4 PLAYERS',
+      badge: '2-4 PLAYERS',
       badgeColor: 'bg-[#f97316] text-white',
       playable: true,
       players: '2 - 4 Players (Min 2, Max 4)',
@@ -62,6 +62,195 @@ export const GameCatalogueHub = ({
         '1v1 to 4-Player Local Pass & Play',
         'Tactile 3D Dice Shaker with Audio FX',
         '8 Safe Squares, Captures & Home Celebrations'
+      ]
+    },
+    {
+      id: 'connect4',
+      title: 'Gravity Connect 4',
+      shortTitle: 'CONNECT 4',
+      category: 'GRID STRATEGY // 7x6',
+      icon: '🔴 🟡',
+      badge: 'POPULAR',
+      badgeColor: 'bg-[#ef4444] text-white',
+      playable: true,
+      players: '1 - 2 Players',
+      highlightBorder: 'hover:border-[#ef4444]',
+      btnBg: 'bg-[#ef4444] hover:bg-red-500 text-white',
+      description: 'Vertical gravity drop duel. Line up 4 chips horizontally, vertically, or diagonally while blocking opponent traps. Powered by Minimax AI.',
+      features: [
+        '7x6 Vertical Drop Grid with Hover Previews',
+        'Minimax AI Engine across 3 Difficulties',
+        '1v1 Local Pass & Play Mode',
+        'Turn Countdown Timer (15s, 30s, 60s, ∞)',
+        'Dynamic 4-in-a-Row Victory Line Animations'
+      ]
+    },
+    {
+      id: 'checkers',
+      title: 'Brutal Checkers',
+      shortTitle: 'CHECKERS',
+      category: 'DIAGONAL COMBAT // 8x8',
+      icon: '⚪ ⚫',
+      badge: 'CLASSIC',
+      badgeColor: 'bg-black text-white',
+      playable: true,
+      players: '1 - 2 Players',
+      highlightBorder: 'hover:border-black',
+      btnBg: 'bg-black hover:bg-neutral-800 text-[#facc15]',
+      description: 'Tactical diagonal draughts warfare with mandatory jumping rules, multi-jump combo chains, crown kinging, and heuristic bot AI.',
+      features: [
+        '8x8 Dark Grid with Glowing Legal Destination Dots',
+        'Mandatory Multi-Jump Chain Enforcements',
+        'Back-Rank King Promotion 👑',
+        'Minimax Checkers Bot with 3 Difficulty Tiers',
+        '1v1 Local Pass & Play with Score Tracking'
+      ]
+    },
+    {
+      id: 'battleship',
+      title: 'Naval Battleship',
+      shortTitle: 'BATTLESHIP',
+      category: 'COORDINATE WARFARE // 10x10',
+      icon: '🚢 💥',
+      badge: 'ARTILLERY',
+      badgeColor: 'bg-[#f97316] text-white',
+      playable: true,
+      players: '1 - 2 Players',
+      highlightBorder: 'hover:border-[#f97316]',
+      btnBg: 'bg-[#f97316] hover:bg-orange-500 text-white',
+      description: 'Coordinate artillery radar strikes. Deploy your 5-ship fleet with rotation and auto-randomize, then call radar missile strikes against Hunt & Target AI.',
+      features: [
+        '10x10 Ocean Grid & Enemy Radar Strike Station',
+        '5 Naval Ships with Horizontal/Vertical Rotation',
+        'Smart Hunt & Target AI with Adjacent Memory',
+        'Direct Hit Explosions & Splashes',
+        '1-Click Fleet Randomizer'
+      ]
+    },
+    {
+      id: 'minesweeper',
+      title: 'Minesweeper Tactical',
+      shortTitle: 'MINESWEEPER',
+      category: 'LOGIC DEDUCTION',
+      icon: '🚩 💣',
+      badge: 'SPEEDRUN',
+      badgeColor: 'bg-[#22c55e] text-black',
+      playable: true,
+      players: 'Singleplayer',
+      highlightBorder: 'hover:border-[#22c55e]',
+      btnBg: 'bg-[#22c55e] hover:bg-green-400 text-black',
+      description: 'Zero-guess mine clearance grid with first-click safety guarantees, cascading flood-fill reveals, precision digital stopwatch, and flagging controls.',
+      features: [
+        '100% First-Click Safe Zone Guarantee',
+        'Beginner (9x9), Intermediate (16x16), Expert (16x24)',
+        'Cascading Zero-Mine Auto-Reveal',
+        'Mobile Tap-to-Flag / Desktop Right-Click Flagging',
+        'Retro Digital LED Bomb & Stopwatch HUD'
+      ]
+    },
+    {
+      id: 'othello',
+      title: 'Brutal Othello',
+      shortTitle: 'REVERSI',
+      category: 'DYNAMIC FLIPS // 8x8',
+      icon: '⚫ ⚪',
+      badge: 'STRATEGY',
+      badgeColor: 'bg-black text-[#22c55e]',
+      playable: true,
+      players: '1 - 2 Players',
+      highlightBorder: 'hover:border-[#22c55e]',
+      btnBg: 'bg-[#22c55e] hover:bg-green-400 text-black',
+      description: 'Trap and flip opponent pieces across all 8 directions. Features live flip previews, corner positional weighting, and territory tug-of-war gauges.',
+      features: [
+        'Live Sandwich Flip Highlight on Hover',
+        'Positional Heuristic AI with Corner Dominance',
+        'Territory Tug-of-War Real-Time Gauge',
+        'Automatic Pass-Turn Enforcement',
+        '1v1 Local Pass & Play'
+      ]
+    },
+    {
+      id: 'dotsandboxes',
+      title: 'Dots & Boxes',
+      shortTitle: 'DOTS & BOXES',
+      category: 'TERRITORY CAPTURE',
+      icon: '✏️ ⏹️',
+      badge: 'PENCIL & PAPER',
+      badgeColor: 'bg-[#facc15] text-black',
+      playable: true,
+      players: '1 - 2 Players',
+      highlightBorder: 'hover:border-[#facc15]',
+      btnBg: 'bg-[#facc15] hover:bg-yellow-400 text-black',
+      description: 'Draw lines between grid dots to claim boxes and trigger combo chain reactions. Features smart corridor AI and customizable grid sizes.',
+      features: [
+        'Selectable Grids: 3x3, 4x4, or 5x5 Boxes',
+        '4th Side Completion Bonus Turns & Chain Reactions',
+        'Corridor-Aware Heuristic Bot AI',
+        'Real-Time Territory Box Fill Animations',
+        '1v1 Local Pass & Play'
+      ]
+    },
+    {
+      id: 'pong',
+      title: 'Cyber Pong 1v1',
+      shortTitle: 'CYBER PONG',
+      category: '60 FPS ARCADE',
+      icon: '🏓 ⚡',
+      badge: 'FAST ACTION',
+      badgeColor: 'bg-[#22c55e] text-black',
+      playable: true,
+      players: '1 - 2 Players',
+      highlightBorder: 'hover:border-[#22c55e]',
+      btnBg: 'bg-[#22c55e] hover:bg-green-400 text-black',
+      description: 'High-speed 60 FPS vector paddle physics. Features spin deflection angles, accelerating ball speed, reactive AI bot, and same-keyboard 1v1 duels.',
+      features: [
+        '60 FPS HTML5 Canvas Physics Engine',
+        'Edge Deflection Spin & Ball Acceleration',
+        'Same Keyboard 1v1 (W/S vs Arrow Keys)',
+        'Reactive Bot with 3 Difficulty Speeds',
+        'Configurable Goal Limits (5, 7, 10 Points)'
+      ]
+    },
+    {
+      id: 'snake',
+      title: 'Snake Arena Duel',
+      shortTitle: 'SNAKE ARENA',
+      category: 'GRID SURVIVAL // 20x20',
+      icon: '🐍 🍎',
+      badge: 'RETRO ARCADE',
+      badgeColor: 'bg-[#22c55e] text-black',
+      playable: true,
+      players: '1 - 2 Players',
+      highlightBorder: 'hover:border-[#22c55e]',
+      btnBg: 'bg-[#22c55e] hover:bg-green-400 text-black',
+      description: 'Classic arcade snake with red apples, bonus golden stars, and an intense 1v1 Tron-style duel mode where two snakes battle on the same arena.',
+      features: [
+        'Solo High-Score Survival & 1v1 Duel Modes',
+        'Red Apples (+10) and Bonus Golden Stars (+50)',
+        'Head-to-Head Tron Collision Eliminator',
+        'High Score Persistence via LocalStorage',
+        'Tactile Pause & Resume Controls'
+      ]
+    },
+    {
+      id: 'snakesladders',
+      title: 'Snakes & Ladders',
+      shortTitle: 'SNAKES & LADDERS',
+      category: '100-TILE RACE // 2-4 PLAYERS',
+      icon: '🪜 🐍',
+      badge: '2-4 PLAYERS',
+      badgeColor: 'bg-[#facc15] text-black',
+      playable: true,
+      players: '2 - 4 Players',
+      highlightBorder: 'hover:border-[#facc15]',
+      btnBg: 'bg-[#facc15] hover:bg-yellow-400 text-black',
+      description: 'The iconic 100-tile boustrophedon race! Climb golden ladders, avoid hazard snakes, roll tactile 3D dice, and enjoy 2 to 4 player local or bot matches.',
+      features: [
+        '100-Tile Boustrophedon Numbered Grid',
+        'Golden Ladders (Climb) & Hazard Snakes (Slide)',
+        'Tactile 3D Animated Dice with Audio FX',
+        'Exact 100 Finish Bounce Rule & 6s Extra Roll',
+        '2 to 4 Players Local or Autonomous Bots'
       ]
     },
     {
@@ -84,64 +273,14 @@ export const GameCatalogueHub = ({
         'Customizable Round Countdown Clocks',
         'Animated Dynamic Victory Lines'
       ]
-    },
-    {
-      id: 'connect4',
-      title: 'Gravity Connect 4',
-      shortTitle: 'CONNECT 4',
-      category: 'GRID STRATEGY // 7x6',
-      icon: '🔴 🟡',
-      badge: 'COMING SOON',
-      badgeColor: 'bg-black text-white',
-      playable: false,
-      players: '1 - 2 Players',
-      description: 'Vertical drop strategy game. Connect 4 discs in a line horizontally, vertically, or diagonally while blocking traps.',
-      features: ['Gravity Grid Physics', '4 In A Row Victory', 'Minimax Drop Engine']
-    },
-    {
-      id: 'checkers',
-      title: 'Brutal Checkers',
-      shortTitle: 'CHECKERS',
-      category: 'DIAGONAL COMBAT // 8x8',
-      icon: '⚪ ⚫',
-      badge: 'COMING SOON',
-      badgeColor: 'bg-black text-white',
-      playable: false,
-      players: '1 - 2 Players',
-      description: 'Diagonal jumping warfare with mandatory multi-captures, king promotions, and crisp black-and-white pieces.',
-      features: ['Forced Multi-Jumps', 'Crown Kinging', 'Tactile Jump Physics']
-    },
-    {
-      id: 'minesweeper',
-      title: 'Minesweeper Tactical',
-      shortTitle: 'MINESWEEPER',
-      category: 'LOGIC DEDUCTION',
-      icon: '🚩 💣',
-      badge: 'COMING SOON',
-      badgeColor: 'bg-black text-white',
-      playable: false,
-      players: 'Singleplayer',
-      description: 'Zero-guess mine clearance grid with deductive logic guarantees, speedrun timers, and tactile cell flagging.',
-      features: ['Zero Guess Logic', 'Speedrun Precision Clock', 'Custom Grid Sizing']
-    },
-    {
-      id: 'battleship',
-      title: 'Naval Battleship',
-      shortTitle: 'BATTLESHIP',
-      category: 'COORDINATE WARFARE',
-      icon: '🚢 💥',
-      badge: 'COMING SOON',
-      badgeColor: 'bg-black text-white',
-      playable: false,
-      players: '1 - 2 Players',
-      description: 'Coordinate artillery grid warfare. Position your fleet, call tactical radar strikes, and sink the opponent armada.',
-      features: ['Coordinate Radar', 'Tactical Air Strikes', '10x10 Fleet Grid']
     }
   ];
 
   const filteredGames = games.filter((g) => {
-    if (filter === 'playable') return g.playable;
-    if (filter === 'upcoming') return !g.playable;
+    if (filter === 'all') return true;
+    if (filter === 'strategy') return ['chess', 'othello', 'checkers', 'connect4'].includes(g.id);
+    if (filter === 'arcade') return ['pong', 'snake', 'minesweeper', 'tictactoe'].includes(g.id);
+    if (filter === 'board') return ['ludo', 'battleship', 'snakesladders', 'dotsandboxes'].includes(g.id);
     return true;
   });
 
@@ -154,7 +293,7 @@ export const GameCatalogueHub = ({
         {/* Top Brutalist Tag */}
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-black text-white border-2 border-black font-mono text-xs font-black uppercase tracking-wider mb-3 brutal-shadow-sm">
           <Gamepad2 className="w-3.5 h-3.5 text-[#22c55e]" />
-          <span>RANDGAMES ARENA // MULTI-GAME PLATFORM</span>
+          <span>RANDGAMES ARENA // 12 HIGH-VOLTAGE BATTLEFIELDS</span>
         </div>
 
         {/* Main Title */}
@@ -163,15 +302,16 @@ export const GameCatalogueHub = ({
         </h1>
 
         <p className="font-mono text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 max-w-2xl">
-          High-voltage tactical board games featuring Stockfish-calibrated Minimax, Unbeatable AI & Real-Time Online Multiplayer. Strict Zero Blue Neo-Brutalism.
+          High-voltage tactical board & arcade games featuring Stockfish-calibrated Minimax, Unbeatable AI & Real-Time Multiplayer. Strict Zero Blue Neo-Brutalism.
         </p>
 
         {/* Category Filter Pills */}
-        <div className="flex items-center gap-1.5 sm:gap-2 mt-5 p-1 bg-black border-2 border-black">
+        <div className="flex items-center gap-1.5 sm:gap-2 mt-5 p-1 bg-black border-2 border-black flex-wrap justify-center">
           {[
             { id: 'all', label: 'ALL GAMES', count: games.length },
-            { id: 'playable', label: 'PLAYABLE NOW', count: 3 },
-            { id: 'upcoming', label: 'COMING SOON', count: 4 }
+            { id: 'strategy', label: 'STRATEGY', count: 4 },
+            { id: 'board', label: 'BOARD & DICE', count: 4 },
+            { id: 'arcade', label: 'REFLEX & ARCADE', count: 4 }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -246,22 +386,16 @@ export const GameCatalogueHub = ({
 
               {/* Action Button Footer */}
               <div className="p-4 pt-0 mt-3">
-                {game.playable ? (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectGame(game.id);
-                    }}
-                    className={`brutal-press w-full py-3 px-4 border-3 border-black font-brutal text-sm font-black uppercase cursor-pointer brutal-shadow-sm flex items-center justify-center gap-2 ${game.btnBg}`}
-                  >
-                    <Play className="w-4 h-4 fill-current" />
-                    <span>LAUNCH {game.shortTitle}</span>
-                  </button>
-                ) : (
-                  <div className="w-full py-2.5 px-3 bg-neutral-200 dark:bg-neutral-800 text-neutral-500 border-2 border-black font-mono text-xs font-black uppercase text-center cursor-not-allowed">
-                    IN DEVELOPMENT
-                  </div>
-                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectGame(game.id);
+                  }}
+                  className={`brutal-press w-full py-3 px-4 border-3 border-black font-brutal text-sm font-black uppercase cursor-pointer brutal-shadow-sm flex items-center justify-center gap-2 ${game.btnBg}`}
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  <span>LAUNCH {game.shortTitle}</span>
+                </button>
               </div>
             </div>
           );
@@ -270,11 +404,29 @@ export const GameCatalogueHub = ({
 
       {/* Footer System Specs */}
       <div className="w-full max-w-6xl border-t-2 border-black/30 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-neutral-500 gap-2">
-        <div>RANDGAMES v2.0 // HIGH-TACTICAL ZERO BLUE GAMING SUITE</div>
-        <div className="flex items-center gap-3">
+        <div>RANDGAMES v2.0 // 12 ZERO-BLUE ARENAS READY FOR COMBAT</div>
+        <div className="flex items-center gap-2 flex-wrap justify-center">
           <span>CHESS</span>
           <span>•</span>
-          <span>LUDO (2-4P)</span>
+          <span>LUDO</span>
+          <span>•</span>
+          <span>CONNECT 4</span>
+          <span>•</span>
+          <span>CHECKERS</span>
+          <span>•</span>
+          <span>BATTLESHIP</span>
+          <span>•</span>
+          <span>MINESWEEPER</span>
+          <span>•</span>
+          <span>OTHELLO</span>
+          <span>•</span>
+          <span>DOTS & BOXES</span>
+          <span>•</span>
+          <span>PONG</span>
+          <span>•</span>
+          <span>SNAKE</span>
+          <span>•</span>
+          <span>SNAKES & LADDERS</span>
           <span>•</span>
           <span>TIC-TAC-TOE</span>
         </div>
@@ -282,4 +434,3 @@ export const GameCatalogueHub = ({
     </div>
   );
 };
-

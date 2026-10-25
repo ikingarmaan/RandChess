@@ -45,11 +45,132 @@ import { GameCatalogueModal } from './components/GameCatalogueModal';
 import { GameCatalogueHub } from './components/GameCatalogueHub';
 import { TicTacToeGame } from './components/TicTacToeGame';
 import { LudoGame } from './components/LudoGame';
+import { ConnectFourGame } from './components/ConnectFourGame';
+import { CheckersGame } from './components/CheckersGame';
+import { BattleshipGame } from './components/BattleshipGame';
+import { MinesweeperGame } from './components/MinesweeperGame';
+import { OthelloGame } from './components/OthelloGame';
+import { DotsAndBoxesGame } from './components/DotsAndBoxesGame';
+import { PongGame } from './components/PongGame';
+import { SnakeGame } from './components/SnakeGame';
+import { SnakesAndLaddersGame } from './components/SnakesAndLaddersGame';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 import { getBestMove, evaluateBoard } from './engine/aiEngine';
 import { analyzeAndExplain } from './engine/coachExplainer';
 import { sound } from './utils/sound';
+
+// Metadata dictionary for all 12 playable games in the Brutalist suite
+const GAME_METADATA = {
+  chess: {
+    title: 'RandChess',
+    badge: 'MINIMAX v2.0',
+    icon: '♞',
+    iconBg: 'bg-[#22c55e] text-black',
+    sub: 'ZERO BLUE • STOCKFISH CALIBRATED • 100% TACTICAL',
+    footer: 'RandChess v2.0 // HIGH-EFFICIENCY MINIMAX',
+    footerSub: 'NO BLUE • 64 SQUARES • TACTICAL RADAR'
+  },
+  ludo: {
+    title: 'Neo-Brutal Ludo',
+    badge: '2-4 PLAYERS',
+    icon: '🎲',
+    iconBg: 'bg-[#f97316] text-white',
+    sub: 'ZERO BLUE • 15x15 BATTLEFIELD • ONLINE ROOMS',
+    footer: 'Neo-Brutal Ludo // 2-4 PLAYERS ONLINE ARENA',
+    footerSub: 'NO BLUE • 15x15 BATTLEFIELD • ONLINE ROOMS'
+  },
+  tictactoe: {
+    title: 'Brutal Tic-Tac-Toe',
+    badge: 'UNBEATABLE AI',
+    icon: '✕◯',
+    iconBg: 'bg-[#facc15] text-black',
+    sub: 'ZERO BLUE • 3x3 TACTICAL GRID • FAST ACTION',
+    footer: 'Brutal Tic-Tac-Toe // 3x3 UNBEATABLE MINIMAX',
+    footerSub: 'NO BLUE • 3x3 GRID • INSTANT ACTION'
+  },
+  connect4: {
+    title: 'Gravity Connect 4',
+    badge: 'MINIMAX AI',
+    icon: '🔴🟡',
+    iconBg: 'bg-[#ef4444] text-white',
+    sub: 'ZERO BLUE • 7x6 GRAVITY GRID • 4 IN A ROW',
+    footer: 'Gravity Connect 4 // 7x6 VERTICAL MINIMAX',
+    footerSub: 'NO BLUE • 7x6 GRID • HOVER PREVIEWS'
+  },
+  checkers: {
+    title: 'Brutal Checkers',
+    badge: 'MANDATORY JUMPS',
+    icon: '⚪⚫',
+    iconBg: 'bg-black text-[#facc15]',
+    sub: 'ZERO BLUE • 8x8 DRAUGHTS • KINGING 👑',
+    footer: 'Brutal Checkers // 8x8 DRAUGHTS MINIMAX',
+    footerSub: 'NO BLUE • MULTI-JUMP CHAINS • KINGS'
+  },
+  battleship: {
+    title: 'Naval Battleship',
+    badge: 'RADAR ARTILLERY',
+    icon: '🚢💥',
+    iconBg: 'bg-[#f97316] text-white',
+    sub: 'ZERO BLUE • 10x10 RADAR • HUNT & TARGET AI',
+    footer: 'Naval Battleship // COORDINATE ARTILLERY',
+    footerSub: 'NO BLUE • 10x10 RADAR GRID • SINK ARMADA'
+  },
+  minesweeper: {
+    title: 'Minesweeper Tactical',
+    badge: '100% SAFE START',
+    icon: '🚩💣',
+    iconBg: 'bg-[#22c55e] text-black',
+    sub: 'ZERO BLUE • LOGIC DEDUCTION • SPEEDRUN CLOCK',
+    footer: 'Minesweeper Tactical // RETRO LOGIC GRID',
+    footerSub: 'NO BLUE • FLOOD-FILL REVEAL • STOPWATCH HUD'
+  },
+  othello: {
+    title: 'Brutal Othello',
+    badge: 'SANDWICH FLIPS',
+    icon: '⚫⚪',
+    iconBg: 'bg-black text-[#22c55e]',
+    sub: 'ZERO BLUE • 8-DIR REVERSI • CORNER HEURISTICS',
+    footer: 'Brutal Othello // 8x8 REVERSI STRATEGY',
+    footerSub: 'NO BLUE • LIVE FLIP PREVIEWS • DYNAMIC TUG-OF-WAR'
+  },
+  dotsandboxes: {
+    title: 'Dots & Boxes',
+    badge: 'CHAIN COMBOS',
+    icon: '✏️⏹️',
+    iconBg: 'bg-[#facc15] text-black',
+    sub: 'ZERO BLUE • TERRITORY CAPTURE • BONUS TURNS',
+    footer: 'Dots & Boxes // TERRITORY CAPTURE',
+    footerSub: 'NO BLUE • CORRIDOR AI • 3x3 TO 5x5'
+  },
+  pong: {
+    title: 'Cyber Pong 1v1',
+    badge: '60 FPS ARCADE',
+    icon: '🏓⚡',
+    iconBg: 'bg-[#22c55e] text-black',
+    sub: 'ZERO BLUE • VECTOR PHYSICS • SPIN DEFLECTION',
+    footer: 'Cyber Pong 1v1 // 60 FPS VECTOR ARENA',
+    footerSub: 'NO BLUE • 1v1 SAME KEYBOARD • REACTIVE BOT'
+  },
+  snake: {
+    title: 'Snake Arena Duel',
+    badge: 'RETRO SURVIVAL',
+    icon: '🐍🍎',
+    iconBg: 'bg-[#22c55e] text-black',
+    sub: 'ZERO BLUE • 20x20 ARENA • 1v1 TRON DUEL',
+    footer: 'Snake Arena Duel // 20x20 GRID DUEL',
+    footerSub: 'NO BLUE • APPLES & GOLDEN STARS • LOCALSTORAGE HIGHS'
+  },
+  snakesladders: {
+    title: 'Snakes & Ladders',
+    badge: '100-TILE RACE',
+    icon: '🪜🐍',
+    iconBg: 'bg-[#facc15] text-black',
+    sub: 'ZERO BLUE • BOUSTROPHEDON • 2-4 PLAYERS',
+    footer: 'Snakes & Ladders // 100-TILE RACE',
+    footerSub: 'NO BLUE • 3D DICE • LADDERS & HAZARDS'
+  }
+};
 
 // Persistent client player identity for resilient room reconnection
 const getPlayerId = () => {
@@ -936,6 +1057,16 @@ export default function App() {
   const topPlayer = isFlipped ? player1 : player2;
   const bottomPlayer = isFlipped ? player2 : player1;
 
+  const currentMeta = (activeGame && GAME_METADATA[activeGame]) || {
+    title: 'RandGames Arena',
+    badge: '12 PLAYABLE ARENAS',
+    icon: '🎮',
+    iconBg: 'bg-black text-[#22c55e]',
+    sub: 'ZERO BLUE • MULTIPLAYER GAMING ARENA • MINIMAX ENGINES',
+    footer: 'RandGames Arena // 12 PLAYABLE TACTICAL ARENAS',
+    footerSub: 'NO BLUE • ZERO BLUE NEO-BRUTALISM • 100% PLAYABLE'
+  };
+
   return (
     <div className={`relative min-h-screen flex flex-col justify-between selection:bg-[#22c55e] selection:text-black font-brutal overflow-x-hidden ${isDarkTheme ? 'bg-[#0f0f12] text-white' : 'bg-[#f4f4ec] text-black'}`}>
       {/* Neo-Brutalist Grid Background */}
@@ -945,46 +1076,20 @@ export default function App() {
       <header className={`relative z-30 border-b-3 border-black px-2.5 sm:px-5 py-2 flex items-center justify-between shadow-md shrink-0 ${isDarkTheme ? 'bg-[#18181b]' : 'bg-white'}`}>
         <div className="flex items-center gap-2">
           {/* Active Game Brand Icon */}
-          <div className={`w-7 h-7 sm:w-8 sm:h-8 border-2 border-black flex items-center justify-center font-black text-base sm:text-lg brutal-shadow-sm shrink-0 font-mono ${
-            activeGame === 'chess'
-              ? 'bg-[#22c55e] text-black'
-              : activeGame === 'tictactoe'
-              ? 'bg-[#facc15] text-black'
-              : activeGame === 'ludo'
-              ? 'bg-[#f97316] text-white'
-              : 'bg-black text-[#22c55e]'
-          }`}>
-            {activeGame === 'chess' ? '♞' : activeGame === 'tictactoe' ? '✕◯' : activeGame === 'ludo' ? '🎲' : '🎮'}
+          <div className={`w-7 h-7 sm:w-8 sm:h-8 border-2 border-black flex items-center justify-center font-black text-base sm:text-lg brutal-shadow-sm shrink-0 font-mono ${currentMeta.iconBg}`}>
+            {currentMeta.icon}
           </div>
           <div>
             <div className="flex items-center gap-1.5">
               <h1 className="font-brutal text-xs sm:text-base font-black uppercase tracking-tight">
-                {activeGame === 'chess'
-                  ? 'RandChess'
-                  : activeGame === 'tictactoe'
-                  ? 'Brutal Tic-Tac-Toe'
-                  : activeGame === 'ludo'
-                  ? 'Neo-Brutal Ludo'
-                  : 'RandGames Arena'}
+                {currentMeta.title}
               </h1>
               <span className="font-mono text-[9px] font-black uppercase px-1 py-0.2 bg-[#facc15] text-black border border-black hidden sm:inline">
-                {activeGame === 'chess'
-                  ? 'MINIMAX v2.0'
-                  : activeGame === 'tictactoe'
-                  ? 'UNBEATABLE AI'
-                  : activeGame === 'ludo'
-                  ? '2-4 PLAYERS'
-                  : 'GAME HUB'}
+                {currentMeta.badge}
               </span>
             </div>
             <p className="text-[9px] sm:text-[10px] font-mono text-neutral-500 hidden md:block">
-              {activeGame === 'chess'
-                ? 'ZERO BLUE • STOCKFISH CALIBRATED • 100% TACTICAL'
-                : activeGame === 'tictactoe'
-                ? 'ZERO BLUE • 3x3 TACTICAL GRID • FAST ACTION'
-                : activeGame === 'ludo'
-                ? 'ZERO BLUE • 15x15 BATTLEFIELD • ONLINE ROOMS'
-                : 'ZERO BLUE • MULTIPLAYER GAMING ARENA • MINIMAX ENGINES'}
+              {currentMeta.sub}
             </p>
           </div>
 
@@ -1636,7 +1741,7 @@ export default function App() {
           soundEnabled={soundEnabled}
           onOpenCatalogue={() => setActiveGame(null)}
         />
-      ) : (
+      ) : activeGame === 'ludo' ? (
         <LudoGame
           isDarkTheme={isDarkTheme}
           soundEnabled={soundEnabled}
@@ -1645,29 +1750,72 @@ export default function App() {
           socketConnected={socketConnected}
           playerId={getPlayerId()}
         />
+      ) : activeGame === 'connect4' ? (
+        <ConnectFourGame
+          isDarkTheme={isDarkTheme}
+          soundEnabled={soundEnabled}
+          onOpenCatalogue={() => setActiveGame(null)}
+        />
+      ) : activeGame === 'checkers' ? (
+        <CheckersGame
+          isDarkTheme={isDarkTheme}
+          soundEnabled={soundEnabled}
+          onOpenCatalogue={() => setActiveGame(null)}
+        />
+      ) : activeGame === 'battleship' ? (
+        <BattleshipGame
+          isDarkTheme={isDarkTheme}
+          soundEnabled={soundEnabled}
+          onOpenCatalogue={() => setActiveGame(null)}
+        />
+      ) : activeGame === 'minesweeper' ? (
+        <MinesweeperGame
+          isDarkTheme={isDarkTheme}
+          soundEnabled={soundEnabled}
+          onOpenCatalogue={() => setActiveGame(null)}
+        />
+      ) : activeGame === 'othello' ? (
+        <OthelloGame
+          isDarkTheme={isDarkTheme}
+          soundEnabled={soundEnabled}
+          onOpenCatalogue={() => setActiveGame(null)}
+        />
+      ) : activeGame === 'dotsandboxes' ? (
+        <DotsAndBoxesGame
+          isDarkTheme={isDarkTheme}
+          soundEnabled={soundEnabled}
+          onOpenCatalogue={() => setActiveGame(null)}
+        />
+      ) : activeGame === 'pong' ? (
+        <PongGame
+          isDarkTheme={isDarkTheme}
+          soundEnabled={soundEnabled}
+          onOpenCatalogue={() => setActiveGame(null)}
+        />
+      ) : activeGame === 'snake' ? (
+        <SnakeGame
+          isDarkTheme={isDarkTheme}
+          soundEnabled={soundEnabled}
+          onOpenCatalogue={() => setActiveGame(null)}
+        />
+      ) : activeGame === 'snakesladders' ? (
+        <SnakesAndLaddersGame
+          isDarkTheme={isDarkTheme}
+          soundEnabled={soundEnabled}
+          onOpenCatalogue={() => setActiveGame(null)}
+        />
+      ) : (
+        <GameCatalogueHub
+          onSelectGame={(id) => setActiveGame(id)}
+          isDarkTheme={isDarkTheme}
+        />
       )}
       </ErrorBoundary>
 
       {/* Brutalist Footer Strip */}
       <footer className={`border-t-3 border-black py-1.5 px-4 flex items-center justify-between text-[10px] font-mono font-black uppercase tracking-widest shrink-0 ${isDarkTheme ? 'bg-black text-white' : 'bg-white text-black'}`}>
-        <span>
-          {activeGame === 'chess'
-            ? 'RandChess v2.0 // HIGH-EFFICIENCY MINIMAX'
-            : activeGame === 'tictactoe'
-            ? 'Brutal Tic-Tac-Toe // 3x3 UNBEATABLE MINIMAX'
-            : activeGame === 'ludo'
-            ? 'Neo-Brutal Ludo // 2-4 PLAYERS ONLINE ARENA'
-            : 'RandGames Arena // MULTI-GAME BATTLEGROUND'}
-        </span>
-        <span className="hidden sm:inline">
-          {activeGame === 'chess'
-            ? 'NO BLUE • 64 SQUARES • TACTICAL RADAR'
-            : activeGame === 'tictactoe'
-            ? 'NO BLUE • 3x3 GRID • INSTANT ACTION'
-            : activeGame === 'ludo'
-            ? 'NO BLUE • 15x15 BATTLEFIELD • ONLINE ROOMS'
-            : 'NO BLUE • 3 PLAYABLE ARENAS • MINIMAX ENGINES'}
-        </span>
+        <span>{currentMeta.footer}</span>
+        <span className="hidden sm:inline">{currentMeta.footerSub}</span>
       </footer>
 
       {/* Draw Offer Banners */}
