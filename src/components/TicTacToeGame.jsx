@@ -287,37 +287,39 @@ export const TicTacToeGame = ({
       setIsBotThinking(true);
       // Realistic brief delay for natural gameplay feeling
       const thinkTimer = setTimeout(() => {
-        setBoard((currentBoard) => {
-          const resCheck = checkWinner(currentBoard);
-          if (resCheck) return currentBoard;
-
-          const targetMove = getAiMove(currentBoard, botSide, playerSide, aiDifficulty);
-          if (targetMove === -1) return currentBoard;
-
-          const nextBoard = [...currentBoard];
-          nextBoard[targetMove] = botSide;
-
-          sound.playMove();
-
-          // Push to history
-          setMoveHistory((prev) => [...prev, currentBoard]);
-
-          const afterResult = checkWinner(nextBoard);
-          if (afterResult) {
-            setGameResult(afterResult);
-            triggerGameOverEffects(afterResult);
-          } else {
-            setTurn(playerSide);
-          }
-
+        const resCheck = checkWinner(board);
+        if (resCheck) {
           setIsBotThinking(false);
-          return nextBoard;
-        });
+          return;
+        }
+
+        const targetMove = getAiMove(board, botSide, playerSide, aiDifficulty);
+        if (targetMove === -1) {
+          setIsBotThinking(false);
+          return;
+        }
+
+        const nextBoard = [...board];
+        nextBoard[targetMove] = botSide;
+
+        sound.playMove();
+        setBoard(nextBoard);
+        setMoveHistory((prev) => [...prev, board]);
+
+        const afterResult = checkWinner(nextBoard);
+        if (afterResult) {
+          setGameResult(afterResult);
+          triggerGameOverEffects(afterResult);
+        } else {
+          setTurn(playerSide);
+        }
+
+        setIsBotThinking(false);
       }, 350);
 
       return () => clearTimeout(thinkTimer);
     }
-  }, [turn, gameMode, botSide, playerSide, aiDifficulty, gameResult, triggerGameOverEffects]);
+  }, [board, turn, gameMode, botSide, playerSide, aiDifficulty, gameResult, triggerGameOverEffects]);
 
   // Handle cell click by human player
   const handleCellClick = (index) => {

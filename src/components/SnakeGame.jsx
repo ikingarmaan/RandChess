@@ -25,10 +25,11 @@ export const SnakeGame = ({
   soundEnabled = true,
   onOpenCatalogue
 }) => {
-  const [gameMode, setGameMode] = useState('solo'); // 'solo' | 'duel'
+  const [gameMode, setGameMode] = useState('solo'); // 'solo' | 'vs_bot' | 'duel'
+  const [difficulty, setDifficulty] = useState('medium'); // 'easy' | 'medium' | 'hard'
   const [isPlaying, setIsPlaying] = useState(false);
   const [gameOver, setGameOver] = useState(false);
-  const [winner, setWinner] = useState(null); // 'p1' | 'p2' | 'solo_dead' | null
+  const [winner, setWinner] = useState(null); // 'p1' | 'p2' | 'solo_dead' | 'draw' | null
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(() => {
     try {
@@ -60,6 +61,8 @@ export const SnakeGame = ({
     sound.enabled = soundActive;
   }, [soundActive]);
 
+  const isMultiSnake = gameMode === 'duel' || gameMode === 'vs_bot';
+
   // Spawn food safely
   const spawnFood = useCallback(() => {
     let r, c;
@@ -68,12 +71,30 @@ export const SnakeGame = ({
       r = Math.floor(Math.random() * GRID_SIZE);
       c = Math.floor(Math.random() * GRID_SIZE);
       const onP1 = p1SnakeRef.current.some((seg) => seg.r === r && seg.c === c);
-      const onP2 = gameMode === 'duel' && p2SnakeRef.current.some((seg) => seg.r === r && seg.c === c);
+      const onP2 = isMultiSnake && p2SnakeRef.current.some((seg) => seg.r === r && seg.c === c);
       collision = onP1 || onP2;
     }
     const isGold = Math.random() < 0.2;
     foodRef.current = { r, c, isGold };
-  }, [gameMode]);
+  }, [isMultiSnake]);
+
+  // Restart game
+  const restartGame = useCallback(() => {
+    p1SnakeRef.current = [{ r: 10, c: 5 }, { r: 10, c: 4 }, { r: 10, c: 3 }];
+    p1DirRef.current = { r: 0, c: 1 };
+    p1NextDirRef.current = { r: 0, c: 1 };
+
+    p2SnakeRef.current = [{ r: 10, c: 15 }, { r: 10, c: 16 }, { r: 10, c: 17 }];
+    p2DirRef.current = { r: 0, c: -1 };
+    p2NextDirRef.current = { r: 0, c: -1 };
+
+    spawnFood();
+    setScore(0);
+    setGameOver(false);
+    setWinner(null);
+    setIsPlaying(false);
+    setTick((t) => t + 1);
+  }, [spawnFood]);
 
   // Keyboard controls
   useEffect(() => {
@@ -82,18 +103,18 @@ export const SnakeGame = ({
         e.preventDefault();
       }
 
-      // Player 1 (WASD or Arrows in Solo)
+      // Player 1 (WASD or Arrows in Solo and vs Bot)
       const d1 = p1DirRef.current;
-      if ((e.key === 'w' || e.key === 'W' || (gameMode === 'solo' && e.key === 'ArrowUp')) && d1.r === 0) {
+      if ((e.key === 'w' || e.key === 'W' || (gameMode !== 'duel' && e.key === 'ArrowUp')) && d1.r === 0) {
         p1NextDirRef.current = { r: -1, c: 0 };
       }
-      if ((e.key === 's' || e.key === 'S' || (gameMode === 'solo' && e.key === 'ArrowDown')) && d1.r === 0) {
+      if ((e.key === 's' || e.key === 'S' || (gameMode !== 'duel' && e.key === 'ArrowDown')) && d1.r === 0) {
         p1NextDirRef.current = { r: 1, c: 0 };
       }
-      if ((e.key === 'a' || e.key === 'A' || (gameMode === 'solo' && e.key === 'ArrowLeft')) && d1.c === 0) {
+      if ((e.key === 'a' || e.key === 'A' || (gameMode !== 'duel' && e.key === 'ArrowLeft')) && d1.c === 0) {
         p1NextDirRef.current = { r: 0, c: -1 };
       }
-      if ((e.key === 'd' || e.key === 'D' || (gameMode === 'solo' && e.key === 'ArrowRight')) && d1.c === 0) {
+      if ((e.key === 'd' || e.key === 'D' || (gameMode !== 'duel' && e.key === 'ArrowRight')) && d1.c === 0) {
         p1NextDirRef.current = { r: 0, c: 1 };
       }
 
@@ -119,9 +140,40 @@ export const SnakeGame = ({
   useEffect(() => {
     if (!isPlaying || gameOver) return;
 
-    const gameSpeed = 100; // ms per tick
+    const gameSpeed = difficulty === 'easy' ? 140 : difficulty === 'medium' ? 95 : 60;
 
     const interval = setInterval(() => {
+      // Step 0: In vs_bot mode, compute autonomous AI decision for P2
+      if (gameMode === 'vs_bot') {
+        const p2Head = p2SnakeRef.current[0];
+        const curD = p2DirRef.current;
+        const candidates = [
+          { r: -1, c: 0 },
+          { r: 1, c: 0 },
+          { r: 0, c: -1 },
+          { r: 0, c: 1 }
+        ].filter((d) => !(d.r === -curD.r && d.c === -curD.c));
+
+        // Evaluate safety of candidates
+        const safeCandidates = candidates.filter((d) => {
+          const nr = p2Head.r + d.r;
+          const nc = p2Head.c + d.c;
+          if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) return false;
+          if (p2SnakeRef.current.some((s) => s.r === nr && s.c === nc)) return false;
+          if (p1SnakeRef.current.some((s) => s.r === nr && s.c === nc)) return false;
+          return true;
+        });
+
+        if (safeCandidates.length > 0) {
+          safeCandidates.sort((a, b) => {
+            const da = Math.abs(p2Head.r + a.r - foodRef.current.r) + Math.abs(p2Head.c + a.c - foodRef.current.c);
+            const db = Math.abs(p2Head.r + b.r - foodRef.current.r) + Math.abs(p2Head.c + b.c - foodRef.current.c);
+            return da - db;
+          });
+          p2NextDirRef.current = safeCandidates[0];
+        }
+      }
+
       // Step 1: Advance directions
       p1DirRef.current = p1NextDirRef.current;
       p2DirRef.current = p2NextDirRef.current;
@@ -142,7 +194,7 @@ export const SnakeGame = ({
       }
 
       let p2NewHead = null;
-      if (gameMode === 'duel') {
+      if (isMultiSnake) {
         const p2Head = p2SnakeRef.current[0];
         p2NewHead = { r: p2Head.r + p2DirRef.current.r, c: p2Head.c + p2DirRef.current.c };
 
@@ -198,8 +250,8 @@ export const SnakeGame = ({
       }
       p1SnakeRef.current = nextP1;
 
-      // Move P2 in Duel
-      if (gameMode === 'duel' && p2NewHead) {
+      // Move P2 in Multi Snake
+      if (isMultiSnake && p2NewHead) {
         const p2FoodHit = p2NewHead.r === foodRef.current.r && p2NewHead.c === foodRef.current.c;
         const nextP2 = [p2NewHead, ...p2SnakeRef.current];
         if (p2FoodHit) {
@@ -215,23 +267,7 @@ export const SnakeGame = ({
     }, gameSpeed);
 
     return () => clearInterval(interval);
-  }, [isPlaying, gameOver, gameMode, highScore, spawnFood]);
-
-  const restartGame = () => {
-    p1SnakeRef.current = [{ r: 10, c: 5 }, { r: 10, c: 4 }, { r: 10, c: 3 }];
-    p1DirRef.current = { r: 0, c: 1 };
-    p1NextDirRef.current = { r: 0, c: 1 };
-
-    p2SnakeRef.current = [{ r: 10, c: 15 }, { r: 10, c: 16 }, { r: 10, c: 17 }];
-    p2DirRef.current = { r: 0, c: -1 };
-    p2NextDirRef.current = { r: 0, c: -1 };
-
-    spawnFood();
-    setScore(0);
-    setGameOver(false);
-    setWinner(null);
-    setIsPlaying(true);
-  };
+  }, [isPlaying, gameOver, gameMode, isMultiSnake, difficulty, highScore, spawnFood]);
 
   return (
     <div className={`flex flex-col min-h-0 flex-1 ${isDarkTheme ? 'bg-[#0f0f11] text-white' : 'bg-[#f4f4ec] text-black'} select-none`}>
@@ -358,7 +394,7 @@ export const SnakeGame = ({
           </div>
 
           {/* Play / Pause Toggle Button */}
-          <div className="w-full">
+          <div className="w-full flex flex-col items-center gap-2">
             <button
               onClick={() => {
                 if (gameOver) restartGame();
@@ -369,6 +405,40 @@ export const SnakeGame = ({
               {gameOver ? <RotateCw className="w-4 h-4" /> : isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
               <span>{gameOver ? 'PLAY AGAIN' : isPlaying ? 'PAUSE MATCH (SPACE)' : 'START GAME (SPACE)'}</span>
             </button>
+
+            {/* Mobile / Touch Responsive Directional D-Pad */}
+            <div className="flex flex-col items-center gap-1 pt-1 select-none">
+              <button
+                onClick={() => { if (p1DirRef.current.r === 0) p1NextDirRef.current = { r: -1, c: 0 }; }}
+                className="brutal-press w-11 h-9 bg-white border-2 border-black font-black text-xs flex items-center justify-center hover:bg-neutral-100 shadow-sm"
+                title="Up"
+              >
+                ▲
+              </button>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => { if (p1DirRef.current.c === 0) p1NextDirRef.current = { r: 0, c: -1 }; }}
+                  className="brutal-press w-11 h-9 bg-white border-2 border-black font-black text-xs flex items-center justify-center hover:bg-neutral-100 shadow-sm"
+                  title="Left"
+                >
+                  ◀
+                </button>
+                <button
+                  onClick={() => { if (p1DirRef.current.r === 0) p1NextDirRef.current = { r: 1, c: 0 }; }}
+                  className="brutal-press w-11 h-9 bg-white border-2 border-black font-black text-xs flex items-center justify-center hover:bg-neutral-100 shadow-sm"
+                  title="Down"
+                >
+                  ▼
+                </button>
+                <button
+                  onClick={() => { if (p1DirRef.current.c === 0) p1NextDirRef.current = { r: 0, c: 1 }; }}
+                  className="brutal-press w-11 h-9 bg-white border-2 border-black font-black text-xs flex items-center justify-center hover:bg-neutral-100 shadow-sm"
+                  title="Right"
+                >
+                  ▶
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -382,36 +452,74 @@ export const SnakeGame = ({
                 Arena Mode
               </span>
               <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 bg-[#facc15] text-black border border-black">
-                {gameMode === 'solo' ? 'SOLO SURVIVAL' : '👥 1v1 TRON DUEL'}
+                {gameMode === 'solo' ? 'SOLO SURVIVAL' : gameMode === 'vs_bot' ? '🤖 vs AI BOT' : '👥 1v1 DUEL'}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-1.5">
               <button
                 onClick={() => { setGameMode('solo'); restartGame(); }}
-                className={`brutal-press py-2 px-1 border-3 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
+                className={`brutal-press py-2 px-1 border-2 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
                   gameMode === 'solo'
                     ? 'bg-[#22c55e] text-black font-black brutal-shadow'
                     : 'bg-[#facc15] text-black font-black hover:bg-yellow-400 brutal-shadow-sm'
                 }`}
               >
-                <Trophy className="w-4 h-4 mb-0.5 text-black" />
-                <span className="font-brutal text-xs font-black">SOLO ARENA</span>
-                <span className="text-[9px] font-mono font-bold text-black opacity-80">High-Score Hunt</span>
+                <Trophy className="w-3.5 h-3.5 mb-0.5 text-black" />
+                <span className="font-brutal text-[10px] font-black">SOLO</span>
+                <span className="text-[8px] font-mono font-bold text-black opacity-80">Survival</span>
+              </button>
+
+              <button
+                onClick={() => { setGameMode('vs_bot'); restartGame(); }}
+                className={`brutal-press py-2 px-1 border-2 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
+                  gameMode === 'vs_bot'
+                    ? 'bg-[#22c55e] text-black font-black brutal-shadow'
+                    : 'bg-[#facc15] text-black font-black hover:bg-yellow-400 brutal-shadow-sm'
+                }`}
+              >
+                <Bot className="w-3.5 h-3.5 mb-0.5 text-black" />
+                <span className="font-brutal text-[10px] font-black">vs BOT</span>
+                <span className="text-[8px] font-mono font-bold text-black opacity-80">AI Duel</span>
               </button>
 
               <button
                 onClick={() => { setGameMode('duel'); restartGame(); }}
-                className={`brutal-press py-2 px-1 border-3 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
+                className={`brutal-press py-2 px-1 border-2 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
                   gameMode === 'duel'
                     ? 'bg-[#22c55e] text-black font-black brutal-shadow'
                     : 'bg-[#facc15] text-black font-black hover:bg-yellow-400 brutal-shadow-sm'
                 }`}
               >
-                <Users className="w-4 h-4 mb-0.5 text-black" />
-                <span className="font-brutal text-xs font-black">1v1 DUEL</span>
-                <span className="text-[9px] font-mono font-bold text-black opacity-80">WASD vs Arrows</span>
+                <Users className="w-3.5 h-3.5 mb-0.5 text-black" />
+                <span className="font-brutal text-[10px] font-black">1v1 DUEL</span>
+                <span className="text-[8px] font-mono font-bold text-black opacity-80">WASD vs ➔</span>
               </button>
+            </div>
+
+            {/* Difficulty / Speed Selector */}
+            <div className="border-t-2 border-black pt-2 space-y-1.5">
+              <span className="font-mono text-[10px] text-neutral-600 font-bold uppercase block">
+                Snake Speed & Difficulty:
+              </span>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { id: 'easy', label: 'SLITHER', desc: '140ms - Relaxed' },
+                  { id: 'medium', label: 'VIPER', desc: '95ms - Standard' },
+                  { id: 'hard', label: 'COBRA', desc: '60ms - Lightning' }
+                ].map((lvl) => (
+                  <button
+                    key={lvl.id}
+                    onClick={() => setDifficulty(lvl.id)}
+                    className={`py-1.5 px-1 border-2 border-black font-mono text-[10px] font-black uppercase cursor-pointer text-center ${
+                      difficulty === lvl.id ? 'bg-black text-[#22c55e]' : 'bg-white hover:bg-neutral-100 text-black'
+                    }`}
+                    title={lvl.desc}
+                  >
+                    {lvl.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -505,3 +613,4 @@ export const SnakeGame = ({
     </div>
   );
 };
+

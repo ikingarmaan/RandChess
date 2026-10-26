@@ -295,19 +295,21 @@ export const ConnectFourGame = ({
 
       if (validCols.length > 0) {
         if (botDifficulty === 'easy') {
-          // Check for immediate win or block, else random
+          // Check for immediate win, else random
+          const testBoard = board.map((r) => [...r]);
           for (const c of validCols) {
-            const r = getAvailableRow(board, c);
-            board[r][c] = turn;
-            if (checkConnectFourWin(board)?.winner === turn) { chosenCol = c; board[r][c] = null; break; }
-            board[r][c] = null;
+            const r = getAvailableRow(testBoard, c);
+            testBoard[r][c] = turn;
+            if (checkConnectFourWin(testBoard)?.winner === turn) { chosenCol = c; break; }
+            testBoard[r][c] = null;
           }
           if (chosenCol === -1) {
             chosenCol = validCols[Math.floor(Math.random() * validCols.length)];
           }
         } else {
-          const depth = botDifficulty === 'medium' ? 3 : 5;
-          const result = minimaxConnectFour(board, depth, -Infinity, Infinity, true, turn);
+          const depth = botDifficulty === 'medium' ? 3 : 4;
+          const clone = board.map((r) => [...r]);
+          const result = minimaxConnectFour(clone, depth, -Infinity, Infinity, true, turn);
           chosenCol = result.col ?? validCols[0];
         }
       }
@@ -320,6 +322,23 @@ export const ConnectFourGame = ({
 
     return () => clearTimeout(botTimer);
   }, [board, turn, gameMode, humanColor, botDifficulty, winner, dropChip]);
+
+  // Keyboard navigation (1-7 keys)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const colNum = parseInt(e.key, 10);
+      if (colNum >= 1 && colNum <= 7) {
+        e.preventDefault();
+        if (winner === null && !isBotThinking) {
+          if (gameMode !== 'ai' || turn === humanColor) {
+            dropChip(colNum - 1);
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [winner, isBotThinking, gameMode, turn, humanColor, dropChip]);
 
   const resetGame = () => {
     setBoard(Array.from({ length: ROWS }, () => Array(COLS).fill(null)));
@@ -714,3 +733,4 @@ export const ConnectFourGame = ({
     </div>
   );
 };
+

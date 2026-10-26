@@ -78,28 +78,33 @@ export const BattleshipGame = ({
   soundEnabled = true,
   onOpenCatalogue
 }) => {
-  // Phase: 'placement' | 'battle' | 'gameover'
+  // Mode setup
+  const [gameMode, setGameMode] = useState('ai'); // 'ai' | 'pass_play'
+  const [botDifficulty, setBotDifficulty] = useState('medium'); // 'easy' | 'medium' | 'hard'
+
+  // Phase: 'placement' | 'placement_p2' | 'pass_transition' | 'battle' | 'gameover'
   const [phase, setPhase] = useState('placement');
   const [currentShipIndex, setCurrentShipIndex] = useState(0);
   const [orientation, setOrientation] = useState('H'); // 'H' | 'V'
   const [hoverPlacement, setHoverPlacement] = useState(null); // [r, c]
 
-  // Player Fleet
+  // Player 1 Fleet
   const [playerGrid, setPlayerGrid] = useState(() => Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null)));
   const [playerShips, setPlayerShips] = useState([]);
   const [playerIncomingShots, setPlayerIncomingShots] = useState(() => Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null))); // null | 'hit' | 'miss'
 
-  // Enemy Bot Fleet
+  // Enemy (Bot or Player 2) Fleet
   const [botGrid, setBotGrid] = useState(() => Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null)));
   const [botShips, setBotShips] = useState([]);
   const [playerRadarShots, setPlayerRadarShots] = useState(() => Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null))); // null | 'hit' | 'miss'
 
   // Turn & Status
-  const [turn, setTurn] = useState('player'); // 'player' | 'bot'
-  const [winner, setWinner] = useState(null); // 'player' | 'bot'
+  const [turn, setTurn] = useState('player'); // 'player' | 'bot' (or 'p1' | 'p2')
+  const [winner, setWinner] = useState(null); // 'player' | 'bot' | 'p1' | 'p2'
   const [statusMessage, setStatusMessage] = useState('PLACE YOUR SHIPS TO BEGIN DEPLOYMENT');
   const [soundActive, setSoundActive] = useState(soundEnabled);
   const [showRules, setShowRules] = useState(false);
+  const [passCoverActive, setPassCoverActive] = useState(false);
 
   // Bot Hunt & Target AI Memory
   const botTargetQueueRef = useRef([]);
@@ -216,31 +221,51 @@ export const BattleshipGame = ({
     }
   };
 
-  // Bot Turn Automation (Hunt & Target Algorithm)
+  // Bot Turn Automation (Hunt & Target Algorithm calibrated by difficulty)
   useEffect(() => {
     if (phase !== 'battle' || turn !== 'bot' || winner !== null) return;
 
     const botTimer = setTimeout(() => {
       let targetR = -1, targetC = -1;
 
-      // Probe targets in queue from previous hits
-      while (botTargetQueueRef.current.length > 0) {
-        const candidate = botTargetQueueRef.current.shift();
-        if (candidate && playerIncomingShots[candidate[0]][candidate[1]] === null) {
-          targetR = candidate[0];
-          targetC = candidate[1];
-          break;
+      // In Easy mode: no target queue is used, purely random hunting
+      if (botDifficulty !== 'easy') {
+        // Probe targets in queue from previous hits
+        while (botTargetQueueRef.current.length > 0) {
+          const candidate = botTargetQueueRef.current.shift();
+          if (candidate && playerIncomingShots[candidate[0]][candidate[1]] === null) {
+            targetR = candidate[0];
+            targetC = candidate[1];
+            break;
+          }
         }
       }
 
-      // If queue is empty, random search
+      // If queue is empty (or on Easy mode), perform grid search
       if (targetR === -1) {
         const validCoords = [];
         for (let r = 0; r < GRID_SIZE; r++) {
           for (let c = 0; c < GRID_SIZE; c++) {
-            if (playerIncomingShots[r][c] === null) validCoords.push([r, c]);
+            if (playerIncomingShots[r][c] === null) {
+              // In Hard mode: use parity checkerboard optimization (only cells where (r + c) % 2 === 0)
+              if (botDifficulty === 'hard') {
+                if ((r + c) % 2 === 0) validCoords.push([r, c]);
+              } else {
+                validCoords.push([r, c]);
+              }
+            }
           }
         }
+
+        // Fallback if no parity cells remain
+        if (validCoords.length === 0) {
+          for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+              if (playerIncomingShots[r][c] === null) validCoords.push([r, c]);
+            }
+          }
+        }
+
         if (validCoords.length > 0) {
           const picked = validCoords[Math.floor(Math.random() * validCoords.length)];
           targetR = picked[0];
@@ -258,12 +283,16 @@ export const BattleshipGame = ({
 
         if (isHit) {
           sound.playCapture();
-          // Add adjacent 4 directions to target queue (Hunt mode)
-          [[targetR - 1, targetC], [targetR + 1, targetC], [targetR, targetC - 1], [targetR, targetC + 1]].forEach(([ar, ac]) => {
-            if (ar >= 0 && ar < GRID_SIZE && ac >= 0 && ac < GRID_SIZE && nextIncoming[ar][ac] === null) {
-              botTargetQueueRef.current.push([ar, ac]);
-            }
-          });
+
+          // In Medium and Hard: add adjacent cells to target queue (Hunt mode)
+          if (botDifficulty !== 'easy') {
+            const adj = [[targetR - 1, targetC], [targetR + 1, targetC], [targetR, targetC - 1], [targetR, targetC + 1]];
+            adj.forEach(([ar, ac]) => {
+              if (ar >= 0 && ar < GRID_SIZE && ac >= 0 && ac < GRID_SIZE && nextIncoming[ar][ac] === null) {
+                botTargetQueueRef.current.push([ar, ac]);
+              }
+            });
+          }
 
           // Check if player ship sunk
           let sunkName = null;
@@ -298,10 +327,10 @@ export const BattleshipGame = ({
           setTurn('player');
         }
       }
-    }, 700);
+    }, botDifficulty === 'easy' ? 450 : botDifficulty === 'medium' ? 650 : 800);
 
     return () => clearTimeout(botTimer);
-  }, [phase, turn, winner, playerIncomingShots, playerGrid]);
+  }, [phase, turn, winner, playerIncomingShots, playerGrid, botDifficulty]);
 
   const restartAll = () => {
     setPhase('placement');
@@ -590,6 +619,73 @@ export const BattleshipGame = ({
         {/* Right Column: Fleet Status & Intel */}
         <div className="relative z-10 w-full lg:w-[380px] flex flex-col gap-3 shrink-0">
           
+          {/* Opponent Selection Card */}
+          <div className="bg-[#f4f4eb] text-black border-3 border-black p-3.5 brutal-shadow space-y-3">
+            <div className="flex items-center justify-between border-b-2 border-black pb-1.5">
+              <span className="font-brutal text-xs font-black uppercase tracking-wide">
+                Naval Command
+              </span>
+              <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 bg-[#f97316] text-white">
+                {gameMode === 'ai' ? '🤖 vs BOT FLEET' : '👥 1v1 PASS & PLAY'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setGameMode('ai')}
+                className={`brutal-press py-2 px-1 border-3 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
+                  gameMode === 'ai'
+                    ? 'bg-[#22c55e] text-black font-black brutal-shadow'
+                    : 'bg-[#facc15] text-black font-black hover:bg-yellow-400 brutal-shadow-sm'
+                }`}
+              >
+                <Bot className="w-4 h-4 mb-0.5 text-black" />
+                <span className="font-brutal text-xs font-black">vs BOT AI</span>
+                <span className="text-[9px] font-mono font-bold text-black opacity-80">Radar AI</span>
+              </button>
+
+              <button
+                onClick={() => setGameMode('pass_play')}
+                className={`brutal-press py-2 px-1 border-3 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
+                  gameMode === 'pass_play'
+                    ? 'bg-[#22c55e] text-black font-black brutal-shadow'
+                    : 'bg-[#facc15] text-black font-black hover:bg-yellow-400 brutal-shadow-sm'
+                }`}
+              >
+                <Users className="w-4 h-4 mb-0.5 text-black" />
+                <span className="font-brutal text-xs font-black">1v1 LOCAL</span>
+                <span className="text-[9px] font-mono font-bold text-black opacity-80">Pass & Play</span>
+              </button>
+            </div>
+
+            {/* AI Difficulty Selector */}
+            {gameMode === 'ai' && (
+              <div className="border-t-2 border-black pt-2 space-y-1.5">
+                <span className="font-mono text-[10px] text-neutral-600 font-bold uppercase block">
+                  Bot Difficulty:
+                </span>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { id: 'easy', label: 'CADET', desc: 'Random Shots' },
+                    { id: 'medium', label: 'COMMANDER', desc: 'Hunt & Target' },
+                    { id: 'hard', label: 'ADMIRAL', desc: 'Parity Radar' }
+                  ].map((lvl) => (
+                    <button
+                      key={lvl.id}
+                      onClick={() => setBotDifficulty(lvl.id)}
+                      className={`py-1.5 px-1 border-2 border-black font-mono text-[10px] font-black uppercase cursor-pointer text-center ${
+                        botDifficulty === lvl.id ? 'bg-black text-[#22c55e]' : 'bg-white hover:bg-neutral-100 text-black'
+                      }`}
+                      title={lvl.desc}
+                    >
+                      {lvl.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Enemy Vessels Status */}
           <div className="bg-[#f4f4eb] text-black border-3 border-black p-3.5 brutal-shadow space-y-2.5">
             <div className="flex items-center justify-between border-b-2 border-black pb-1.5">
@@ -716,3 +812,4 @@ export const BattleshipGame = ({
     </div>
   );
 };
+

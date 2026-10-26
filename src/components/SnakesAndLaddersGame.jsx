@@ -22,28 +22,26 @@ import { DiceFace } from './LudoGame';
 
 const BOARD_CELLS = 100;
 
-// Ladders: start -> end (climb up)
-const LADDERS = {
-  4: 14,
-  9: 31,
-  20: 38,
-  28: 84,
-  40: 59,
-  51: 67,
-  63: 81,
-  71: 91
-};
-
-// Snakes: start -> end (slide down)
-const SNAKES = {
-  17: 7,
-  54: 34,
-  62: 19,
-  64: 60,
-  87: 24,
-  93: 73,
-  95: 75,
-  99: 78
+// Configurable Difficulty Board Presets
+const DIFFICULTY_PRESETS = {
+  easy: {
+    label: 'SUNNY CLIMB',
+    desc: '10 Ladders, 5 Snakes',
+    ladders: { 4: 14, 9: 31, 20: 38, 28: 84, 36: 62, 40: 59, 51: 67, 63: 81, 71: 91, 78: 97 },
+    snakes: { 17: 7, 54: 34, 64: 60, 87: 24, 95: 75 }
+  },
+  medium: {
+    label: 'CLASSIC TRACK',
+    desc: '8 Ladders, 8 Snakes',
+    ladders: { 4: 14, 9: 31, 20: 38, 28: 84, 40: 59, 51: 67, 63: 81, 71: 91 },
+    snakes: { 17: 7, 54: 34, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75, 99: 78 }
+  },
+  hard: {
+    label: 'HAZARD PIT',
+    desc: '6 Ladders, 12 Snakes',
+    ladders: { 4: 14, 9: 31, 28: 84, 40: 59, 51: 67, 71: 91 },
+    snakes: { 17: 7, 32: 10, 48: 26, 54: 34, 62: 19, 64: 60, 77: 42, 87: 24, 93: 73, 95: 75, 98: 40, 99: 78 }
+  }
 };
 
 const PLAYER_COLORS = [
@@ -70,6 +68,7 @@ export const SnakesAndLaddersGame = ({
   onOpenCatalogue
 }) => {
   const [playerCount, setPlayerCount] = useState(2); // 2 | 3 | 4
+  const [difficulty, setDifficulty] = useState('medium'); // 'easy' | 'medium' | 'hard'
   const [positions, setPositions] = useState(() => Array(playerCount).fill(1));
   const [turn, setTurn] = useState(0); // 0 to playerCount - 1
   const [dice, setDice] = useState(null);
@@ -80,12 +79,15 @@ export const SnakesAndLaddersGame = ({
   const [soundActive, setSoundActive] = useState(soundEnabled);
   const [showRules, setShowRules] = useState(false);
 
+  const activeLadders = DIFFICULTY_PRESETS[difficulty].ladders;
+  const activeSnakes = DIFFICULTY_PRESETS[difficulty].snakes;
+
   // Sync sound settings
   useEffect(() => {
     sound.enabled = soundActive;
   }, [soundActive]);
 
-  // Reset when playerCount changes
+  // Reset when playerCount or difficulty changes
   useEffect(() => {
     setPositions(Array(playerCount).fill(1));
     setTurn(0);
@@ -93,7 +95,7 @@ export const SnakesAndLaddersGame = ({
     setDiceRolling(false);
     setWinner(null);
     setStatusMessage('ROUND RESET! ROLL THE DICE TO START.');
-  }, [playerCount]);
+  }, [playerCount, difficulty]);
 
   // Roll Dice and Move
   const handleRollDice = useCallback(() => {
@@ -123,13 +125,13 @@ export const SnakesAndLaddersGame = ({
         let extraTurn = rolled === 6;
 
         // Check Ladder
-        if (LADDERS[targetPos]) {
-          const newPos = LADDERS[targetPos];
+        if (activeLadders[targetPos]) {
+          const newPos = activeLadders[targetPos];
           sound.playCheck();
           setStatusMessage(`🪜 LADDER! ${pCfg.name.toUpperCase()} CLIMBED FROM ${targetPos} TO ${newPos}!`);
           targetPos = newPos;
-        } else if (SNAKES[targetPos]) {
-          const newPos = SNAKES[targetPos];
+        } else if (activeSnakes[targetPos]) {
+          const newPos = activeSnakes[targetPos];
           sound.playCapture();
           setStatusMessage(`🐍 HAZARD! ${pCfg.name.toUpperCase()} SLID FROM ${targetPos} DOWN TO ${newPos}!`);
           targetPos = newPos;
@@ -162,7 +164,7 @@ export const SnakesAndLaddersGame = ({
         return nextPos;
       });
     }, 400);
-  }, [diceRolling, winner, turn, playerCount]);
+  }, [diceRolling, winner, turn, playerCount, activeLadders, activeSnakes]);
 
   // Bot automation
   useEffect(() => {
@@ -279,8 +281,8 @@ export const SnakesAndLaddersGame = ({
                 const rem = rowFromBottom % 2 === 0 ? c : 9 - c;
                 const tileNum = rowFromBottom * 10 + rem + 1;
 
-                const isLadderStart = Boolean(LADDERS[tileNum]);
-                const isSnakeStart = Boolean(SNAKES[tileNum]);
+                const isLadderStart = Boolean(activeLadders[tileNum]);
+                const isSnakeStart = Boolean(activeSnakes[tileNum]);
 
                 return (
                   <div
@@ -304,13 +306,13 @@ export const SnakesAndLaddersGame = ({
 
                     {/* Hazard / Ladder Indicator Icons */}
                     {isLadderStart && (
-                      <span className="text-[10px] text-[#22c55e] font-black" title={`Ladder to ${LADDERS[tileNum]}`}>
-                        🪜{LADDERS[tileNum]}
+                      <span className="text-[10px] text-[#22c55e] font-black" title={`Ladder to ${activeLadders[tileNum]}`}>
+                        🪜{activeLadders[tileNum]}
                       </span>
                     )}
                     {isSnakeStart && (
-                      <span className="text-[10px] text-[#ef4444] font-black" title={`Snake to ${SNAKES[tileNum]}`}>
-                        🐍{SNAKES[tileNum]}
+                      <span className="text-[10px] text-[#ef4444] font-black" title={`Snake to ${activeSnakes[tileNum]}`}>
+                        🐍{activeSnakes[tileNum]}
                       </span>
                     )}
                     {tileNum === 100 && (
@@ -440,6 +442,31 @@ export const SnakesAndLaddersGame = ({
                 ))}
               </div>
             </div>
+
+            {/* Board Difficulty / Hazard Density Selector */}
+            <div className="border-t-2 border-black pt-2 space-y-1.5">
+              <span className="font-mono text-[10px] text-neutral-600 font-bold uppercase block">
+                Board Difficulty:
+              </span>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { id: 'easy', label: 'SUNNY', desc: '10 Ladders, 5 Snakes' },
+                  { id: 'medium', label: 'CLASSIC', desc: '8 Ladders, 8 Snakes' },
+                  { id: 'hard', label: 'HAZARD', desc: '6 Ladders, 12 Snakes' }
+                ].map((lvl) => (
+                  <button
+                    key={lvl.id}
+                    onClick={() => setDifficulty(lvl.id)}
+                    className={`py-1.5 px-1 border-2 border-black font-mono text-[10px] font-black uppercase cursor-pointer text-center ${
+                      difficulty === lvl.id ? 'bg-black text-[#22c55e]' : 'bg-white hover:bg-neutral-100 text-black'
+                    }`}
+                    title={lvl.desc}
+                  >
+                    {lvl.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Action Buttons Strip */}
@@ -532,3 +559,4 @@ export const SnakesAndLaddersGame = ({
     </div>
   );
 };
+

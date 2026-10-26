@@ -441,6 +441,33 @@ export const DotsAndBoxesGame = ({
               </button>
             </div>
 
+            {/* AI Difficulty Selector */}
+            {gameMode === 'ai' && (
+              <div className="border-t-2 border-black pt-2 space-y-1.5">
+                <span className="font-mono text-[10px] text-neutral-600 font-bold uppercase block">
+                  AI Difficulty:
+                </span>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { id: 'easy', label: 'EASY', desc: 'Random line moves' },
+                    { id: 'medium', label: 'MEDIUM', desc: 'Captures boxes & avoids traps' },
+                    { id: 'hard', label: 'HARD', desc: 'Corridor sweep analysis' }
+                  ].map((lvl) => (
+                    <button
+                      key={lvl.id}
+                      onClick={() => setBotDifficulty(lvl.id)}
+                      className={`py-1.5 px-1 border-2 border-black font-mono text-[10px] font-black uppercase cursor-pointer text-center ${
+                        botDifficulty === lvl.id ? 'bg-black text-[#22c55e]' : 'bg-white hover:bg-neutral-100 text-black'
+                      }`}
+                      title={lvl.desc}
+                    >
+                      {lvl.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Grid Size Selector */}
             <div className="border-t-2 border-black pt-2 space-y-1.5">
               <span className="font-mono text-[10px] text-neutral-600 font-bold uppercase block">
@@ -562,3 +589,4 @@ export const DotsAndBoxesGame = ({
     </div>
   );
 };
+

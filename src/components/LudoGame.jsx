@@ -146,6 +146,7 @@ export const LudoGame = ({
   const [autoRoll, setAutoRoll] = useState(false);
   const [autoMoveSingle, setAutoMoveSingle] = useState(true);
   const [botSpeed, setBotSpeed] = useState('normal'); // 'fast' | 'normal' | 'slow'
+  const [botDifficulty, setBotDifficulty] = useState('medium'); // 'easy' | 'medium' | 'hard'
   const [soundActive, setSoundActive] = useState(soundEnabled);
 
   // Online Multiplayer State
@@ -256,20 +257,25 @@ export const LudoGame = ({
   }, [activeConfig]);
 
   // Execute Token Move (Local)
-  const executeLocalMove = useCallback((tokenIdx) => {
-    if (!diceRolled || dice === null || winner !== null) return;
-    if (!currentLegalTokens.includes(tokenIdx)) return;
+  const executeLocalMove = useCallback((tokenIdx, forcedDice = null) => {
+    const rollToUse = forcedDice !== null ? forcedDice : dice;
+    if (rollToUse === null || winner !== null) return;
 
     sound.playMove();
 
     setTokens((prev) => {
+      // Validate legality against the fresh previous state
+      const currentStep = prev[turnIndex]?.[tokenIdx];
+      if (currentStep === undefined) return prev;
+      if (currentStep === -1 && rollToUse !== 6) return prev;
+      if (currentStep >= 0 && currentStep + rollToUse > 56) return prev;
+
       const nextTokens = prev.map((arr) => [...arr]);
-      const currentStep = nextTokens[turnIndex][tokenIdx];
-      const newStep = currentStep === -1 ? 0 : currentStep + dice;
+      const newStep = currentStep === -1 ? 0 : currentStep + rollToUse;
       nextTokens[turnIndex][tokenIdx] = newStep;
 
       const pCfg = activeConfig[turnIndex];
-      let extraTurn = dice === 6;
+      let extraTurn = rollToUse === 6;
 
       if (currentStep === -1) {
         addEvent(`🚩 ${pCfg.name} released Token ${tokenIdx + 1} onto the track!`, 'exit', pCfg.hex);
@@ -339,7 +345,7 @@ export const LudoGame = ({
       if (extraTurn) {
         setDice(null);
         setDiceRolled(false);
-        if (dice === 6) {
+        if (rollToUse === 6) {
           setStatusMessage(`ROLLED A 6! ${pCfg.name} ROLLS AGAIN!`);
         }
       } else {
@@ -348,7 +354,7 @@ export const LudoGame = ({
 
       return nextTokens;
     });
-  }, [diceRolled, dice, winner, currentLegalTokens, turnIndex, activeConfig, playerCount, advanceTurn, rankings, addEvent]);
+  }, [dice, winner, turnIndex, activeConfig, playerCount, advanceTurn, rankings, addEvent]);
 
   // Roll Dice (Local)
   const handleRollDice = useCallback((requestingSeat = turnIndex) => {
@@ -394,7 +400,7 @@ export const LudoGame = ({
         // Auto-move single legal token option
         if (legal.length === 1 && autoMoveSingle && (gameMode === 'pass_play' || (gameMode === 'ai' && turnIndex === selectedSeat))) {
           setTimeout(() => {
-            executeLocalMove(legal[0]);
+            executeLocalMove(legal[0], rolledValue);
           }, 450);
         }
       }
@@ -419,15 +425,18 @@ export const LudoGame = ({
     if (gameMode !== 'ai' || winner !== null || diceRolling) return;
     if (turnIndex === selectedSeat) return; // Human turn
 
-    const botDelay = botSpeed === 'fast' ? 180 : botSpeed === 'slow' ? 1100 : 550;
+    const botDelay = botSpeed === 'fast' ? 180 : botSpeed === 'slow' ? 1000 : 450;
+    let cancelled = false;
 
     const botTimer = setTimeout(() => {
+      if (cancelled) return;
       if (!diceRolled) {
         // Step 1: Bot rolls dice
         setDiceRolling(true);
         sound.playDiceRoll();
 
         setTimeout(() => {
+          if (cancelled) return;
           const rolled = 1 + Math.floor(Math.random() * 6);
           setDice(rolled);
           setDiceRolling(false);
@@ -442,7 +451,7 @@ export const LudoGame = ({
           if (nextSixes >= 3) {
             setStatusMessage(`BOT ${pCfg?.name} ROLLED THREE 6s! FORFEIT!`);
             setTimeout(() => {
-              advanceTurn(tokens, turnIndex, rankings);
+              if (!cancelled) advanceTurn(tokens, turnIndex, rankings);
             }, botDelay);
             return;
           }
@@ -451,61 +460,78 @@ export const LudoGame = ({
           if (legal.length === 0) {
             setStatusMessage(`BOT ${pCfg?.name} ROLLED A ${rolled}. NO MOVES.`);
             setTimeout(() => {
-              advanceTurn(tokens, turnIndex, rankings);
+              if (!cancelled) advanceTurn(tokens, turnIndex, rankings);
             }, botDelay);
           } else {
-            // Pick best legal token: capture > home > base exit > advance
+            // Pick best legal token based on difficulty
             let bestToken = legal[0];
-            let bestScore = -Infinity;
 
-            const myStart = pCfg?.startIdx ?? 0;
+            if (botDifficulty === 'easy') {
+              // Easy: casual random legal move
+              bestToken = legal[Math.floor(Math.random() * legal.length)];
+            } else {
+              // Medium or Hard Tactical Evaluation
+              let bestScore = -Infinity;
+              const myStart = pCfg?.startIdx ?? 0;
 
-            for (const t of legal) {
-              const currentStep = tokens[turnIndex][t];
-              let score = 0;
-              if (currentStep === -1) {
-                score += 80; // Release from base
-              } else {
-                const nextStep = currentStep + rolled;
-                if (nextStep === 56) score += 160; // Goal
-                else if (nextStep >= 51) score += 90; // Home stretch
-                else {
-                  const nextGlobal = (myStart + nextStep) % 52;
-                  if (SAFE_TRACK_INDICES.includes(nextGlobal)) score += 65; // Safe square
+              for (const t of legal) {
+                const currentStep = tokens[turnIndex][t];
+                let score = 0;
+                if (currentStep === -1) {
+                  score += botDifficulty === 'hard' ? 130 : 80; // Release base
+                } else {
+                  const nextStep = currentStep + rolled;
+                  if (nextStep === 56) {
+                    score += 200; // Finish goal
+                  } else if (nextStep >= 51) {
+                    score += 100; // Safe stretch
+                  } else {
+                    const nextGlobal = (myStart + nextStep) % 52;
+                    if (SAFE_TRACK_INDICES.includes(nextGlobal)) {
+                      score += botDifficulty === 'hard' ? 75 : 50; // Safe square
+                    }
 
-                  // Check if can capture opponent
-                  for (let p = 0; p < playerCount; p++) {
-                    if (p === turnIndex) continue;
-                    const oppStart = activeConfig[p]?.startIdx ?? 0;
-                    for (let ot = 0; ot < 4; ot++) {
-                      const oppStep = tokens[p]?.[ot];
-                      if (oppStep >= 0 && oppStep < 51) {
-                        const oppGlobal = (oppStart + oppStep) % 52;
-                        if (oppGlobal === nextGlobal) score += 140; // High priority capture!
+                    // Check if can capture opponent
+                    for (let p = 0; p < playerCount; p++) {
+                      if (p === turnIndex) continue;
+                      const oppStart = activeConfig[p]?.startIdx ?? 0;
+                      for (let ot = 0; ot < 4; ot++) {
+                        const oppStep = tokens[p]?.[ot];
+                        if (oppStep >= 0 && oppStep < 51) {
+                          const oppGlobal = (oppStart + oppStep) % 52;
+                          if (oppGlobal === nextGlobal) {
+                            score += botDifficulty === 'hard' ? 220 : 140; // Aggressive capture
+                          }
+                        }
                       }
                     }
+                    score += nextStep * 1.5;
                   }
-                  score += nextStep * 1.5;
                 }
-              }
 
-              if (score > bestScore) {
-                bestScore = score;
-                bestToken = t;
+                if (score > bestScore) {
+                  bestScore = score;
+                  bestToken = t;
+                }
               }
             }
 
             // Step 2: Bot moves chosen token
             setTimeout(() => {
-              executeLocalMove(bestToken);
+              if (!cancelled) {
+                executeLocalMove(bestToken, rolled);
+              }
             }, botDelay);
           }
-        }, 380);
+        }, 360);
       }
-    }, botDelay + 100);
+    }, botDelay + 80);
 
-    return () => clearTimeout(botTimer);
-  }, [gameMode, turnIndex, selectedSeat, diceRolled, diceRolling, winner, consecutiveSixes, activeConfig, advanceTurn, tokens, rankings, getLegalTokens, executeLocalMove, playerCount, botSpeed, addEvent]);
+    return () => {
+      cancelled = true;
+      clearTimeout(botTimer);
+    };
+  }, [gameMode, turnIndex, selectedSeat, diceRolled, diceRolling, winner, consecutiveSixes, activeConfig, advanceTurn, tokens, rankings, getLegalTokens, executeLocalMove, playerCount, botSpeed, botDifficulty, addEvent]);
 
   // ----------------------------------------------------
   // ONLINE MULTIPLAYER SOCKET INTEGRATION
@@ -1414,6 +1440,33 @@ export const LudoGame = ({
                     >
                       <span>{selectedSeat === idx ? '★' : '•'}</span>
                       <span>{cfg.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Bot Difficulty Control */}
+            {gameMode === 'ai' && (
+              <div className="border-t-2 border-black pt-2 flex items-center justify-between">
+                <span className="font-mono text-[10px] text-neutral-600 font-bold uppercase">
+                  Bot Difficulty:
+                </span>
+                <div className="flex gap-1">
+                  {[
+                    { id: 'easy', label: 'EASY', desc: 'Casual Moves' },
+                    { id: 'medium', label: 'MEDIUM', desc: 'Tactical' },
+                    { id: 'hard', label: 'HARD', desc: 'Aggressive' }
+                  ].map((diff) => (
+                    <button
+                      key={diff.id}
+                      onClick={() => setBotDifficulty(diff.id)}
+                      className={`px-2 py-0.5 border-2 border-black font-mono text-[10px] font-black uppercase cursor-pointer ${
+                        botDifficulty === diff.id ? 'bg-black text-[#22c55e]' : 'bg-white hover:bg-neutral-100 text-black'
+                      }`}
+                      title={diff.desc}
+                    >
+                      {diff.label}
                     </button>
                   ))}
                 </div>

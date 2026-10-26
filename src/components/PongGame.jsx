@@ -57,6 +57,18 @@ export const PongGame = ({
     sound.enabled = soundActive;
   }, [soundActive]);
 
+  // Mouse and touch paddle movement
+  const handleCanvasPointer = useCallback((clientY) => {
+    if (!isPlaying || winner !== null) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleY = CANVAS_HEIGHT / rect.height;
+    const relativeY = clientY - rect.top;
+    const targetY = relativeY * scaleY - PADDLE_HEIGHT / 2;
+    stateRef.current.p1Y = Math.max(0, Math.min(CANVAS_HEIGHT - PADDLE_HEIGHT, targetY));
+  }, [isPlaying, winner]);
+
   // Handle keyboard inputs
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -328,19 +340,49 @@ export const PongGame = ({
               ref={canvasRef}
               width={CANVAS_WIDTH}
               height={CANVAS_HEIGHT}
-              className="w-full max-w-[640px] aspect-[16/10] bg-black border-2 border-black"
+              onMouseMove={(e) => handleCanvasPointer(e.clientY)}
+              onTouchMove={(e) => {
+                if (e.touches[0]) handleCanvasPointer(e.touches[0].clientY);
+              }}
+              onTouchStart={(e) => {
+                if (e.touches[0]) handleCanvasPointer(e.touches[0].clientY);
+              }}
+              className="w-full max-w-[640px] aspect-[16/10] bg-black border-2 border-black cursor-ns-resize touch-none"
             />
           </div>
 
-          {/* Touch / Quick Play / Pause Button */}
+          {/* Touch / Quick Play / Pause Button & On-Screen Paddle Steer */}
           <div className="w-full flex items-center justify-between gap-2">
             <button
               onClick={() => setIsPlaying(!isPlaying)}
               className="brutal-press flex-1 py-2.5 bg-[#22c55e] hover:bg-green-400 border-2 border-black text-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm flex items-center justify-center gap-1.5"
             >
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
-              <span>{isPlaying ? 'PAUSE MATCH (SPACE)' : 'START / RESUME MATCH (SPACE)'}</span>
+              <span>{isPlaying ? 'PAUSE MATCH' : 'START / RESUME MATCH'}</span>
             </button>
+
+            <div className="flex gap-1.5">
+              <button
+                onMouseDown={() => { stateRef.current.keys.w = true; }}
+                onMouseUp={() => { stateRef.current.keys.w = false; }}
+                onTouchStart={() => { stateRef.current.keys.w = true; }}
+                onTouchEnd={() => { stateRef.current.keys.w = false; }}
+                className="brutal-press px-4 py-2.5 bg-[#facc15] hover:bg-yellow-400 border-2 border-black text-black font-brutal text-xs font-black uppercase cursor-pointer select-none"
+                title="Move Paddle Up"
+              >
+                ▲ UP
+              </button>
+              <button
+                onMouseDown={() => { stateRef.current.keys.s = true; }}
+                onMouseUp={() => { stateRef.current.keys.s = false; }}
+                onTouchStart={() => { stateRef.current.keys.s = true; }}
+                onTouchEnd={() => { stateRef.current.keys.s = false; }}
+                className="brutal-press px-4 py-2.5 bg-[#facc15] hover:bg-yellow-400 border-2 border-black text-black font-brutal text-xs font-black uppercase cursor-pointer select-none"
+                title="Move Paddle Down"
+              >
+                ▼ DOWN
+              </button>
+            </div>
           </div>
         </div>
 
@@ -523,3 +565,4 @@ export const PongGame = ({
     </div>
   );
 };
+

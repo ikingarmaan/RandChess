@@ -388,14 +388,22 @@ export const CheckersGame = ({
     const delay = botDifficulty === 'easy' ? 400 : botDifficulty === 'medium' ? 650 : 850;
 
     const botTimer = setTimeout(() => {
-      const legal = getAllLegalMoves(board, turn);
+      // If continuing a multi-jump chain, only that piece can jump
+      let legal = [];
+      if (selectedPiece) {
+        legal = getJumpsForPiece(board, selectedPiece[0], selectedPiece[1]);
+      } else {
+        legal = getAllLegalMoves(board, turn);
+      }
+
       if (legal.length > 0) {
         let chosenMove = legal[0];
         if (botDifficulty === 'easy') {
           chosenMove = legal[Math.floor(Math.random() * legal.length)];
         } else {
-          const depth = botDifficulty === 'medium' ? 3 : 5;
-          const result = minimaxCheckers(board, depth, -Infinity, Infinity, true, turn);
+          const depth = botDifficulty === 'medium' ? 3 : 4;
+          const clone = board.map((r) => [...r]);
+          const result = minimaxCheckers(clone, depth, -Infinity, Infinity, true, turn);
           chosenMove = result.move || legal[0];
         }
         executeMove(chosenMove);
@@ -404,7 +412,7 @@ export const CheckersGame = ({
     }, delay);
 
     return () => clearTimeout(botTimer);
-  }, [board, turn, gameMode, humanColor, botDifficulty, winner, executeMove]);
+  }, [board, turn, selectedPiece, gameMode, humanColor, botDifficulty, winner, executeMove]);
 
   const resetGame = () => {
     setBoard(createInitialBoard());
@@ -725,3 +733,4 @@ export const CheckersGame = ({
     </div>
   );
 };
+

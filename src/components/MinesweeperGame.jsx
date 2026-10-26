@@ -248,13 +248,47 @@ export const MinesweeperGame = ({
     });
   };
 
-  // Cell click handler considering flagMode
+  // Cell click handler considering flagMode and chord clicking
   const handleCellClick = (r, c) => {
     if (flagMode) {
       toggleFlag(r, c);
-    } else {
-      revealCell(r, c);
+      return;
     }
+
+    const cell = board[r]?.[c];
+    if (!cell) return;
+
+    // Chord click on already-revealed number cell
+    if (cell.isRevealed && cell.neighborMines > 0) {
+      let flaggedAround = 0;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr >= 0 && nr < cfg.rows && nc >= 0 && nc < cfg.cols) {
+            if (board[nr][nc].isFlagged) flaggedAround++;
+          }
+        }
+      }
+
+      if (flaggedAround === cell.neighborMines) {
+        sound.playMove();
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr >= 0 && nr < cfg.rows && nc >= 0 && nc < cfg.cols) {
+              if (!board[nr][nc].isRevealed && !board[nr][nc].isFlagged) {
+                revealCell(nr, nc);
+              }
+            }
+          }
+        }
+      }
+      return;
+    }
+
+    revealCell(r, c);
   };
 
   const flaggedCount = useMemo(() => {
@@ -504,3 +538,4 @@ export const MinesweeperGame = ({
     </div>
   );
 };
+

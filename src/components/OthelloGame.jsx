@@ -239,6 +239,38 @@ export const OthelloGame = ({
     }
   };
 
+  // Pass turn detection when current player has no legal moves
+  useEffect(() => {
+    if (winner !== null) return;
+    const currentMoves = getLegalMoves(board, turn);
+    if (currentMoves.length === 0) {
+      const oppTurn = turn === 'B' ? 'W' : 'B';
+      const oppMoves = getLegalMoves(board, oppTurn);
+      if (oppMoves.length === 0) {
+        // Both sides exhausted moves: match concluded
+        let bCount = 0, wCount = 0;
+        board.forEach((row) =>
+          row.forEach((c) => {
+            if (c === 'B') bCount++;
+            else if (c === 'W') wCount++;
+          })
+        );
+        sound.playGameOver();
+        if (bCount > wCount) setWinner('B');
+        else if (wCount > bCount) setWinner('W');
+        else setWinner('draw');
+        confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 } });
+      } else {
+        // Pass turn automatically with brief pause
+        const passTimer = setTimeout(() => {
+          sound.playCapture();
+          setTurn(oppTurn);
+        }, 900);
+        return () => clearTimeout(passTimer);
+      }
+    }
+  }, [board, turn, winner]);
+
   // Bot automation
   useEffect(() => {
     if (gameMode !== 'ai' || winner !== null) return;
@@ -255,8 +287,9 @@ export const OthelloGame = ({
         if (botDifficulty === 'easy') {
           chosenMove = moves[Math.floor(Math.random() * moves.length)];
         } else {
-          const depth = botDifficulty === 'medium' ? 3 : 5;
-          const result = minimaxOthello(board, depth, -Infinity, Infinity, true, turn);
+          const depth = botDifficulty === 'medium' ? 3 : 4;
+          const clone = board.map((r) => [...r]);
+          const result = minimaxOthello(clone, depth, -Infinity, Infinity, true, turn);
           chosenMove = result.move || moves[0];
         }
         executeMove(chosenMove);
@@ -351,7 +384,15 @@ export const OthelloGame = ({
                 style={{ backgroundColor: turn === 'B' ? '#171717' : '#ffffff' }}
               />
               <span className="font-brutal text-sm font-black uppercase">
-                {winner ? (winner === 'draw' ? 'DRAW MATCH!' : `${winner === 'B' ? 'BLACK' : 'WHITE'} WINS!`) : isBotThinking ? 'BOT CALCULATING FLIPS...' : `${turn === 'B' ? 'BLACK' : 'WHITE'}'S MOVE (${legalMoves.length} VALID)`}
+                {winner
+                  ? winner === 'draw'
+                    ? 'DRAW MATCH!'
+                    : `${winner === 'B' ? 'BLACK' : 'WHITE'} WINS!`
+                  : legalMoves.length === 0
+                  ? `NO FLIPS FOR ${turn === 'B' ? 'BLACK' : 'WHITE'} — PASSING TURN...`
+                  : isBotThinking
+                  ? 'BOT CALCULATING FLIPS...'
+                  : `${turn === 'B' ? 'BLACK' : 'WHITE'}'S MOVE (${legalMoves.length} VALID)`}
               </span>
             </div>
 
@@ -573,3 +614,4 @@ export const OthelloGame = ({
     </div>
   );
 };
+

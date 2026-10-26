@@ -58,7 +58,7 @@ export const GameCatalogueHub = ({
       description: 'The ancient 4-corner board game rebuilt in high-contrast Neo-Brutalism. Supports 2 to 4 players online with live room codes, smart bots, and tactile 3D dice.',
       features: [
         '2, 3, or 4 Player Matchmaking & Private Rooms',
-        'Local Bot AI with Smart Tactical Heuristics',
+        'Bot AI with 3 Difficulty Modes (Easy, Medium, Hard)',
         '1v1 to 4-Player Local Pass & Play',
         'Tactile 3D Dice Shaker with Audio FX',
         '8 Safe Squares, Captures & Home Celebrations'
@@ -120,11 +120,11 @@ export const GameCatalogueHub = ({
       btnBg: 'bg-[#f97316] hover:bg-orange-500 text-white',
       description: 'Coordinate artillery radar strikes. Deploy your 5-ship fleet with rotation and auto-randomize, then call radar missile strikes against Hunt & Target AI.',
       features: [
+        '3 Radar Difficulty Modes (Cadet, Commander, Admiral)',
         '10x10 Ocean Grid & Enemy Radar Strike Station',
         '5 Naval Ships with Horizontal/Vertical Rotation',
-        'Smart Hunt & Target AI with Adjacent Memory',
-        'Direct Hit Explosions & Splashes',
-        '1-Click Fleet Randomizer'
+        'Smart Hunt & Target AI with Parity Checkerboard',
+        'vs Bot AI and 1v1 Local Pass & Play Modes'
       ]
     },
     {
@@ -183,11 +183,11 @@ export const GameCatalogueHub = ({
       btnBg: 'bg-[#facc15] hover:bg-yellow-400 text-black',
       description: 'Draw lines between grid dots to claim boxes and trigger combo chain reactions. Features smart corridor AI and customizable grid sizes.',
       features: [
+        '3 Bot Difficulty Tiers (Easy, Medium, Hard)',
         'Selectable Grids: 3x3, 4x4, or 5x5 Boxes',
-        '4th Side Completion Bonus Turns & Chain Reactions',
+        '4th Side Completion Bonus Turns & Chain Combos',
         'Corridor-Aware Heuristic Bot AI',
-        'Real-Time Territory Box Fill Animations',
-        '1v1 Local Pass & Play'
+        '1v1 Local Pass & Play and vs Bot AI'
       ]
     },
     {
@@ -204,11 +204,11 @@ export const GameCatalogueHub = ({
       btnBg: 'bg-[#22c55e] hover:bg-green-400 text-black',
       description: 'High-speed 60 FPS vector paddle physics. Features spin deflection angles, accelerating ball speed, reactive AI bot, and same-keyboard 1v1 duels.',
       features: [
+        '3 Difficulty Reaction Speeds (Easy, Medium, Brutal)',
+        'Touch / Mouse Drag & Keyboard Steer Controls',
         '60 FPS HTML5 Canvas Physics Engine',
         'Edge Deflection Spin & Ball Acceleration',
-        'Same Keyboard 1v1 (W/S vs Arrow Keys)',
-        'Reactive Bot with 3 Difficulty Speeds',
-        'Configurable Goal Limits (5, 7, 10 Points)'
+        'vs Bot AI and 1v1 Same Keyboard Modes'
       ]
     },
     {
@@ -225,11 +225,11 @@ export const GameCatalogueHub = ({
       btnBg: 'bg-[#22c55e] hover:bg-green-400 text-black',
       description: 'Classic arcade snake with red apples, bonus golden stars, and an intense 1v1 Tron-style duel mode where two snakes battle on the same arena.',
       features: [
-        'Solo High-Score Survival & 1v1 Duel Modes',
-        'Red Apples (+10) and Bonus Golden Stars (+50)',
-        'Head-to-Head Tron Collision Eliminator',
-        'High Score Persistence via LocalStorage',
-        'Tactile Pause & Resume Controls'
+        '3 Speed Difficulties (Slither, Viper, Cobra)',
+        'Solo Survival, vs AI Bot Duel, & 1v1 Local Modes',
+        'Autonomous AI Snake Opponent Navigation',
+        'Mobile Touch D-Pad Controls & Keyboard Support',
+        'Persistent LocalStorage High Scores'
       ]
     },
     {
@@ -246,11 +246,11 @@ export const GameCatalogueHub = ({
       btnBg: 'bg-[#facc15] hover:bg-yellow-400 text-black',
       description: 'The iconic 100-tile boustrophedon race! Climb golden ladders, avoid hazard snakes, roll tactile 3D dice, and enjoy 2 to 4 player local or bot matches.',
       features: [
+        '3 Board Difficulties (Sunny Climb, Classic, Hazard Pit)',
         '100-Tile Boustrophedon Numbered Grid',
-        'Golden Ladders (Climb) & Hazard Snakes (Slide)',
         'Tactile 3D Animated Dice with Audio FX',
         'Exact 100 Finish Bounce Rule & 6s Extra Roll',
-        '2 to 4 Players Local or Autonomous Bots'
+        '2 to 4 Players Local Pass & Play or vs Bots'
       ]
     },
     {
