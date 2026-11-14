@@ -7,7 +7,7 @@ export const GameCatalogueModal = ({
   activeGame,
   onSelectGame
 }) => {
-  const [filter, setFilter] = useState('all'); // 'all' | 'playable' | 'upcoming'
+  const [filter, setFilter] = useState('all'); // 'all' | 'strategy' | 'arcade'
 
   if (!isOpen) return null;
 
@@ -18,7 +18,7 @@ export const GameCatalogueModal = ({
       shortTitle: 'CHESS',
       category: 'TACTICAL STRATEGY // BOARD',
       icon: '♞',
-      badge: 'POPULAR',
+      badge: 'TOP STRATEGY',
       badgeColor: 'bg-[#22c55e] text-black',
       playable: true,
       players: '1 - 2 Players',
@@ -26,108 +26,17 @@ export const GameCatalogueModal = ({
       tags: ['vs Bot AI', '1v1 Local', 'Online PvP', 'Custom Timers', 'GM Coach']
     },
     {
-      id: 'ludo',
-      title: 'Neo-Brutal Ludo',
-      shortTitle: 'LUDO',
-      category: 'CLASSIC // MULTIPLAYER',
-      icon: '🎲',
-      badge: '2-4 PLAYERS',
-      badgeColor: 'bg-[#f97316] text-white',
-      playable: true,
-      players: '2 - 4 Players',
-      description: 'The ancient 4-corner board game reimagined in high-contrast brutalism. Live online rooms, smart bots, 2 to 4 player pass & play, tactile 3D dice, and safe zones.',
-      tags: ['2-4 Players', 'Online PvP', 'Smart Bots', 'Tactile Dice', 'Safe Zones']
-    },
-    {
-      id: 'connect4',
-      title: 'Gravity Connect 4',
-      shortTitle: 'CONNECT 4',
-      category: 'GRID STRATEGY // 7x6',
-      icon: '🔴 🟡',
-      badge: 'POPULAR',
-      badgeColor: 'bg-[#ef4444] text-white',
-      playable: true,
-      players: '1 - 2 Players',
-      description: 'Vertical drop strategy. Connect 4 checkers horizontally, vertically, or diagonally while blocking opponent traps with Minimax AI.',
-      tags: ['Minimax AI', '1v1 Local', 'Drop Physics', 'Turn Timer', 'Victory Line']
-    },
-    {
-      id: 'checkers',
-      title: 'Brutal Checkers',
-      shortTitle: 'CHECKERS',
-      category: 'CLASSIC // BOARD',
-      icon: '⚪ ⚫',
-      badge: 'DRAUGHTS',
-      badgeColor: 'bg-black text-[#facc15]',
-      playable: true,
-      players: '1 - 2 Players',
-      description: 'Diagonal jumping warfare with mandatory multi-jump captures, crown kinging 👑, and clean brutalist pieces with Minimax bot.',
-      tags: ['Mandatory Jumps', 'Kinging 👑', 'Minimax Bot', '1v1 Pass & Play']
-    },
-    {
-      id: 'battleship',
-      title: 'Naval Battleship',
-      shortTitle: 'BATTLESHIP',
-      category: 'WARFARE // COORDINATES',
-      icon: '🚢 💥',
-      badge: 'ARTILLERY',
-      badgeColor: 'bg-[#f97316] text-white',
-      playable: true,
-      players: '1 - 2 Players',
-      description: 'Coordinate grid artillery. Position your 5-ship fleet with rotation and auto-randomize, call radar missile strikes against Hunt & Target AI.',
-      tags: ['Radar Grid', 'Hunt & Target AI', 'Ship Rotation', 'Sound FX']
-    },
-    {
-      id: 'minesweeper',
-      title: 'Minesweeper Tactical',
-      shortTitle: 'MINESWEEPER',
-      category: 'LOGIC // DEDUCTION',
-      icon: '🚩 💣',
-      badge: 'SPEEDRUN',
-      badgeColor: 'bg-[#22c55e] text-black',
-      playable: true,
-      players: 'Singleplayer',
-      description: 'High-stakes mine clearance grid with 100% first-click safety, cascading flood-fill reveals, speedrun digital stopwatch, and tactile cell flagging.',
-      tags: ['100% Safe First Click', 'Flood-Fill Reveal', '3 Difficulties', 'Stopwatch HUD']
-    },
-    {
-      id: 'othello',
-      title: 'Brutal Othello',
-      shortTitle: 'REVERSI',
-      category: 'DYNAMIC FLIPS // 8x8',
-      icon: '⚫ ⚪',
-      badge: 'STRATEGY',
-      badgeColor: 'bg-black text-[#22c55e]',
-      playable: true,
-      players: '1 - 2 Players',
-      description: 'Trap and flip opponent discs across all 8 directions. Features live sandwich flip previews, corner dominance AI, and real-time territory gauges.',
-      tags: ['Sandwich Flips', 'Live Flip Preview', 'Positional AI', 'Territory Gauge']
-    },
-    {
-      id: 'dotsandboxes',
-      title: 'Dots & Boxes',
-      shortTitle: 'DOTS & BOXES',
-      category: 'TERRITORY CAPTURE',
-      icon: '✏️ ⏹️',
-      badge: 'CLASSIC',
+      id: 'tictactoe',
+      title: 'Brutal Tic-Tac-Toe',
+      shortTitle: 'TIC TAC TOE',
+      category: 'LIGHTNING PLAY // 3x3 ARENA',
+      icon: '✕ ◯',
+      badge: 'UNBEATABLE MINIMAX',
       badgeColor: 'bg-[#facc15] text-black',
       playable: true,
       players: '1 - 2 Players',
-      description: 'Draw lines between grid dots to complete boxes and earn bonus moves. Features smart corridor AI and selectable 3x3, 4x4, and 5x5 grids.',
-      tags: ['3x3 to 5x5 Grids', 'Bonus Turns', 'Corridor AI', '1v1 Local']
-    },
-    {
-      id: 'pong',
-      title: 'Cyber Pong 1v1',
-      shortTitle: 'CYBER PONG',
-      category: '60 FPS ARCADE',
-      icon: '🏓 ⚡',
-      badge: 'FAST ACTION',
-      badgeColor: 'bg-[#22c55e] text-black',
-      playable: true,
-      players: '1 - 2 Players',
-      description: 'High-speed 60 FPS vector paddle physics. Features spin deflection angles, accelerating ball speed, reactive AI bot, and same-keyboard 1v1 duels.',
-      tags: ['60 FPS Physics', 'Deflection Spin', 'Reactive Bot', 'Same-Keyboard 1v1']
+      description: 'Classic high-voltage 3-in-a-row with an Unbeatable Minimax AI bot, 1v1 local pass & play, win streak tracking, celebration confetti, and match clocks.',
+      tags: ['Unbeatable Minimax', '1v1 Pass & Play', 'Streak Tracker', 'Victory FX']
     },
     {
       id: 'snake',
@@ -143,36 +52,23 @@ export const GameCatalogueModal = ({
       tags: ['Solo High-Score', '1v1 Tron Duel', 'Golden Stars', 'LocalStorage Highs']
     },
     {
-      id: 'snakesladders',
-      title: 'Snakes & Ladders',
-      shortTitle: 'SNAKES & LADDERS',
-      category: '100-TILE RACE // BOARD',
-      icon: '🪜 🐍',
-      badge: '2-4 PLAYERS',
-      badgeColor: 'bg-[#facc15] text-black',
-      playable: true,
-      players: '2 - 4 Players',
-      description: 'The iconic 100-tile boustrophedon race! Climb golden ladders, avoid hazard snakes, roll tactile 3D dice, and enjoy 2 to 4 player local or bot matches.',
-      tags: ['100 Tiles', 'Ladders & Snakes', '3D Dice Shaker', '2-4 Players / Bots']
-    },
-    {
-      id: 'tictactoe',
-      title: 'Brutal Tic-Tac-Toe',
-      shortTitle: 'TIC TAC TOE',
-      category: 'QUICK PLAY // TACTICAL',
-      icon: '✕ ◯',
-      badge: 'MINIMAX',
-      badgeColor: 'bg-[#facc15] text-black',
+      id: 'pong',
+      title: 'Cyber Pong 1v1',
+      shortTitle: 'CYBER PONG',
+      category: '60 FPS ARCADE',
+      icon: '🏓 ⚡',
+      badge: 'FAST ACTION',
+      badgeColor: 'bg-[#22c55e] text-black',
       playable: true,
       players: '1 - 2 Players',
-      description: 'Classic high-voltage 3-in-a-row with an Unbeatable Minimax AI bot, 1v1 local pass & play, win streak tracking, celebration confetti, and match clocks.',
-      tags: ['Unbeatable Minimax', '1v1 Pass & Play', 'Streak Tracker', 'Victory FX']
+      description: 'High-speed 60 FPS vector paddle physics. Features spin deflection angles, accelerating ball speed, reactive AI bot, and same-keyboard 1v1 duels.',
+      tags: ['60 FPS Physics', 'Deflection Spin', 'Reactive Bot', 'Same-Keyboard 1v1']
     }
   ];
 
   const filteredGames = games.filter((g) => {
-    if (filter === 'playable') return g.playable;
-    if (filter === 'upcoming') return !g.playable;
+    if (filter === 'strategy') return ['chess', 'tictactoe'].includes(g.id);
+    if (filter === 'arcade') return ['snake', 'pong'].includes(g.id);
     return true;
   });
 
@@ -197,11 +93,11 @@ export const GameCatalogueModal = ({
                   Game Catalogue & Hub
                 </h2>
                 <span className="text-[10px] font-mono font-black px-1.5 py-0.2 bg-[#facc15] text-black border border-black hidden sm:inline">
-                  {games.filter((g) => g.playable).length} PLAYABLE NOW
+                  {games.length} PLAYABLE ARENAS
                 </span>
               </div>
               <p className="text-[11px] font-mono text-neutral-600">
-                Switch games instantly or browse upcoming tactical arcade titles
+                Switch games instantly across 4 tactical battlefields
               </p>
             </div>
           </div>
@@ -229,24 +125,24 @@ export const GameCatalogueModal = ({
               ALL GAMES ({games.length})
             </button>
             <button
-              onClick={() => setFilter('playable')}
+              onClick={() => setFilter('strategy')}
               className={`brutal-press px-3 py-1 border-2 border-black cursor-pointer transition-colors ${
-                filter === 'playable'
+                filter === 'strategy'
                   ? 'bg-[#22c55e] text-black brutal-shadow-sm'
                   : 'bg-[#f4f4eb] text-black hover:bg-neutral-200'
               }`}
             >
-              PLAYABLE NOW ({games.filter((g) => g.playable).length})
+              STRATEGY (2)
             </button>
             <button
-              onClick={() => setFilter('upcoming')}
+              onClick={() => setFilter('arcade')}
               className={`brutal-press px-3 py-1 border-2 border-black cursor-pointer transition-colors ${
-                filter === 'upcoming'
+                filter === 'arcade'
                   ? 'bg-[#facc15] text-black brutal-shadow-sm'
                   : 'bg-[#f4f4eb] text-black hover:bg-neutral-200'
               }`}
             >
-              COMING SOON ({games.filter((g) => !g.playable).length})
+              ARCADE (2)
             </button>
           </div>
 
@@ -266,9 +162,7 @@ export const GameCatalogueModal = ({
                 className={`border-3 border-black p-3.5 flex flex-col justify-between transition-all ${
                   isActive
                     ? 'bg-[#f0fdf4] ring-2 ring-[#22c55e] brutal-shadow-md'
-                    : game.playable
-                    ? 'bg-[#f4f4eb] hover:bg-white brutal-shadow-sm'
-                    : 'bg-neutral-100 opacity-80 border-dashed'
+                    : 'bg-[#f4f4eb] hover:bg-white brutal-shadow-sm'
                 }`}
               >
                 <div className="space-y-2">
@@ -321,28 +215,22 @@ export const GameCatalogueModal = ({
                     {game.players}
                   </span>
 
-                  {game.playable ? (
-                    isActive ? (
-                      <div className="flex items-center gap-1 px-3 py-1.5 bg-[#22c55e] border-2 border-black font-brutal text-xs font-black uppercase text-black brutal-shadow-sm">
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        <span>CURRENTLY PLAYING</span>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          onSelectGame(game.id);
-                          onClose();
-                        }}
-                        className="brutal-press flex items-center gap-1.5 px-3 py-1.5 bg-[#facc15] hover:bg-yellow-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
-                      >
-                        <Play className="w-3 h-3 fill-current" />
-                        <span>PLAY GAME ▶</span>
-                      </button>
-                    )
+                  {isActive ? (
+                    <div className="flex items-center gap-1 px-3 py-1.5 bg-[#22c55e] border-2 border-black font-brutal text-xs font-black uppercase text-black brutal-shadow-sm">
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>CURRENTLY PLAYING</span>
+                    </div>
                   ) : (
-                    <span className="font-mono text-[10px] font-black uppercase px-2 py-1 bg-neutral-300 text-neutral-700 border border-neutral-400">
-                      IN DEVELOPMENT
-                    </span>
+                    <button
+                      onClick={() => {
+                        onSelectGame(game.id);
+                        onClose();
+                      }}
+                      className="brutal-press flex items-center gap-1.5 px-3 py-1.5 bg-[#facc15] hover:bg-yellow-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
+                    >
+                      <Play className="w-3 h-3 fill-current" />
+                      <span>PLAY GAME ▶</span>
+                    </button>
                   )}
                 </div>
               </div>
@@ -354,7 +242,7 @@ export const GameCatalogueModal = ({
         <div className="bg-[#fefce8] border-2 border-black p-2.5 flex items-center justify-between text-xs font-mono font-bold">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#15803d] shrink-0" />
-            <span>MORE QUICK STRATEGY GAMES ARE BEING ADDED TO THIS CATALOGUE</span>
+            <span>4 HIGH-VOLTAGE BATTLEFIELDS WITH ZERO BLUE DESIGN</span>
           </div>
           <span className="hidden sm:inline bg-black text-[#facc15] px-1.5 py-0.5 text-[10px]">
             ARCADE HUB v2.0
@@ -364,4 +252,3 @@ export const GameCatalogueModal = ({
     </div>
   );
 };
-
