@@ -43,6 +43,27 @@ export const GameCatalogueHub = ({
       ]
     },
     {
+      id: 'pool',
+      title: 'Cyber 8-Ball Pool',
+      shortTitle: '8-BALL POOL',
+      category: '2D BILLIARDS RIG // 16 BALLS',
+      icon: '🎱',
+      badge: 'PHYSICS v2.0',
+      badgeColor: 'bg-[#22c55e] text-black',
+      playable: true,
+      players: '1 - 2 Players',
+      highlightBorder: 'hover:border-[#22c55e]',
+      btnBg: 'bg-[#22c55e] hover:bg-green-400 text-black',
+      description: 'Authentic 8-ball billiards with 60 FPS vector physics, dynamic laser trajectory guides, ghost ball projection, tactile power cues, and real-time multiplayer.',
+      features: [
+        '16-Ball Physics with Elastic Momentum & Cushion Bounces',
+        'Laser Trajectory Guide with Ghost Ball Collision Raycasts',
+        'Smart Bot AI (Cadet, Shark, Hustler Master)',
+        'Live Online Multiplayer with 6-Char Room Codes',
+        'Official 8-Ball Rules (Open Table, Solids/Stripes, Scratches)'
+      ]
+    },
+    {
       id: 'tictactoe',
       title: 'Brutal Tic-Tac-Toe',
       shortTitle: 'TIC TAC TOE',
@@ -110,7 +131,7 @@ export const GameCatalogueHub = ({
   const filteredGames = games.filter((g) => {
     if (filter === 'all') return true;
     if (filter === 'strategy') return ['chess', 'tictactoe'].includes(g.id);
-    if (filter === 'arcade') return ['snake', 'pong'].includes(g.id);
+    if (filter === 'arcade') return ['pool', 'snake', 'pong'].includes(g.id);
     return true;
   });
 
@@ -123,7 +144,7 @@ export const GameCatalogueHub = ({
         {/* Top Brutalist Tag */}
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-black text-white border-2 border-black font-mono text-xs font-black uppercase tracking-wider mb-3 brutal-shadow-sm">
           <Gamepad2 className="w-3.5 h-3.5 text-[#22c55e]" />
-          <span>RANDGAMES ARENA // 4 HIGH-VOLTAGE BATTLEFIELDS</span>
+          <span>RANDGAMES ARENA // 5 HIGH-VOLTAGE BATTLEFIELDS</span>
         </div>
 
         {/* Main Title */}
@@ -132,7 +153,7 @@ export const GameCatalogueHub = ({
         </h1>
 
         <p className="font-mono text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 max-w-2xl">
-          High-voltage tactical board & arcade games featuring Stockfish-calibrated Minimax, Unbeatable AI & Real-Time Multiplayer. Strict Zero Blue Neo-Brutalism.
+          High-voltage tactical board & arcade games featuring Stockfish-calibrated Minimax, 8-Ball Vector Physics, Unbeatable AI & Real-Time Multiplayer. Strict Zero Blue Neo-Brutalism.
         </p>
 
         {/* Category Filter Pills */}
@@ -140,7 +161,7 @@ export const GameCatalogueHub = ({
           {[
             { id: 'all', label: 'ALL GAMES', count: games.length },
             { id: 'strategy', label: 'STRATEGY', count: 2 },
-            { id: 'arcade', label: 'REFLEX & ARCADE', count: 2 }
+            { id: 'arcade', label: 'PHYSICS & ARCADE', count: 3 }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -157,8 +178,8 @@ export const GameCatalogueHub = ({
         </div>
       </div>
 
-      {/* Primary Games Grid (4 cards in responsive grid) */}
-      <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-12">
+      {/* Primary Games Grid */}
+      <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
         {filteredGames.map((game) => {
           return (
             <div
@@ -233,9 +254,11 @@ export const GameCatalogueHub = ({
 
       {/* Footer System Specs */}
       <div className="w-full max-w-6xl border-t-2 border-black/30 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-neutral-500 gap-2">
-        <div>RANDGAMES v2.0 // 4 ZERO-BLUE ARENAS READY FOR COMBAT</div>
+        <div>RANDGAMES v2.0 // 5 ZERO-BLUE ARENAS READY FOR COMBAT</div>
         <div className="flex items-center gap-2 flex-wrap justify-center">
           <span className="font-bold text-black dark:text-white">CHESS</span>
+          <span>•</span>
+          <span className="font-bold text-black dark:text-white">CYBER 8-BALL POOL</span>
           <span>•</span>
           <span className="font-bold text-black dark:text-white">TIC-TAC-TOE</span>
           <span>•</span>

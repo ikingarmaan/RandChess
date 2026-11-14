@@ -32,6 +32,10 @@ const rooms = new Map();
 // Active Ludo multiplayer rooms storage
 const ludoRooms = new Map();
 
+// Active 8-Ball Pool multiplayer rooms storage
+const poolRooms = new Map();
+let poolQuickMatchQueue = null;
+
 // Quick match matchmaking for Ludo
 let ludoQuickMatchRoom = null;
 let ludoQuickMatchTimer = null;
@@ -690,6 +694,222 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ==========================================
+  // 8-BALL POOL MULTIPLAYER EVENTS
+  // ==========================================
+
+  // Pool Quick Match
+  socket.on('find_pool_quick_match', ({ timeControl = 300, playerId } = {}, callback) => {
+    if (poolQuickMatchQueue && poolQuickMatchQueue.socketId !== socket.id && (!playerId || poolQuickMatchQueue.playerId !== playerId)) {
+      const opponent = poolQuickMatchQueue;
+      poolQuickMatchQueue = null;
+
+      const roomId = generateRoomCode();
+      const room = {
+        id: roomId,
+        p1: opponent.socketId,
+        p1Id: opponent.playerId,
+        p2: socket.id,
+        p2Id: playerId,
+        status: 'playing',
+        timeControl,
+        turn: 'p1'
+      };
+      poolRooms.set(roomId, room);
+
+      const opponentSocket = io.sockets.sockets.get(opponent.socketId);
+      if (opponentSocket) {
+        opponentSocket.join(roomId);
+        opponentSocket.poolRoomId = roomId;
+      }
+      socket.join(roomId);
+      socket.poolRoomId = roomId;
+
+      io.to(roomId).emit('pool_game_started', {
+        roomId,
+        p1: room.p1,
+        p1Id: room.p1Id,
+        p2: room.p2,
+        p2Id: room.p2Id,
+        timeControl
+      });
+
+      if (callback) callback({ success: true, matched: true, roomId, role: 'p2' });
+    } else {
+      poolQuickMatchQueue = { socketId: socket.id, playerId, timeControl };
+      if (callback) callback({ success: true, matched: false });
+    }
+  });
+
+  socket.on('cancel_pool_quick_match', (callback) => {
+    if (poolQuickMatchQueue && poolQuickMatchQueue.socketId === socket.id) {
+      poolQuickMatchQueue = null;
+    }
+    if (callback) callback({ success: true });
+  });
+
+  // Create Custom Pool Room
+  socket.on('create_pool_room', ({ timeControl = 300, playerId } = {}, callback) => {
+    const roomId = generateRoomCode();
+    const room = {
+      id: roomId,
+      p1: socket.id,
+      p1Id: playerId,
+      p2: null,
+      p2Id: null,
+      status: 'waiting',
+      timeControl,
+      hostPlayerId: playerId,
+      turn: 'p1'
+    };
+    poolRooms.set(roomId, room);
+    socket.join(roomId);
+    socket.poolRoomId = roomId;
+
+    if (callback) {
+      callback({
+        success: true,
+        roomId,
+        role: 'p1',
+        timeControl
+      });
+    }
+  });
+
+  // Join Custom Pool Room
+  socket.on('join_pool_room', ({ roomId, playerId } = {}, callback) => {
+    const cleanRoomId = (roomId || '').trim().toUpperCase();
+    const room = poolRooms.get(cleanRoomId);
+    if (!room) {
+      if (callback) callback({ success: false, error: 'Room not found. Check the code.' });
+      return;
+    }
+
+    if (room.status === 'waiting' && playerId && room.hostPlayerId === playerId) {
+      socket.join(cleanRoomId);
+      socket.poolRoomId = cleanRoomId;
+      room.p1 = socket.id;
+      if (callback) {
+        callback({
+          success: true,
+          roomId: cleanRoomId,
+          role: 'p1',
+          timeControl: room.timeControl,
+          waiting: true
+        });
+      }
+      return;
+    }
+
+    if (room.status === 'playing') {
+      if (room.p1Id === playerId || room.p1 === socket.id) {
+        room.p1 = socket.id;
+        socket.join(cleanRoomId);
+        socket.poolRoomId = cleanRoomId;
+        if (callback) callback({ success: true, roomId: cleanRoomId, role: 'p1', timeControl: room.timeControl });
+        return;
+      }
+      if (room.p2Id === playerId || room.p2 === socket.id) {
+        room.p2 = socket.id;
+        socket.join(cleanRoomId);
+        socket.poolRoomId = cleanRoomId;
+        if (callback) callback({ success: true, roomId: cleanRoomId, role: 'p2', timeControl: room.timeControl });
+        return;
+      }
+      if (callback) callback({ success: false, error: 'Room is already full.' });
+      return;
+    }
+
+    // Second player joins
+    room.p2 = socket.id;
+    room.p2Id = playerId;
+    room.status = 'playing';
+    socket.join(cleanRoomId);
+    socket.poolRoomId = cleanRoomId;
+
+    io.to(cleanRoomId).emit('pool_game_started', {
+      roomId: cleanRoomId,
+      p1: room.p1,
+      p1Id: room.p1Id,
+      p2: room.p2,
+      p2Id: room.p2Id,
+      timeControl: room.timeControl
+    });
+
+    if (callback) {
+      callback({
+        success: true,
+        roomId: cleanRoomId,
+        role: 'p2',
+        timeControl: room.timeControl
+      });
+    }
+  });
+
+  // Pool Shot Taken by Player
+  socket.on('pool_shot', ({ roomId, shot }) => {
+    const cleanRoomId = (roomId || socket.poolRoomId || '').trim().toUpperCase();
+    if (cleanRoomId && poolRooms.has(cleanRoomId)) {
+      socket.to(cleanRoomId).emit('pool_opponent_shot', { shot });
+    }
+  });
+
+  // Sync Ball State when Physics Rest
+  socket.on('pool_sync_state', ({ roomId, state }) => {
+    const cleanRoomId = (roomId || socket.poolRoomId || '').trim().toUpperCase();
+    if (cleanRoomId && poolRooms.has(cleanRoomId)) {
+      socket.to(cleanRoomId).emit('pool_state_updated', { state });
+    }
+  });
+
+  // Place Cue Ball (Ball in Hand)
+  socket.on('pool_place_cue', ({ roomId, pos }) => {
+    const cleanRoomId = (roomId || socket.poolRoomId || '').trim().toUpperCase();
+    if (cleanRoomId && poolRooms.has(cleanRoomId)) {
+      socket.to(cleanRoomId).emit('pool_cue_placed', { pos });
+    }
+  });
+
+  // Rematch Handlers
+  socket.on('pool_offer_rematch', ({ roomId }) => {
+    const cleanRoomId = (roomId || socket.poolRoomId || '').trim().toUpperCase();
+    if (cleanRoomId && poolRooms.has(cleanRoomId)) {
+      socket.to(cleanRoomId).emit('pool_rematch_offered');
+    }
+  });
+
+  socket.on('pool_accept_rematch', ({ roomId }) => {
+    const cleanRoomId = (roomId || socket.poolRoomId || '').trim().toUpperCase();
+    if (cleanRoomId && poolRooms.has(cleanRoomId)) {
+      const room = poolRooms.get(cleanRoomId);
+      // Swap break player
+      const tempP = room.p1;
+      const tempPId = room.p1Id;
+      room.p1 = room.p2;
+      room.p1Id = room.p2Id;
+      room.p2 = tempP;
+      room.p2Id = tempPId;
+
+      io.to(cleanRoomId).emit('pool_game_started', {
+        roomId: cleanRoomId,
+        p1: room.p1,
+        p1Id: room.p1Id,
+        p2: room.p2,
+        p2Id: room.p2Id,
+        timeControl: room.timeControl
+      });
+    }
+  });
+
+  socket.on('pool_leave_room', ({ roomId }) => {
+    const cleanRoomId = (roomId || socket.poolRoomId || '').trim().toUpperCase();
+    if (cleanRoomId && poolRooms.has(cleanRoomId)) {
+      socket.leave(cleanRoomId);
+      socket.to(cleanRoomId).emit('pool_opponent_disconnected');
+      poolRooms.delete(cleanRoomId);
+    }
+  });
+
   // 9. Handle Disconnect with Grace Period
   socket.on('disconnect', () => {
     if (quickMatchQueue && quickMatchQueue.socketId === socket.id) {
@@ -750,6 +970,21 @@ io.on('connection', (socket) => {
             triggerServerBotTurn(ludoRoom);
           }
         }
+      }
+    }
+
+    // Pool room disconnect handler
+    if (poolQuickMatchQueue && poolQuickMatchQueue.socketId === socket.id) {
+      poolQuickMatchQueue = null;
+    }
+    const poolRoomId = socket.poolRoomId;
+    if (poolRoomId && poolRooms.has(poolRoomId)) {
+      const pRoom = poolRooms.get(poolRoomId);
+      if (pRoom.status === 'waiting') {
+        poolRooms.delete(poolRoomId);
+      } else {
+        socket.to(poolRoomId).emit('pool_opponent_disconnected');
+        poolRooms.delete(poolRoomId);
       }
     }
   });

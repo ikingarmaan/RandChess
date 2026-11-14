@@ -63,12 +63,25 @@ export const GameCatalogueModal = ({
       players: '1 - 2 Players',
       description: 'High-speed 60 FPS vector paddle physics. Features spin deflection angles, accelerating ball speed, reactive AI bot, and same-keyboard 1v1 duels.',
       tags: ['60 FPS Physics', 'Deflection Spin', 'Reactive Bot', 'Same-Keyboard 1v1']
+    },
+    {
+      id: 'pool',
+      title: 'Cyber 8-Ball Pool',
+      shortTitle: '8-BALL POOL',
+      category: '2D BILLIARDS RIG // 16 BALLS',
+      icon: '🎱',
+      badge: 'PHYSICS v2.0',
+      badgeColor: 'bg-[#22c55e] text-black',
+      playable: true,
+      players: '1 - 2 Players',
+      description: 'Authentic 8-ball billiards with 60 FPS vector physics, dynamic laser trajectory guides, ghost ball projection, tactile power cues, and real-time multiplayer.',
+      tags: ['16-Ball Physics', 'Laser Trajectory', 'Smart Bots', 'Online PvP', 'Custom Clocks']
     }
   ];
 
   const filteredGames = games.filter((g) => {
     if (filter === 'strategy') return ['chess', 'tictactoe'].includes(g.id);
-    if (filter === 'arcade') return ['snake', 'pong'].includes(g.id);
+    if (filter === 'arcade') return ['pool', 'snake', 'pong'].includes(g.id);
     return true;
   });
 
@@ -97,7 +110,7 @@ export const GameCatalogueModal = ({
                 </span>
               </div>
               <p className="text-[11px] font-mono text-neutral-600">
-                Switch games instantly across 4 tactical battlefields
+                Switch games instantly across 5 tactical battlefields
               </p>
             </div>
           </div>
@@ -142,7 +155,7 @@ export const GameCatalogueModal = ({
                   : 'bg-[#f4f4eb] text-black hover:bg-neutral-200'
               }`}
             >
-              ARCADE (2)
+              PHYSICS & ARCADE (3)
             </button>
           </div>
 
@@ -242,7 +255,7 @@ export const GameCatalogueModal = ({
         <div className="bg-[#fefce8] border-2 border-black p-2.5 flex items-center justify-between text-xs font-mono font-bold">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#15803d] shrink-0" />
-            <span>4 HIGH-VOLTAGE BATTLEFIELDS WITH ZERO BLUE DESIGN</span>
+            <span>5 HIGH-VOLTAGE BATTLEFIELDS WITH ZERO BLUE DESIGN</span>
           </div>
           <span className="hidden sm:inline bg-black text-[#facc15] px-1.5 py-0.5 text-[10px]">
             ARCADE HUB v2.0

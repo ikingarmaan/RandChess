@@ -17,11 +17,12 @@ import { ChessGame } from './components/ChessGame';
 import { TicTacToeGame } from './components/TicTacToeGame';
 import { PongGame } from './components/PongGame';
 import { SnakeGame } from './components/SnakeGame';
+import { PoolGame } from './components/PoolGame';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 import { sound } from './utils/sound';
 
-// Metadata dictionary for the 4 core playable games in the Brutalist suite
+// Metadata dictionary for the 5 core playable games in the Brutalist suite
 const GAME_METADATA = {
   chess: {
     title: 'RandChess',
@@ -31,6 +32,15 @@ const GAME_METADATA = {
     sub: 'ZERO BLUE • STOCKFISH CALIBRATED • 100% TACTICAL',
     footer: 'RandChess v2.0 // HIGH-EFFICIENCY MINIMAX',
     footerSub: 'NO BLUE • 64 SQUARES • TACTICAL RADAR'
+  },
+  pool: {
+    title: 'Cyber 8-Ball Pool',
+    badge: 'PHYSICS v2.0',
+    icon: '🎱',
+    iconBg: 'bg-[#22c55e] text-black',
+    sub: 'ZERO BLUE • 2D BILLIARDS RIG • ONLINE & BOTS',
+    footer: 'Cyber 8-Ball Pool // 60 FPS VECTOR RIG',
+    footerSub: 'NO BLUE • 16 BALLS • LASER AIM GUIDE'
   },
   tictactoe: {
     title: 'Brutal Tic-Tac-Toe',
@@ -152,10 +162,13 @@ export default function App() {
 
     newSocket.on('connect', () => {
       setSocketConnected(true);
-      // Auto-open chess if user followed a direct room link ?room=XYZ
+      // Auto-open chess or pool if user followed a direct room link
       const params = new URLSearchParams(window.location.search);
       const roomParam = params.get('room');
-      if (roomParam) {
+      const poolParam = params.get('pool_room');
+      if (poolParam) {
+        setActiveGame('pool');
+      } else if (roomParam) {
         setActiveGame('chess');
       }
     });
@@ -175,11 +188,11 @@ export default function App() {
 
   const currentMeta = (activeGame && GAME_METADATA[activeGame]) || {
     title: 'RandGames Arena',
-    badge: '4 PLAYABLE ARENAS',
+    badge: '5 PLAYABLE ARENAS',
     icon: '🎮',
     iconBg: 'bg-black text-[#22c55e]',
-    sub: 'ZERO BLUE • MULTIPLAYER GAMING ARENA • MINIMAX ENGINES',
-    footer: 'RandGames Arena // 4 PLAYABLE TACTICAL ARENAS',
+    sub: 'ZERO BLUE • MULTIPLAYER GAMING ARENA • MINIMAX & PHYSICS',
+    footer: 'RandGames Arena // 5 PLAYABLE TACTICAL ARENAS',
     footerSub: 'NO BLUE • ZERO BLUE NEO-BRUTALISM • 100% PLAYABLE'
   };
 
@@ -306,6 +319,15 @@ export default function App() {
             isDarkTheme={isDarkTheme}
             soundEnabled={soundEnabled}
             onOpenCatalogue={() => setActiveGame(null)}
+          />
+        ) : activeGame === 'pool' ? (
+          <PoolGame
+            isDarkTheme={isDarkTheme}
+            soundEnabled={soundEnabled}
+            onOpenCatalogue={() => setActiveGame(null)}
+            socket={socket}
+            socketConnected={socketConnected}
+            playerId={getPlayerId()}
           />
         ) : (
           <GameCatalogueHub
