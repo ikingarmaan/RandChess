@@ -854,6 +854,14 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Live Aim & Power Sync to Opponent while Aiming
+  socket.on('pool_aim_sync', ({ roomId, aim }) => {
+    const cleanRoomId = (roomId || socket.poolRoomId || '').trim().toUpperCase();
+    if (cleanRoomId && poolRooms.has(cleanRoomId)) {
+      socket.to(cleanRoomId).emit('pool_opponent_aim', { aim });
+    }
+  });
+
   // Sync Ball State when Physics Rest
   socket.on('pool_sync_state', ({ roomId, state }) => {
     const cleanRoomId = (roomId || socket.poolRoomId || '').trim().toUpperCase();

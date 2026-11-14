@@ -14,7 +14,8 @@ export const OnlineLobbyModal = ({
   roomCode,
   isWaiting,
   onlineStatus,
-  isConnected = true
+  isConnected = true,
+  roomParamKey = 'room'
 }) => {
   const [tab, setTab] = useState('quick'); // 'quick' | 'create' | 'join'
   const [inputCode, setInputCode] = useState('');
@@ -32,7 +33,7 @@ export const OnlineLobbyModal = ({
 
   if (!isOpen) return null;
 
-  const shareUrl = roomCode ? `${window.location.origin}?room=${roomCode}` : '';
+  const shareUrl = roomCode ? `${window.location.origin}?${roomParamKey}=${roomCode}` : '';
 
   const handleCopyLink = () => {
     if (shareUrl) {
@@ -56,7 +57,7 @@ export const OnlineLobbyModal = ({
       if (text) {
         // Extract 6-character alphanumeric code or from URL
         let clean = text.trim();
-        const urlMatch = clean.match(/room=([A-Za-z0-9]{6})/i);
+        const urlMatch = clean.match(/(?:room|pool_room)=([A-Za-z0-9]{6})/i);
         if (urlMatch && urlMatch[1]) {
           clean = urlMatch[1];
         } else {
