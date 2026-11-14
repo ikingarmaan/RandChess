@@ -82,11 +82,39 @@ export default function App() {
 
   // Global Audio, Theme & Settings State
   const [isDarkTheme, setIsDarkTheme] = useState(false);
-  const [boardTheme, setBoardTheme] = useState('neo_emerald');
+  const [boardTheme, setBoardTheme] = useState(() => {
+    return localStorage.getItem('randchess_board_theme') || 'neo_emerald';
+  });
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundVolume, setSoundVolume] = useState(0.7);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Tactical & Visual Settings (All default to ON for rich feedback)
+  const [showLegalDots, setShowLegalDots] = useState(() => {
+    return localStorage.getItem('randchess_show_legal_dots') !== 'false';
+  });
+  const [showCoordinates, setShowCoordinates] = useState(() => {
+    return localStorage.getItem('randchess_show_coordinates') !== 'false';
+  });
+  const [showLastMoveHighlight, setShowLastMoveHighlight] = useState(() => {
+    return localStorage.getItem('randchess_show_last_move') !== 'false';
+  });
+  const [blindfoldMode, setBlindfoldMode] = useState(false);
+
+  // Sync settings to localStorage
+  useEffect(() => {
+    localStorage.setItem('randchess_board_theme', boardTheme);
+  }, [boardTheme]);
+  useEffect(() => {
+    localStorage.setItem('randchess_show_legal_dots', String(showLegalDots));
+  }, [showLegalDots]);
+  useEffect(() => {
+    localStorage.setItem('randchess_show_coordinates', String(showCoordinates));
+  }, [showCoordinates]);
+  useEffect(() => {
+    localStorage.setItem('randchess_show_last_move', String(showLastMoveHighlight));
+  }, [showLastMoveHighlight]);
 
   // Online Multiplayer Socket
   const [socket, setSocket] = useState(null);
@@ -251,6 +279,15 @@ export default function App() {
             playerId={getPlayerId()}
             boardTheme={boardTheme}
             onSelectTheme={setBoardTheme}
+            showLegalDots={showLegalDots}
+            onToggleLegalDots={setShowLegalDots}
+            showCoordinates={showCoordinates}
+            onToggleCoordinates={setShowCoordinates}
+            showLastMoveHighlight={showLastMoveHighlight}
+            onToggleLastMoveHighlight={setShowLastMoveHighlight}
+            blindfoldMode={blindfoldMode}
+            onToggleBlindfold={setBlindfoldMode}
+            onOpenSettings={() => setIsSettingsOpen(true)}
           />
         ) : activeGame === 'tictactoe' ? (
           <TicTacToeGame
@@ -296,6 +333,14 @@ export default function App() {
         onChangeVolume={setSoundVolume}
         voiceEnabled={voiceEnabled}
         onToggleVoice={setVoiceEnabled}
+        showLegalDots={showLegalDots}
+        onToggleLegalDots={setShowLegalDots}
+        showCoordinates={showCoordinates}
+        onToggleCoordinates={setShowCoordinates}
+        showLastMoveHighlight={showLastMoveHighlight}
+        onToggleLastMoveHighlight={setShowLastMoveHighlight}
+        blindfoldMode={blindfoldMode}
+        onToggleBlindfold={setBlindfoldMode}
         isDarkTheme={isDarkTheme}
         onToggleDarkTheme={setIsDarkTheme}
       />

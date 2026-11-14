@@ -19,7 +19,13 @@ import {
   Gamepad2,
   X as CloseIcon,
   Shield,
-  Play
+  Play,
+  Settings,
+  Eye,
+  EyeOff,
+  Palette,
+  Sliders,
+  ArrowRight
 } from 'lucide-react';
 
 import { ChessBoard, BOARD_THEMES } from './ChessBoard';
@@ -44,7 +50,16 @@ export const ChessGame = ({
   socketConnected = false,
   playerId = 'usr_guest',
   boardTheme = 'neo_emerald',
-  onSelectTheme = () => {}
+  onSelectTheme = () => {},
+  showLegalDots = true,
+  onToggleLegalDots = () => {},
+  showCoordinates = true,
+  onToggleCoordinates = () => {},
+  showLastMoveHighlight = true,
+  onToggleLastMoveHighlight = () => {},
+  blindfoldMode = false,
+  onToggleBlindfold = () => {},
+  onOpenSettings = () => {}
 }) => {
   // --- Game Engine State ---
   const [chess, setChess] = useState(() => new Chess());
@@ -70,10 +85,10 @@ export const ChessGame = ({
   const [timers, setTimers] = useState({ w: 300, b: 300 });
   const timerIntervalRef = useRef(null);
 
-  // --- AI Coach Mode State (Defaults to OFF per user preference) ---
-  const [coachEnabled, setCoachEnabled] = useState(false);
+  // --- AI Coach Mode State (Defaults to ON for full tactical radar and advice) ---
+  const [coachEnabled, setCoachEnabled] = useState(true);
   const [coachAnalysis, setCoachAnalysis] = useState(null);
-  const [showCoachArrow, setShowCoachArrow] = useState(false);
+  const [showCoachArrow, setShowCoachArrow] = useState(true);
   const [isCoachThinking, setIsCoachThinking] = useState(false);
 
   // --- Online Multiplayer State ---
@@ -949,7 +964,7 @@ export const ChessGame = ({
         </div>
 
         {/* Right: Quick Action Controls */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {/* Flip Board */}
           <button
             onClick={() => setIsFlipped(!isFlipped)}
@@ -980,6 +995,47 @@ export const ChessGame = ({
             <span className="hidden md:inline">SUGGEST:</span>
             <span>{coachEnabled ? 'ON' : 'OFF'}</span>
           </button>
+
+          {/* Tactical Arrow Toggle */}
+          <button
+            onClick={() => setShowCoachArrow(!showCoachArrow)}
+            className={`brutal-press flex items-center gap-1 px-2.5 py-1.5 font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm transition-all ${
+              showCoachArrow
+                ? 'bg-[#22c55e] text-black hover:bg-green-400'
+                : 'bg-black text-white hover:bg-neutral-800'
+            }`}
+            title="Turn Tactical Arrow Overlay ON / OFF"
+          >
+            <ArrowRight className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">ARROW:</span>
+            <span>{showCoachArrow ? 'ON' : 'OFF'}</span>
+          </button>
+
+          {/* Legal Dots Toggle */}
+          <button
+            onClick={() => onToggleLegalDots(!showLegalDots)}
+            className={`brutal-press flex items-center gap-1 px-2.5 py-1.5 font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm transition-all ${
+              showLegalDots
+                ? 'bg-[#22c55e] text-black hover:bg-green-400'
+                : 'bg-black text-white hover:bg-neutral-800'
+            }`}
+            title="Turn Legal Move Dots ON / OFF"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">DOTS:</span>
+            <span>{showLegalDots ? 'ON' : 'OFF'}</span>
+          </button>
+
+          {/* Settings & Themes Button */}
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              className="brutal-press p-1.5 bg-[#facc15] hover:bg-yellow-400 text-black border-2 border-black cursor-pointer brutal-shadow-sm"
+              title="Open Tactical & Visual Settings Modal"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
 
           {/* Rules Guide */}
           <button
@@ -1031,10 +1087,10 @@ export const ChessGame = ({
                 lastMove={displayLastMove}
                 coachMove={coachAnalysis?.bestMove}
                 showCoachArrow={isLivePosition && coachEnabled && showCoachArrow}
-                showLegalDots={isLivePosition}
-                showCoordinates={true}
-                showLastMoveHighlight={true}
-                blindfoldMode={false}
+                showLegalDots={isLivePosition && showLegalDots}
+                showCoordinates={showCoordinates}
+                showLastMoveHighlight={showLastMoveHighlight}
+                blindfoldMode={blindfoldMode}
                 interactive={
                   isLivePosition &&
                   !gameOverResult &&
@@ -1326,7 +1382,102 @@ export const ChessGame = ({
             )}
           </div>
 
-          {/* 2. MOVE SCORESHEET / HISTORY */}
+          {/* 2. TACTICAL RADAR & VISUAL OVERLAY */}
+          <div className="bg-[#f4f4eb] text-black border-3 border-black p-3 brutal-shadow space-y-2.5">
+            <div className="flex items-center justify-between border-b-2 border-black pb-1.5">
+              <span className="font-brutal text-xs font-black uppercase tracking-wide flex items-center gap-1.5">
+                <Sliders className="w-3.5 h-3.5 text-black" />
+                TACTICAL RADAR & VISUALS
+              </span>
+              {onOpenSettings && (
+                <button
+                  onClick={onOpenSettings}
+                  className="font-mono text-[10px] font-black uppercase px-2 py-0.5 bg-[#facc15] hover:bg-yellow-400 text-black border border-black cursor-pointer"
+                  title="Open Full System Settings Modal"
+                >
+                  ⚙️ SETTINGS
+                </button>
+              )}
+            </div>
+
+            {/* Tactical 1-Click Toggles */}
+            <div className="grid grid-cols-2 gap-1.5 font-mono text-[11px] font-black uppercase">
+              {/* Legal Dots */}
+              <button
+                onClick={() => onToggleLegalDots(!showLegalDots)}
+                className={`brutal-press flex items-center justify-between p-2 border-2 border-black cursor-pointer transition-colors ${
+                  showLegalDots ? 'bg-[#22c55e] text-black' : 'bg-neutral-200 text-neutral-600'
+                }`}
+                title="Toggle legal move dots on board"
+              >
+                <span>LEGAL DOTS</span>
+                <span className="bg-black text-white px-1.5 py-0.2 text-[9px]">{showLegalDots ? 'ON' : 'OFF'}</span>
+              </button>
+
+              {/* Coordinates */}
+              <button
+                onClick={() => onToggleCoordinates(!showCoordinates)}
+                className={`brutal-press flex items-center justify-between p-2 border-2 border-black cursor-pointer transition-colors ${
+                  showCoordinates ? 'bg-[#22c55e] text-black' : 'bg-neutral-200 text-neutral-600'
+                }`}
+                title="Toggle algebraic coordinate letters and numbers"
+              >
+                <span>COORDINATES</span>
+                <span className="bg-black text-white px-1.5 py-0.2 text-[9px]">{showCoordinates ? 'ON' : 'OFF'}</span>
+              </button>
+
+              {/* Last Move Glow */}
+              <button
+                onClick={() => onToggleLastMoveHighlight(!showLastMoveHighlight)}
+                className={`brutal-press flex items-center justify-between p-2 border-2 border-black cursor-pointer transition-colors ${
+                  showLastMoveHighlight ? 'bg-[#22c55e] text-black' : 'bg-neutral-200 text-neutral-600'
+                }`}
+                title="Highlight previous move origin and destination"
+              >
+                <span>LAST MOVE GLOW</span>
+                <span className="bg-black text-white px-1.5 py-0.2 text-[9px]">{showLastMoveHighlight ? 'ON' : 'OFF'}</span>
+              </button>
+
+              {/* Tactical Coach Arrow */}
+              <button
+                onClick={() => setShowCoachArrow(!showCoachArrow)}
+                className={`brutal-press flex items-center justify-between p-2 border-2 border-black cursor-pointer transition-colors ${
+                  showCoachArrow ? 'bg-[#22c55e] text-black' : 'bg-neutral-200 text-neutral-600'
+                }`}
+                title="Toggle tactical coach directional arrow on board"
+              >
+                <span>COACH ARROW</span>
+                <span className="bg-black text-white px-1.5 py-0.2 text-[9px]">{showCoachArrow ? 'ON' : 'OFF'}</span>
+              </button>
+            </div>
+
+            {/* Board Theme Quick Switcher */}
+            <div className="border-t border-black/30 pt-1.5 flex items-center justify-between gap-1">
+              <span className="text-[10px] font-mono font-black uppercase text-neutral-700">THEME:</span>
+              <div className="flex gap-1">
+                {[
+                  { id: 'neo_emerald', label: 'EMERALD', bg: 'bg-[#22c55e]' },
+                  { id: 'neo_ruby', label: 'RUBY', bg: 'bg-[#ef4444]' },
+                  { id: 'neo_mono', label: 'MONO', bg: 'bg-black text-white' },
+                  { id: 'neo_amber', label: 'AMBER', bg: 'bg-[#facc15]' }
+                ].map((th) => (
+                  <button
+                    key={th.id}
+                    onClick={() => onSelectTheme(th.id)}
+                    className={`px-1.5 py-0.5 text-[9px] font-mono font-black uppercase border border-black cursor-pointer ${
+                      boardTheme === th.id
+                        ? `${th.bg} brutal-shadow-sm ring-1 ring-black font-black`
+                        : 'bg-white text-black hover:bg-neutral-100'
+                    }`}
+                  >
+                    {th.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* 3. MOVE SCORESHEET / HISTORY */}
           <MoveHistory
             history={history}
             currentMoveIndex={viewHistoryIndex === null ? (history.length - 1) : viewHistoryIndex}
