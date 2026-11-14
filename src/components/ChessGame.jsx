@@ -232,13 +232,21 @@ export const ChessGame = ({
   // Execute a move on the board
   const executeMove = useCallback((moveCandidate) => {
     try {
-      // Pawn promotion check
-      const piece = chess.get(moveCandidate.from);
-      if (piece && piece.type === 'p') {
-        const targetRank = moveCandidate.to[1];
-        if ((piece.color === 'w' && targetRank === '8') || (piece.color === 'b' && targetRank === '1')) {
-          if (!moveCandidate.promotion) {
-            setPendingPromotion(moveCandidate);
+      const fromSq = typeof moveCandidate === 'string' ? moveCandidate.substring(0, 2) : moveCandidate.from;
+      const toSq = typeof moveCandidate === 'string' ? moveCandidate.substring(2, 4) : moveCandidate.to;
+      const piece = fromSq ? chess.get(fromSq) : null;
+
+      // Pawn promotion check: ALWAYS ask what to make a pawn when it reaches the other side of the board
+      if (piece && piece.type === 'p' && toSq) {
+        const targetRank = toSq[1];
+        const isPromotionRank = (piece.color === 'w' && targetRank === '8') || (piece.color === 'b' && targetRank === '1');
+        if (isPromotionRank) {
+          const promotionChosen = typeof moveCandidate === 'object' && moveCandidate.promotionChosen;
+          if (!promotionChosen) {
+            setPendingPromotion({
+              from: fromSq,
+              to: toSq
+            });
             return;
           }
         }
@@ -249,8 +257,8 @@ export const ChessGame = ({
       const movePayload = typeof moveCandidate === 'string'
         ? moveCandidate
         : {
-            from: moveCandidate.from,
-            to: moveCandidate.to,
+            from: fromSq,
+            to: toSq,
             promotion: moveCandidate.promotion
           };
       const moveResult = nextGame.move(movePayload);
@@ -360,7 +368,18 @@ export const ChessGame = ({
         try {
           const result = getBestMove(chess, aiDifficulty);
           if (result && result.move) {
-            executeMove(result.move);
+            const botMove = typeof result.move === 'string'
+              ? {
+                  from: result.move.substring(0, 2),
+                  to: result.move.substring(2, 4),
+                  promotion: result.move[4] || 'q',
+                  promotionChosen: true
+                }
+              : {
+                  ...result.move,
+                  promotionChosen: true
+                };
+            executeMove(botMove);
           }
         } catch (err) {
           console.error('Bot move calculation error:', err);
@@ -601,7 +620,12 @@ export const ChessGame = ({
   // Promotion Selection
   const handleSelectPromotion = (pieceType) => {
     if (!pendingPromotion) return;
-    executeMove({ ...pendingPromotion, promotion: pieceType });
+    executeMove({
+      from: pendingPromotion.from,
+      to: pendingPromotion.to,
+      promotion: pieceType,
+      promotionChosen: true
+    });
     setPendingPromotion(null);
   };
 
@@ -1453,7 +1477,7 @@ export const ChessGame = ({
       {/* Promotion Modal */}
       {pendingPromotion && (
         <PromotionModal
-          color={chess.turn()}
+          color={chess.get(pendingPromotion.from)?.color || chess.turn()}
           onSelectPiece={handleSelectPromotion}
           onCancel={() => setPendingPromotion(null)}
         />

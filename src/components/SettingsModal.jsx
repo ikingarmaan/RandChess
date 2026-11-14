@@ -203,15 +203,13 @@ export const SettingsModal = ({
               <span>{showLastMoveHighlight ? 'ON' : 'OFF'}</span>
             </button>
 
-            <button
-              onClick={() => onToggleAutoQueen(!autoQueen)}
-              className={`brutal-press flex items-center justify-between p-2 border-2 border-black cursor-pointer ${
-                autoQueen ? 'bg-[#22c55e] text-black' : 'bg-neutral-200 text-neutral-600'
-              }`}
+            <div
+              className="flex items-center justify-between p-2 border-2 border-black bg-[#22c55e] text-black font-mono font-black text-xs select-none"
+              title="Promotion dialog always asks when a pawn reaches the other side of the board"
             >
-              <span>Auto-Queen</span>
-              <span>{autoQueen ? 'ON' : 'OFF'}</span>
-            </button>
+              <span>Promotion Dialog</span>
+              <span className="bg-black text-[#22c55e] px-1.5 py-0.5 border border-black">ALWAYS ASK</span>
+            </div>
 
             <button
               onClick={() => onToggleBlindfold(!blindfoldMode)}
