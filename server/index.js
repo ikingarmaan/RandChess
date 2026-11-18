@@ -638,6 +638,29 @@ io.on('connection', (socket) => {
     });
   });
 
+  // 6b. Claim Timeout (Server verifies and ends game)
+  socket.on('claim_timeout', ({ roomId } = {}) => {
+    const cleanRoomId = (roomId || socket.roomId || '').trim().toUpperCase();
+    const room = rooms.get(cleanRoomId);
+    if (!room || room.status !== 'playing' || !room.timeControl) return;
+
+    const currentTurn = room.chess.turn();
+    const now = Date.now();
+    const elapsed = Math.floor((now - room.timers.lastTurnTimestamp) / 1000);
+    const remainingTime = Math.max(0, (room.timers[currentTurn] ?? room.timeControl) - elapsed);
+
+    if (remainingTime <= 0) {
+      room.timers[currentTurn] = 0;
+      room.status = 'finished';
+      const winner = currentTurn === 'w' ? 'b' : 'w';
+      io.to(cleanRoomId).emit('game_over', {
+        type: 'timeout',
+        winner,
+        reason: `${currentTurn === 'w' ? 'White' : 'Black'} ran out of time on clock`
+      });
+    }
+  });
+
   // 7. Rematch Negotiation
   socket.on('offer_rematch', ({ roomId } = {}) => {
     const cleanRoomId = (roomId || socket.roomId || '').trim().toUpperCase();

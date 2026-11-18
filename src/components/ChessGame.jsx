@@ -84,6 +84,7 @@ export const ChessGame = ({
   const [timeControl, setTimeControl] = useState(300); // 5 min default, null for unlimited
   const [timers, setTimers] = useState({ w: 300, b: 300 });
   const timerIntervalRef = useRef(null);
+  const lastTickTimestampRef = useRef(Date.now());
 
   // --- AI Coach Mode State (Defaults to ON for full tactical radar and advice) ---
   const [coachEnabled, setCoachEnabled] = useState(true);
@@ -197,11 +198,29 @@ export const ChessGame = ({
     }
   }, [coachEnabled, runCoachAnalysis]);
 
-  // Fixed Clock countdown timer interval:
-  // ONLY runs when a game is in progress (history.length > 0), not over, offline, and timeControl is set.
-  // NEVER loops popups on game over!
+  // Trigger timeout game over
+  const handleTimeout = useCallback((turn) => {
+    const winner = turn === 'w' ? 'b' : 'w';
+    const result = {
+      type: 'timeout',
+      winner,
+      reason: `${turn === 'w' ? 'White' : 'Black'} ran out of time on clock`
+    };
+    setGameOverResult(result);
+    setShowGameOverModal(true);
+    sound.playGameOver();
+
+    if (gameMode === 'online' && socket && onlineRoomCode) {
+      socket.emit('claim_timeout', { roomId: onlineRoomCode });
+    }
+  }, [gameMode, socket, onlineRoomCode]);
+
+  // Robust Clock countdown timer interval:
+  // Runs whenever a timed match is active (not game over, timeControl is set).
+  // Uses real-time timestamp delta to prevent timer drift, freezing, or reset on fast moves.
+  // Works identically and smoothly in Offline (vs Bot & 1v1 Local) AND Online Multiplayer.
   useEffect(() => {
-    if (gameOverResult || timeControl === null || history.length === 0 || gameMode === 'online') {
+    if (gameOverResult || timeControl === null || (gameMode === 'online' && !onlineRoomCode)) {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
         timerIntervalRef.current = null;
@@ -209,32 +228,34 @@ export const ChessGame = ({
       return;
     }
 
+    lastTickTimestampRef.current = Date.now();
+
     timerIntervalRef.current = setInterval(() => {
-      const turn = chess.turn();
-      setTimers((prev) => {
-        if (!prev) return prev;
-        const currentVal = prev[turn];
-        if (currentVal <= 1) {
-          const winner = turn === 'w' ? 'b' : 'w';
-          const result = {
-            type: 'timeout',
-            winner,
-            reason: `${turn === 'w' ? 'White' : 'Black'} ran out of time on clock`
-          };
-          setGameOverResult(result);
-          setShowGameOverModal(true);
-          if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
+      const now = Date.now();
+      const elapsed = now - lastTickTimestampRef.current;
+      if (elapsed >= 1000) {
+        const secondsToDeduct = Math.floor(elapsed / 1000);
+        lastTickTimestampRef.current += secondsToDeduct * 1000;
+
+        const turn = chessRef.current ? chessRef.current.turn() : 'w';
+        setTimers((prev) => {
+          if (!prev || prev[turn] === null || prev[turn] === undefined) return prev;
+          const currentVal = prev[turn];
+          if (currentVal <= secondsToDeduct) {
+            handleTimeout(turn);
+            if (timerIntervalRef.current) {
+              clearInterval(timerIntervalRef.current);
+              timerIntervalRef.current = null;
+            }
+            return { ...prev, [turn]: 0 };
           }
-          return { ...prev, [turn]: 0 };
-        }
-        return {
-          ...prev,
-          [turn]: currentVal - 1
-        };
-      });
-    }, 1000);
+          return {
+            ...prev,
+            [turn]: currentVal - secondsToDeduct
+          };
+        });
+      }
+    }, 250);
 
     return () => {
       if (timerIntervalRef.current) {
@@ -242,7 +263,7 @@ export const ChessGame = ({
         timerIntervalRef.current = null;
       }
     };
-  }, [chess, gameOverResult, timeControl, history.length, gameMode]);
+  }, [gameOverResult, timeControl, gameMode, onlineRoomCode, handleTimeout]);
 
   // Execute a move on the board
   const executeMove = useCallback((moveCandidate) => {
@@ -312,6 +333,19 @@ export const ChessGame = ({
       calculateMaterial(nextGame);
       setEvalScore(evaluateBoard(nextGame));
 
+      // Deduct elapsed time for the player who just moved and reset anchor for next turn
+      const now = Date.now();
+      const elapsedMs = now - lastTickTimestampRef.current;
+      const secondsToDeduct = Math.floor(elapsedMs / 1000);
+      if (secondsToDeduct > 0) {
+        const turnWhoMoved = chess.turn();
+        setTimers((prev) => {
+          if (!prev || prev[turnWhoMoved] === null) return prev;
+          return { ...prev, [turnWhoMoved]: Math.max(0, prev[turnWhoMoved] - secondsToDeduct) };
+        });
+      }
+      lastTickTimestampRef.current = now;
+
       // Game over checks
       if (nextGame.isGameOver()) {
         let result = null;
@@ -356,6 +390,7 @@ export const ChessGame = ({
             }
           } else if (ack && ack.timers) {
             setTimers({ w: ack.timers.w, b: ack.timers.b });
+            lastTickTimestampRef.current = Date.now();
           }
         });
       }
@@ -452,6 +487,7 @@ export const ChessGame = ({
         setTimeControl(tc);
         setTimers({ w: tc, b: tc });
       }
+      lastTickTimestampRef.current = Date.now();
       sound.playCheck();
     };
 
@@ -493,6 +529,7 @@ export const ChessGame = ({
         if (serverTimers) {
           setTimers({ w: serverTimers.w, b: serverTimers.b });
         }
+        lastTickTimestampRef.current = Date.now();
 
         if (gameOver) {
           setGameOverResult(gameOver);
@@ -587,7 +624,20 @@ export const ChessGame = ({
     } else {
       setTimers({ w: newSeconds, b: newSeconds });
     }
+    lastTickTimestampRef.current = Date.now();
   }, []);
+
+  // Safe New Match handler
+  const handleNewMatchClick = useCallback(() => {
+    if (gameMode === 'online' && onlineRoomCode && !gameOverResult) {
+      if (window.confirm('You are in an active online match. Do you want to leave the room and start a new match?')) {
+        handleLeaveRoom();
+        startNewGame();
+      }
+      return;
+    }
+    startNewGame();
+  }, [gameMode, onlineRoomCode, gameOverResult, handleLeaveRoom, startNewGame]);
 
   // Restart / New Game
   const startNewGame = useCallback(() => {
@@ -608,6 +658,7 @@ export const ChessGame = ({
     } else {
       setTimers({ w: null, b: null });
     }
+    lastTickTimestampRef.current = Date.now();
     runCoachAnalysis(newGame);
     sound.playMove();
   }, [timeControl, runCoachAnalysis]);
@@ -854,11 +905,11 @@ export const ChessGame = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleGoPrev, handleGoNext, handleGoFirst, handleGoLast]);
 
-  // Find King square if in check for visual red pulse
+  // Find King square if in check for visual red pulse on displayed board
   let kingInCheckSq = null;
-  if (chess.inCheck()) {
-    const board = chess.board();
-    const turn = chess.turn();
+  if (displayChess.inCheck()) {
+    const board = displayChess.board();
+    const turn = displayChess.turn();
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         const p = board[r][c];
@@ -870,39 +921,52 @@ export const ChessGame = ({
     }
   }
 
-  // Player details for cards
-  const player1 = {
-    name: gameMode === 'online' ? (onlineMyColor === 'w' ? 'You' : 'Opponent') : 'Player (White)',
-    type: 'human',
-    color: 'w',
-    rating: gameMode === 'ai' ? 1500 : null
-  };
+  // Player details for cards (White & Black)
+  const botElo =
+    aiDifficulty === 'easy'
+      ? 800
+      : aiDifficulty === 'medium'
+      ? 1200
+      : aiDifficulty === 'hard'
+      ? 1600
+      : 2100;
 
-  const player2 = {
+  const whitePlayer = {
     name:
       gameMode === 'ai'
-        ? `Bot AI (${aiDifficulty.toUpperCase()})`
+        ? (playerColor === 'w' ? 'You' : `Bot AI (${aiDifficulty.toUpperCase()})`)
         : gameMode === 'online'
-        ? onlineMyColor === 'b'
-          ? 'You'
-          : 'Opponent'
-        : 'Player (Black)',
-    type: gameMode === 'ai' ? 'bot' : gameMode === 'online' ? 'remote' : 'human',
-    color: 'b',
-    rating:
+        ? (onlineMyColor === 'w' ? 'You' : 'Opponent')
+        : 'Player 1 (White)',
+    type:
       gameMode === 'ai'
-        ? aiDifficulty === 'easy'
-          ? 800
-          : aiDifficulty === 'medium'
-          ? 1200
-          : aiDifficulty === 'hard'
-          ? 1600
-          : 2100
-        : null
+        ? (playerColor === 'w' ? 'human' : 'bot')
+        : gameMode === 'online'
+        ? (onlineMyColor === 'w' ? 'human' : 'remote')
+        : 'human',
+    color: 'w',
+    rating: gameMode === 'ai' ? (playerColor === 'w' ? 1500 : botElo) : null
   };
 
-  const topPlayer = isFlipped ? player1 : player2;
-  const bottomPlayer = isFlipped ? player2 : player1;
+  const blackPlayer = {
+    name:
+      gameMode === 'ai'
+        ? (playerColor === 'b' ? 'You' : `Bot AI (${aiDifficulty.toUpperCase()})`)
+        : gameMode === 'online'
+        ? (onlineMyColor === 'b' ? 'You' : 'Opponent')
+        : 'Player 2 (Black)',
+    type:
+      gameMode === 'ai'
+        ? (playerColor === 'b' ? 'human' : 'bot')
+        : gameMode === 'online'
+        ? (onlineMyColor === 'b' ? 'human' : 'remote')
+        : 'human',
+    color: 'b',
+    rating: gameMode === 'ai' ? (playerColor === 'b' ? 1500 : botElo) : null
+  };
+
+  const topPlayer = isFlipped ? whitePlayer : blackPlayer;
+  const bottomPlayer = isFlipped ? blackPlayer : whitePlayer;
 
   return (
     <div className={`w-full flex-1 flex flex-col items-center select-none pb-6 ${isDarkTheme ? 'text-white' : 'text-black'}`}>
@@ -1048,7 +1112,7 @@ export const ChessGame = ({
 
           {/* New Match */}
           <button
-            onClick={startNewGame}
+            onClick={handleNewMatchClick}
             className="brutal-press flex items-center gap-1 px-3 py-1.5 bg-[#22c55e] hover:bg-green-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
             title="Reset & Start New Match"
           >
