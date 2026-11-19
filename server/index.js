@@ -36,6 +36,10 @@ const ludoRooms = new Map();
 const poolRooms = new Map();
 let poolQuickMatchQueue = null;
 
+// Active Cyber Pong multiplayer rooms storage
+const pongRooms = new Map();
+let pongQuickMatchQueue = null;
+
 // Quick match matchmaking for Ludo
 let ludoQuickMatchRoom = null;
 let ludoQuickMatchTimer = null;
@@ -941,6 +945,220 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ==========================================
+  // CYBER PONG MULTIPLAYER EVENTS
+  // ==========================================
+
+  // Pong Quick Match
+  socket.on('find_pong_quick_match', ({ targetScore = 5, playerId } = {}, callback) => {
+    if (pongQuickMatchQueue && pongQuickMatchQueue.socketId !== socket.id && (!playerId || pongQuickMatchQueue.playerId !== playerId)) {
+      const opponent = pongQuickMatchQueue;
+      pongQuickMatchQueue = null;
+
+      const roomId = generateRoomCode();
+      const room = {
+        id: roomId,
+        p1: opponent.socketId,
+        p1Id: opponent.playerId,
+        p2: socket.id,
+        p2Id: playerId,
+        status: 'playing',
+        targetScore: opponent.targetScore || targetScore || 5
+      };
+      pongRooms.set(roomId, room);
+
+      const opponentSocket = io.sockets.sockets.get(opponent.socketId);
+      if (opponentSocket) {
+        opponentSocket.join(roomId);
+        opponentSocket.pongRoomId = roomId;
+      }
+      socket.join(roomId);
+      socket.pongRoomId = roomId;
+
+      io.to(roomId).emit('pong_game_started', {
+        roomId,
+        p1: room.p1,
+        p1Id: room.p1Id,
+        p2: room.p2,
+        p2Id: room.p2Id,
+        targetScore: room.targetScore
+      });
+
+      if (callback) callback({ success: true, matched: true, roomId, role: 'p2', targetScore: room.targetScore });
+    } else {
+      pongQuickMatchQueue = { socketId: socket.id, playerId, targetScore };
+      if (callback) callback({ success: true, matched: false });
+    }
+  });
+
+  socket.on('cancel_pong_quick_match', (callback) => {
+    if (pongQuickMatchQueue && pongQuickMatchQueue.socketId === socket.id) {
+      pongQuickMatchQueue = null;
+    }
+    if (callback) callback({ success: true });
+  });
+
+  // Create Custom Pong Room
+  socket.on('create_pong_room', ({ targetScore = 5, playerId } = {}, callback) => {
+    const roomId = generateRoomCode();
+    const room = {
+      id: roomId,
+      p1: socket.id,
+      p1Id: playerId,
+      p2: null,
+      p2Id: null,
+      status: 'waiting',
+      targetScore: targetScore || 5,
+      hostPlayerId: playerId
+    };
+    pongRooms.set(roomId, room);
+    socket.join(roomId);
+    socket.pongRoomId = roomId;
+
+    if (callback) {
+      callback({
+        success: true,
+        roomId,
+        role: 'p1',
+        targetScore: room.targetScore
+      });
+    }
+  });
+
+  // Join Custom Pong Room
+  socket.on('join_pong_room', ({ roomId, playerId } = {}, callback) => {
+    const cleanRoomId = (roomId || '').trim().toUpperCase();
+    const room = pongRooms.get(cleanRoomId);
+    if (!room) {
+      if (callback) callback({ success: false, error: 'Room not found. Check the code.' });
+      return;
+    }
+
+    if (room.status === 'waiting' && playerId && room.hostPlayerId === playerId) {
+      socket.join(cleanRoomId);
+      socket.pongRoomId = cleanRoomId;
+      room.p1 = socket.id;
+      if (callback) {
+        callback({
+          success: true,
+          roomId: cleanRoomId,
+          role: 'p1',
+          targetScore: room.targetScore,
+          waiting: true
+        });
+      }
+      return;
+    }
+
+    if (room.status === 'playing') {
+      if (room.p1Id === playerId || room.p1 === socket.id) {
+        room.p1 = socket.id;
+        socket.join(cleanRoomId);
+        socket.pongRoomId = cleanRoomId;
+        if (callback) callback({ success: true, roomId: cleanRoomId, role: 'p1', targetScore: room.targetScore });
+        return;
+      }
+      if (room.p2Id === playerId || room.p2 === socket.id) {
+        room.p2 = socket.id;
+        socket.join(cleanRoomId);
+        socket.pongRoomId = cleanRoomId;
+        if (callback) callback({ success: true, roomId: cleanRoomId, role: 'p2', targetScore: room.targetScore });
+        return;
+      }
+      if (callback) callback({ success: false, error: 'Room is already full.' });
+      return;
+    }
+
+    // Second player joins
+    room.p2 = socket.id;
+    room.p2Id = playerId;
+    room.status = 'playing';
+    socket.join(cleanRoomId);
+    socket.pongRoomId = cleanRoomId;
+
+    io.to(cleanRoomId).emit('pong_game_started', {
+      roomId: cleanRoomId,
+      p1: room.p1,
+      p1Id: room.p1Id,
+      p2: room.p2,
+      p2Id: room.p2Id,
+      targetScore: room.targetScore
+    });
+
+    if (callback) {
+      callback({
+        success: true,
+        roomId: cleanRoomId,
+        role: 'p2',
+        targetScore: room.targetScore
+      });
+    }
+  });
+
+  // Paddle Movement Broadcast
+  socket.on('pong_paddle_move', ({ roomId, y }) => {
+    const cleanRoomId = (roomId || socket.pongRoomId || '').trim().toUpperCase();
+    if (cleanRoomId && pongRooms.has(cleanRoomId)) {
+      socket.to(cleanRoomId).emit('pong_opponent_paddle', { y });
+    }
+  });
+
+  // Host-Authoritative Ball & Physics Sync
+  socket.on('pong_ball_sync', ({ roomId, ballX, ballY, ballVX, ballVY, scores }) => {
+    const cleanRoomId = (roomId || socket.pongRoomId || '').trim().toUpperCase();
+    if (cleanRoomId && pongRooms.has(cleanRoomId)) {
+      socket.to(cleanRoomId).emit('pong_ball_synced', { ballX, ballY, ballVX, ballVY, scores });
+    }
+  });
+
+  // Goal Scored Event
+  socket.on('pong_goal', ({ roomId, scorer, scores, winner }) => {
+    const cleanRoomId = (roomId || socket.pongRoomId || '').trim().toUpperCase();
+    if (cleanRoomId && pongRooms.has(cleanRoomId)) {
+      socket.to(cleanRoomId).emit('pong_goal_scored', { scorer, scores, winner });
+    }
+  });
+
+  // Rematch Handlers
+  socket.on('pong_offer_rematch', ({ roomId }) => {
+    const cleanRoomId = (roomId || socket.pongRoomId || '').trim().toUpperCase();
+    if (cleanRoomId && pongRooms.has(cleanRoomId)) {
+      socket.to(cleanRoomId).emit('pong_rematch_offered');
+    }
+  });
+
+  socket.on('pong_accept_rematch', ({ roomId }) => {
+    const cleanRoomId = (roomId || socket.pongRoomId || '').trim().toUpperCase();
+    if (cleanRoomId && pongRooms.has(cleanRoomId)) {
+      const room = pongRooms.get(cleanRoomId);
+      // Swap sides for rematch
+      const tempP = room.p1;
+      const tempPId = room.p1Id;
+      room.p1 = room.p2;
+      room.p1Id = room.p2Id;
+      room.p2 = tempP;
+      room.p2Id = tempPId;
+
+      io.to(cleanRoomId).emit('pong_game_started', {
+        roomId: cleanRoomId,
+        p1: room.p1,
+        p1Id: room.p1Id,
+        p2: room.p2,
+        p2Id: room.p2Id,
+        targetScore: room.targetScore
+      });
+    }
+  });
+
+  socket.on('pong_leave_room', ({ roomId }) => {
+    const cleanRoomId = (roomId || socket.pongRoomId || '').trim().toUpperCase();
+    if (cleanRoomId && pongRooms.has(cleanRoomId)) {
+      socket.leave(cleanRoomId);
+      socket.to(cleanRoomId).emit('pong_opponent_disconnected');
+      pongRooms.delete(cleanRoomId);
+    }
+  });
+
   // 9. Handle Disconnect with Grace Period
   socket.on('disconnect', () => {
     if (quickMatchQueue && quickMatchQueue.socketId === socket.id) {
@@ -1016,6 +1234,21 @@ io.on('connection', (socket) => {
       } else {
         socket.to(poolRoomId).emit('pool_opponent_disconnected');
         poolRooms.delete(poolRoomId);
+      }
+    }
+
+    // Pong room disconnect handler
+    if (pongQuickMatchQueue && pongQuickMatchQueue.socketId === socket.id) {
+      pongQuickMatchQueue = null;
+    }
+    const pongRoomId = socket.pongRoomId;
+    if (pongRoomId && pongRooms.has(pongRoomId)) {
+      const pRoom = pongRooms.get(pongRoomId);
+      if (pRoom.status === 'waiting') {
+        pongRooms.delete(pongRoomId);
+      } else {
+        socket.to(pongRoomId).emit('pong_opponent_disconnected');
+        pongRooms.delete(pongRoomId);
       }
     }
   });

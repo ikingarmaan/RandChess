@@ -20,6 +20,7 @@ export const OnlineLobbyModal = ({
   const [tab, setTab] = useState('quick'); // 'quick' | 'create' | 'join'
   const [inputCode, setInputCode] = useState('');
   const [timeChoice, setTimeChoice] = useState(300); // 5 mins
+  const [scoreChoice, setScoreChoice] = useState(5); // 5 points for pong
   const [colorChoice, setColorChoice] = useState('random');
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -57,7 +58,7 @@ export const OnlineLobbyModal = ({
       if (text) {
         // Extract 6-character alphanumeric code or from URL
         let clean = text.trim();
-        const urlMatch = clean.match(/(?:room|pool_room)=([A-Za-z0-9]{6})/i);
+        const urlMatch = clean.match(/(?:room|pool_room|pong_room)=([A-Za-z0-9]{6})/i);
         if (urlMatch && urlMatch[1]) {
           clean = urlMatch[1];
         } else {
@@ -75,7 +76,7 @@ export const OnlineLobbyModal = ({
   const handleCreate = () => {
     if (!isConnected || isSubmitting) return;
     setIsSubmitting(true);
-    onCreateRoom({ timeControl: timeChoice, preferredColor: colorChoice });
+    onCreateRoom({ timeControl: timeChoice, preferredColor: colorChoice, targetScore: scoreChoice });
   };
 
   const handleJoin = (e) => {
@@ -91,7 +92,7 @@ export const OnlineLobbyModal = ({
     if (!isConnected || isSubmitting) return;
     setIsSubmitting(true);
     if (onFindQuickMatch) {
-      onFindQuickMatch({ timeControl: timeChoice, preferredColor: colorChoice });
+      onFindQuickMatch({ timeControl: timeChoice, preferredColor: colorChoice, targetScore: scoreChoice });
     }
   };
 
@@ -269,39 +270,66 @@ export const OnlineLobbyModal = ({
                   <span>Click Find Opponent to match instantly with another player online.</span>
                 </div>
 
-                {/* Clock Duration */}
-                <TimerSelector
-                  value={timeChoice}
-                  onChange={setTimeChoice}
-                  label="Clock Duration"
-                  allowUnlimited={true}
-                  compact={true}
-                />
-
-                {/* Preferred Color */}
-                <div className="space-y-1">
-                  <label className="font-brutal text-[11px] font-black uppercase">
-                    Preferred Color
-                  </label>
-                  <div className="grid grid-cols-3 gap-1.5 font-mono text-xs font-black">
-                    {[
-                      { label: 'WHITE', val: 'w' },
-                      { label: 'RANDOM', val: 'random' },
-                      { label: 'BLACK', val: 'b' }
-                    ].map((c) => (
-                      <button
-                        key={c.val}
-                        type="button"
-                        onClick={() => setColorChoice(c.val)}
-                        className={`brutal-press py-1.5 border-2 border-black cursor-pointer ${
-                          colorChoice === c.val ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-[#f4f4eb] text-black'
-                        }`}
-                      >
-                        {c.label}
-                      </button>
-                    ))}
+                {roomParamKey === 'pong_room' ? (
+                  /* Pong Target Score */
+                  <div className="space-y-1">
+                    <label className="font-brutal text-[11px] font-black uppercase">
+                      Target Score (Points to Win)
+                    </label>
+                    <div className="grid grid-cols-3 gap-1.5 font-mono text-xs font-black">
+                      {[5, 7, 10].map((score) => (
+                        <button
+                          key={score}
+                          type="button"
+                          onClick={() => setScoreChoice(score)}
+                          className={`brutal-press py-1.5 border-2 border-black cursor-pointer ${
+                            scoreChoice === score ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-[#f4f4eb] text-black'
+                          }`}
+                        >
+                          {score} POINTS
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    {/* Clock Duration */}
+                    <TimerSelector
+                      value={timeChoice}
+                      onChange={setTimeChoice}
+                      label="Clock Duration"
+                      allowUnlimited={true}
+                      compact={true}
+                    />
+
+                    {/* Preferred Color only for Chess */}
+                    {roomParamKey === 'room' && (
+                      <div className="space-y-1">
+                        <label className="font-brutal text-[11px] font-black uppercase">
+                          Preferred Color
+                        </label>
+                        <div className="grid grid-cols-3 gap-1.5 font-mono text-xs font-black">
+                          {[
+                            { label: 'WHITE', val: 'w' },
+                            { label: 'RANDOM', val: 'random' },
+                            { label: 'BLACK', val: 'b' }
+                          ].map((c) => (
+                            <button
+                              key={c.val}
+                              type="button"
+                              onClick={() => setColorChoice(c.val)}
+                              className={`brutal-press py-1.5 border-2 border-black cursor-pointer ${
+                                colorChoice === c.val ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-[#f4f4eb] text-black'
+                              }`}
+                            >
+                              {c.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
 
                 <button
                   type="button"
@@ -327,39 +355,66 @@ export const OnlineLobbyModal = ({
             {/* TAB 2: CREATE PRIVATE ROOM */}
             {tab === 'create' && (
               <div className="space-y-3">
-                {/* Time Control */}
-                <TimerSelector
-                  value={timeChoice}
-                  onChange={setTimeChoice}
-                  label="Room Match Clock"
-                  allowUnlimited={true}
-                  compact={true}
-                />
-
-                {/* Preferred Color */}
-                <div className="space-y-1">
-                  <label className="font-brutal text-[11px] font-black uppercase">
-                    Play As
-                  </label>
-                  <div className="grid grid-cols-3 gap-1.5 font-mono text-xs font-black">
-                    {[
-                      { label: 'WHITE', val: 'w' },
-                      { label: 'RANDOM', val: 'random' },
-                      { label: 'BLACK', val: 'b' }
-                    ].map((c) => (
-                      <button
-                        key={c.val}
-                        type="button"
-                        onClick={() => setColorChoice(c.val)}
-                        className={`brutal-press py-1.5 border-2 border-black cursor-pointer ${
-                          colorChoice === c.val ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-[#f4f4eb] text-black'
-                        }`}
-                      >
-                        {c.label}
-                      </button>
-                    ))}
+                {roomParamKey === 'pong_room' ? (
+                  /* Pong Target Score */
+                  <div className="space-y-1">
+                    <label className="font-brutal text-[11px] font-black uppercase">
+                      Target Score (Points to Win)
+                    </label>
+                    <div className="grid grid-cols-3 gap-1.5 font-mono text-xs font-black">
+                      {[5, 7, 10].map((score) => (
+                        <button
+                          key={score}
+                          type="button"
+                          onClick={() => setScoreChoice(score)}
+                          className={`brutal-press py-1.5 border-2 border-black cursor-pointer ${
+                            scoreChoice === score ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-[#f4f4eb] text-black'
+                          }`}
+                        >
+                          {score} POINTS
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    {/* Time Control */}
+                    <TimerSelector
+                      value={timeChoice}
+                      onChange={setTimeChoice}
+                      label="Room Match Clock"
+                      allowUnlimited={true}
+                      compact={true}
+                    />
+
+                    {/* Preferred Color only for Chess */}
+                    {roomParamKey === 'room' && (
+                      <div className="space-y-1">
+                        <label className="font-brutal text-[11px] font-black uppercase">
+                          Play As
+                        </label>
+                        <div className="grid grid-cols-3 gap-1.5 font-mono text-xs font-black">
+                          {[
+                            { label: 'WHITE', val: 'w' },
+                            { label: 'RANDOM', val: 'random' },
+                            { label: 'BLACK', val: 'b' }
+                          ].map((c) => (
+                            <button
+                              key={c.val}
+                              type="button"
+                              onClick={() => setColorChoice(c.val)}
+                              className={`brutal-press py-1.5 border-2 border-black cursor-pointer ${
+                                colorChoice === c.val ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-[#f4f4eb] text-black'
+                              }`}
+                            >
+                              {c.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
 
                 <button
                   type="button"

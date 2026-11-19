@@ -62,12 +62,12 @@ const GAME_METADATA = {
   },
   pong: {
     title: 'Cyber Pong 1v1',
-    badge: '60 FPS ARCADE',
+    badge: 'ONLINE PvP & ARCADE',
     icon: '🏓⚡',
     iconBg: 'bg-[#22c55e] text-black',
-    sub: 'ZERO BLUE • VECTOR PHYSICS • SPIN DEFLECTION',
-    footer: 'Cyber Pong 1v1 // 60 FPS VECTOR ARENA',
-    footerSub: 'NO BLUE • 1v1 SAME KEYBOARD • REACTIVE BOT'
+    sub: 'ZERO BLUE • ONLINE MULTIPLAYER • VECTOR PHYSICS • SPIN DEFLECTION',
+    footer: 'Cyber Pong 1v1 // ONLINE MULTIPLAYER & 60 FPS VECTOR ARENA',
+    footerSub: 'NO BLUE • ONLINE QUICK MATCH & PRIVATE ROOMS • REACTIVE BOT'
   }
 };
 
@@ -162,11 +162,14 @@ export default function App() {
 
     newSocket.on('connect', () => {
       setSocketConnected(true);
-      // Auto-open chess or pool if user followed a direct room link
+      // Auto-open chess, pool, or pong if user followed a direct room link
       const params = new URLSearchParams(window.location.search);
       const roomParam = params.get('room');
       const poolParam = params.get('pool_room');
-      if (poolParam) {
+      const pongParam = params.get('pong_room');
+      if (pongParam) {
+        setActiveGame('pong');
+      } else if (poolParam) {
         setActiveGame('pool');
       } else if (roomParam) {
         setActiveGame('chess');
@@ -319,6 +322,9 @@ export default function App() {
             isDarkTheme={isDarkTheme}
             soundEnabled={soundEnabled}
             onOpenCatalogue={() => setActiveGame(null)}
+            socket={socket}
+            socketConnected={socketConnected}
+            playerId={getPlayerId()}
           />
         ) : activeGame === 'pool' ? (
           <PoolGame

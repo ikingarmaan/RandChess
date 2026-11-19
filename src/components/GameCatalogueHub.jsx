@@ -109,21 +109,21 @@ export const GameCatalogueHub = ({
       id: 'pong',
       title: 'Cyber Pong 1v1',
       shortTitle: 'CYBER PONG',
-      category: '60 FPS ARCADE',
+      category: 'ONLINE PvP & ARCADE',
       icon: '🏓 ⚡',
-      badge: 'FAST ACTION',
+      badge: 'ONLINE MULTIPLAYER',
       badgeColor: 'bg-[#22c55e] text-black',
       playable: true,
-      players: '1 - 2 Players',
+      players: '1 - 2 Players (Online / Local / AI)',
       highlightBorder: 'hover:border-[#22c55e]',
       btnBg: 'bg-[#22c55e] hover:bg-green-400 text-black',
-      description: 'High-speed 60 FPS vector paddle physics. Features spin deflection angles, accelerating ball speed, reactive AI bot, and same-keyboard 1v1 duels.',
+      description: 'High-speed 60 FPS vector paddle physics with real-time online multiplayer. Features spin deflection angles, accelerating ball speed, 1-click Quick Match, private room codes, and reactive bot AI.',
       features: [
-        '3 Difficulty Reaction Speeds (Easy, Medium, Brutal)',
+        'Real-Time Online Multiplayer (Quick Match & Private Codes)',
+        '3 Difficulty Reaction Speeds (Easy, Medium, Master)',
         'Touch / Mouse Drag & Keyboard Steer Controls',
-        '60 FPS HTML5 Canvas Physics Engine',
-        'Edge Deflection Spin & Ball Acceleration',
-        'vs Bot AI and 1v1 Same Keyboard Modes'
+        '60 FPS HTML5 Canvas Physics Engine with Spin Deflection',
+        'Direct Shareable Invitation Links & Rematch Support'
       ]
     }
   ];
