@@ -26,7 +26,10 @@ import {
   ArrowDown,
   Compass,
   Zap,
-  Check
+  Check,
+  Copy,
+  Share2,
+  LogOut
 } from 'lucide-react';
 import { TimerSelector } from './TimerSelector';
 import { OnlineLobbyModal } from './OnlineLobbyModal';
@@ -44,14 +47,18 @@ const FELT_RIGHT = TABLE_WIDTH - RAIL_SIZE;
 const FELT_TOP = RAIL_SIZE;
 const FELT_BOTTOM = TABLE_HEIGHT - RAIL_SIZE;
 
-// 6 Table Pockets (4 Corners, 2 Side Pockets)
+// Pocket mouth margins for accurate cushion boundaries
+const CORNER_MARGIN = 32;
+const SIDE_MARGIN = 26;
+
+// 6 Table Pockets (4 Corners with 45° mouths, 2 Side Pockets)
 const POCKETS = [
-  { id: 'tl', x: FELT_LEFT + 2, y: FELT_TOP + 2, radius: 24, isCorner: true },
-  { id: 'tm', x: TABLE_WIDTH / 2, y: FELT_TOP - 4, radius: 21, isCorner: false },
-  { id: 'tr', x: FELT_RIGHT - 2, y: FELT_TOP + 2, radius: 24, isCorner: true },
-  { id: 'bl', x: FELT_LEFT + 2, y: FELT_BOTTOM - 2, radius: 24, isCorner: true },
-  { id: 'bm', x: TABLE_WIDTH / 2, y: FELT_BOTTOM + 4, radius: 21, isCorner: false },
-  { id: 'br', x: FELT_RIGHT - 2, y: FELT_BOTTOM - 2, radius: 24, isCorner: true }
+  { id: 'tl', x: FELT_LEFT + 2, y: FELT_TOP + 2, radius: 26, isCorner: true },
+  { id: 'tm', x: TABLE_WIDTH / 2, y: FELT_TOP - 4, radius: 24, isCorner: false },
+  { id: 'tr', x: FELT_RIGHT - 2, y: FELT_TOP + 2, radius: 26, isCorner: true },
+  { id: 'bl', x: FELT_LEFT + 2, y: FELT_BOTTOM - 2, radius: 26, isCorner: true },
+  { id: 'bm', x: TABLE_WIDTH / 2, y: FELT_BOTTOM + 4, radius: 24, isCorner: false },
+  { id: 'br', x: FELT_RIGHT - 2, y: FELT_BOTTOM - 2, radius: 26, isCorner: true }
 ];
 
 // Color palette for 8-ball pool (Zero Blue Neo-Brutalism)
@@ -81,7 +88,7 @@ const BALL_CONFIGS = [
 export const FELT_THEMES = {
   emerald: {
     id: 'emerald',
-    name: 'Neo-Emerald',
+    name: 'Tournament Green',
     felt: '#15803d',
     feltDark: '#14532d',
     rail: '#18181b',
@@ -105,13 +112,19 @@ export const FELT_THEMES = {
   },
   amber: {
     id: 'amber',
-    name: 'Hazard Amber',
+    name: 'Classic Amber',
     felt: '#b45309',
     feltDark: '#78350f',
     rail: '#18181b',
     railEdge: '#27272a'
   }
 };
+
+function normalizeAngle(a) {
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  return a;
+}
 
 // Standard 8-Ball Triangle Rack Setup
 function createInitialBalls() {
@@ -127,6 +140,7 @@ function createInitialBalls() {
     vx: 0,
     vy: 0,
     pocketed: false,
+    falling: false,
     scale: 1
   });
 
@@ -136,12 +150,7 @@ function createInitialBalls() {
   const dx = r * Math.sqrt(3) + 0.6;
   const dy = r + 0.4;
 
-  // 15-ball pattern according to standard 8-ball rules:
-  // Row 1: 1 ball (Apex)
-  // Row 2: 2 balls
-  // Row 3: 3 balls (8-ball in center!)
-  // Row 4: 4 balls
-  // Row 5: 5 balls (Solid and Stripe on bottom opposite corners)
+  // 15-ball pattern: 8-ball in center, solid and stripe on bottom opposite corners
   const pattern = [
     [1],
     [9, 2],
@@ -163,6 +172,7 @@ function createInitialBalls() {
         vx: 0,
         vy: 0,
         pocketed: false,
+        falling: false,
         scale: 1
       });
     });
@@ -182,7 +192,7 @@ export const PoolGame = ({
   // Game Setup State
   const [gameMode, setGameMode] = useState('ai'); // 'ai' | 'pass_play' | 'online'
   const [difficulty, setDifficulty] = useState('medium'); // 'easy' | 'medium' | 'hard'
-  const [feltTheme, setFeltTheme] = useState('emerald'); // 'emerald' | 'ruby' | 'slate' | 'amber'
+  const [feltTheme, setFeltTheme] = useState('emerald');
   const [timeControl, setTimeControl] = useState(30); // 30s per shot default
   const [timer, setTimer] = useState(30);
 
@@ -206,6 +216,7 @@ export const PoolGame = ({
   const [power, setPower] = useState(55); // 10 to 100 %
   const [cueSpin, setCueSpin] = useState({ x: 0, y: 0 }); // -1 to +1 (x = english, y = top/backspin)
   const [isDraggingAim, setIsDraggingAim] = useState(false);
+  const [isPullingCue, setIsPullingCue] = useState(false);
   const [isDraggingPowerRig, setIsDraggingPowerRig] = useState(false);
   const [isDraggingSpin, setIsDraggingSpin] = useState(false);
   const [isBotThinking, setIsBotThinking] = useState(false);
@@ -219,6 +230,8 @@ export const PoolGame = ({
   const [onlineStatus, setOnlineStatus] = useState('');
   const [rematchOffered, setRematchOffered] = useState(false);
   const [opponentOfferedRematch, setOpponentOfferedRematch] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   const canvasRef = useRef(null);
   const powerRigRef = useRef(null);
@@ -242,6 +255,28 @@ export const PoolGame = ({
     }
   }, [soundEnabled]);
 
+  // Deep-link auto-join for ?pool_room=CODE
+  useEffect(() => {
+    if (!socket || !socketConnected) return;
+    const params = new URLSearchParams(window.location.search);
+    const roomParam = params.get('pool_room');
+    if (roomParam && !onlineRoomCode) {
+      socket.emit('join_pool_room', { roomId: roomParam, playerId }, (res) => {
+        if (res && res.success) {
+          setOnlineRoomCode(roomParam.toUpperCase());
+          setOnlineRole(res.role);
+          if (res.timeControl) setTimeControl(res.timeControl);
+          setGameMode('online');
+          if (res.waiting) {
+            setIsOnlineModalOpen(true);
+          }
+        } else {
+          setOnlineStatus(res?.error || 'Failed to join room');
+        }
+      });
+    }
+  }, [socket, socketConnected, playerId, onlineRoomCode]);
+
   // Turn Countdown Timer
   useEffect(() => {
     if (gameOver || timeControl === null || isMoving) {
@@ -252,7 +287,6 @@ export const PoolGame = ({
     turnTimerRef.current = setInterval(() => {
       setTimer((prev) => {
         if (prev <= 1) {
-          // Timeout = Foul! Give opponent ball in hand
           playSound('playFoul');
           const opp = currentPlayer === 'p1' ? 'p2' : 'p1';
           setStatusMessage(`TIMEOUT FOUL! ${currentPlayer === 'p1' ? 'Player 1' : 'Player 2'} timed out.`);
@@ -279,6 +313,8 @@ export const PoolGame = ({
     setBallInHandHoverPos(null);
     setIsAiming(true);
     setIsMoving(false);
+    setIsPullingCue(false);
+    setIsDraggingAim(false);
     setGameOver(false);
     setWinner(null);
     setWinReason('');
@@ -298,7 +334,7 @@ export const PoolGame = ({
     if (gameMode !== 'online' || !socket || !onlineRoomCode) return;
     if (onlineRole !== currentPlayer) return;
     const now = Date.now();
-    if (now - lastAimSyncTimeRef.current < 50) return; // 20 FPS throttle
+    if (now - lastAimSyncTimeRef.current < 45) return;
     lastAimSyncTimeRef.current = now;
     socket.emit('pool_aim_sync', {
       roomId: onlineRoomCode,
@@ -347,7 +383,7 @@ export const PoolGame = ({
       const vX = b.x - cueBall.x;
       const vY = b.y - cueBall.y;
       const proj = vX * cos + vY * sin;
-      if (proj <= 0) return; // Behind cue ball
+      if (proj <= 0) return;
 
       const perpSq = vX * vX + vY * vY - proj * proj;
       const radiusSum = BALL_RADIUS * 2;
@@ -370,7 +406,7 @@ export const PoolGame = ({
       const normY = (targetBall.y - ghostY) / (BALL_RADIUS * 2);
       const targetAngle = Math.atan2(normY, normX);
 
-      // Cue ball velocity vector post-collision (tangent vector Vt = V0 - Vn)
+      // Cue ball velocity vector post-collision (tangent vector)
       const v0x = cos;
       const v0y = sin;
       const vDotN = v0x * normX + v0y * normY;
@@ -392,11 +428,10 @@ export const PoolGame = ({
         cushionHit: null
       };
     } else {
-      // No ball in direct line: calculate cushion bank rebound!
+      // Cushion bank rebound
       let tMin = Infinity;
       let hitCushion = null;
 
-      // Check left cushion
       if (cos < -0.001) {
         const t = (FELT_LEFT + BALL_RADIUS - cueBall.x) / cos;
         if (t > 0 && t < tMin) {
@@ -404,7 +439,6 @@ export const PoolGame = ({
           hitCushion = 'left';
         }
       }
-      // Check right cushion
       if (cos > 0.001) {
         const t = (FELT_RIGHT - BALL_RADIUS - cueBall.x) / cos;
         if (t > 0 && t < tMin) {
@@ -412,7 +446,6 @@ export const PoolGame = ({
           hitCushion = 'right';
         }
       }
-      // Check top cushion
       if (sin < -0.001) {
         const t = (FELT_TOP + BALL_RADIUS - cueBall.y) / sin;
         if (t > 0 && t < tMin) {
@@ -420,7 +453,6 @@ export const PoolGame = ({
           hitCushion = 'top';
         }
       }
-      // Check bottom cushion
       if (sin > 0.001) {
         const t = (FELT_BOTTOM - BALL_RADIUS - cueBall.y) / sin;
         if (t > 0 && t < tMin) {
@@ -456,25 +488,23 @@ export const PoolGame = ({
     const cueBall = currentBalls.find((b) => b.num === 0 && !b.pocketed);
     if (!cueBall || isMoving) return;
 
-    // Reset shot telemetry events
     shotEventsRef.current = { firstHit: null, pocketed: [], cueScratched: false };
 
-    // Impulse magnitude
-    const speed = (strikePower / 100) * 28 + 2;
+    const speed = (strikePower / 100) * 26 + 3;
     cueBall.vx = Math.cos(strikeAngle) * speed;
     cueBall.vy = Math.sin(strikeAngle) * speed;
 
-    // Attach spin metadata to cue ball for collision follow/draw
     cueBall.spinX = spin?.x || 0;
     cueBall.spinY = spin?.y || 0;
 
     setIsMoving(true);
     setIsAiming(false);
+    setIsPullingCue(false);
+    setIsDraggingAim(false);
     setIsBallInHand(false);
     setBallInHandHoverPos(null);
     playSound('playCueStrike', strikePower / 100);
 
-    // Online emit to opponent
     if (gameMode === 'online' && socket && onlineRoomCode && !isRemote) {
       socket.emit('pool_shot', {
         roomId: onlineRoomCode,
@@ -505,7 +535,6 @@ export const PoolGame = ({
     const myGroup = currentPlayer === 'p1' ? p1Group : p2Group;
     const opponent = currentPlayer === 'p1' ? 'p2' : 'p1';
 
-    // Count remaining balls for my group
     const remainingMyBalls = myGroup
       ? currentBalls.filter((b) => b.type === myGroup && !b.pocketed).length
       : 7;
@@ -518,11 +547,9 @@ export const PoolGame = ({
     let matchWinner = null;
     let matchReason = '';
 
-    // 1. Eight-ball Sunk Evaluation
     if (eightSunk) {
       isGameOver = true;
       if (cueSunk || remainingMyBalls > 0 || isBreakShot) {
-        // Premature 8-ball or Scratch on 8-ball = LOSS!
         matchWinner = opponent;
         matchReason = `${currentPlayer === 'p1' ? 'Player 1' : 'Player 2'} sunk the 8-Ball prematurely or scratched!`;
         setGameOver(true);
@@ -530,7 +557,6 @@ export const PoolGame = ({
         setWinReason(matchReason);
         playSound('playGameOver');
       } else {
-        // Legal 8-ball win!
         matchWinner = currentPlayer;
         matchReason = `${currentPlayer === 'p1' ? 'Player 1' : 'Player 2'} legally pocketed the 8-Ball!`;
         setGameOver(true);
@@ -538,28 +564,26 @@ export const PoolGame = ({
         setWinReason(matchReason);
         playSound('playGameOver');
         confetti({
-          particleCount: 120,
+          particleCount: 130,
           spread: 90,
-          origin: { y: 0.6 },
+          origin: { y: 0.55 },
           colors: ['#22c55e', '#ffffff', '#facc15', '#f97316']
         });
       }
     } else if (cueSunk) {
-      // 2. Scratch on Cue Ball
       playSound('playFoul');
       nextStatus = `SCRATCH FOUL! Cue ball pocketed. ${opponent === 'p1' ? 'Player 1' : 'Player 2'} gets Ball in Hand!`;
-      // Respawn cue ball behind headstring
       cueBall.x = 240;
       cueBall.y = TABLE_HEIGHT / 2;
       cueBall.vx = 0;
       cueBall.vy = 0;
       cueBall.pocketed = false;
+      cueBall.falling = false;
       cueBall.scale = 1;
 
       nextBallInHand = true;
       nextPlayer = opponent;
     } else {
-      // 3. Check Legal Contact
       let isFoul = false;
       let foulMsg = '';
       if (!events.firstHit) {
@@ -581,7 +605,6 @@ export const PoolGame = ({
         nextBallInHand = true;
         nextPlayer = opponent;
       } else {
-        // 4. Group Assignment (Non-break shot)
         if (!p1Group && !isBreakShot && pocketedThisShot.length > 0) {
           const firstValid = pocketedThisShot.find((b) => b.type === 'solid' || b.type === 'stripe');
           if (firstValid) {
@@ -595,7 +618,6 @@ export const PoolGame = ({
           }
         }
 
-        // 5. Turn Continuation
         const currentGroup = currentPlayer === 'p1' ? nextGroups.p1 : nextGroups.p2;
         const legalSunk = pocketedThisShot.some((b) => {
           if (!currentGroup) return b.type === 'solid' || b.type === 'stripe';
@@ -618,8 +640,6 @@ export const PoolGame = ({
     setTimer(timeControl || 30);
     setIsBreakShot(false);
 
-    // Online Authoritative State Synchronization
-    // The player who took the shot sends the definitive resting positions and state to opponent
     if (gameMode === 'online' && socket && onlineRoomCode && onlineRole === currentPlayer) {
       socket.emit('pool_sync_state', {
         roomId: onlineRoomCode,
@@ -644,7 +664,7 @@ export const PoolGame = ({
     }
   }, [currentPlayer, playerGroups, isBreakShot, timeControl, gameMode, socket, onlineRoomCode, onlineRole, playSound]);
 
-  // Main 60 FPS Physics Simulation Loop with Spin Transfer
+  // Main 60 FPS Physics Simulation Loop
   useEffect(() => {
     let lastTime = performance.now();
 
@@ -672,75 +692,99 @@ export const PoolGame = ({
           b.vy *= friction;
 
           const speedSq = b.vx * b.vx + b.vy * b.vy;
-          if (speedSq < 0.04) {
+          if (speedSq < 0.04 && !b.falling) {
             b.vx = 0;
             b.vy = 0;
           } else {
             anyBallMoving = true;
           }
 
-          // 2. Pocket capture suction
+          // 2. Pocket capture suction & smooth drop animation
           for (const p of POCKETS) {
             const pDist = Math.hypot(b.x - p.x, b.y - p.y);
             if (pDist < p.radius) {
-              // Pocketed!
-              b.pocketed = true;
-              b.vx = 0;
-              b.vy = 0;
-              playSound('playPocketDrop');
-              if (b.num === 0) {
-                shotEventsRef.current.cueScratched = true;
-              } else {
-                shotEventsRef.current.pocketed.push(b);
+              if (!b.falling) {
+                b.falling = true;
+                playSound('playPocketDrop');
+                if (b.num === 0) {
+                  shotEventsRef.current.cueScratched = true;
+                } else {
+                  shotEventsRef.current.pocketed.push(b);
+                }
+              }
+              // Smooth suction towards pocket center and scale down
+              b.vx = (p.x - b.x) * 0.28;
+              b.vy = (p.y - b.y) * 0.28;
+              b.scale = Math.max(0, (b.scale || 1) - 0.08);
+              if (b.scale <= 0.05) {
+                b.pocketed = true;
+                b.falling = false;
+                b.vx = 0;
+                b.vy = 0;
               }
               break;
+            } else if (pDist < p.radius + 10 && !b.falling) {
+              // Pocket mouth gravity funnel
+              const pull = 0.08;
+              b.vx += ((p.x - b.x) / pDist) * pull;
+              b.vy += ((p.y - b.y) / pDist) * pull;
             }
           }
 
-          if (b.pocketed) continue;
+          if (b.pocketed || b.falling) continue;
 
-          // 3. Rail / Cushion Bounces with side spin influence
+          // 3. Rail / Cushion Bounces with accurate pocket mouth margins
           const r = BALL_RADIUS;
           const bounceDamping = 0.86;
 
-          // Top rail
-          if (b.y - r < FELT_TOP && Math.abs(b.x - TABLE_WIDTH / 2) > 28) {
-            b.y = FELT_TOP + r;
-            b.vy = Math.abs(b.vy) * bounceDamping;
-            if (b.spinX) b.vx += b.spinX * 0.8;
-            playSound('playCushionBounce', Math.abs(b.vy) / 15);
+          // Top rail cushions (left and right of side pocket)
+          if (b.y - r < FELT_TOP) {
+            if ((b.x > FELT_LEFT + CORNER_MARGIN && b.x < TABLE_WIDTH / 2 - SIDE_MARGIN) ||
+                (b.x > TABLE_WIDTH / 2 + SIDE_MARGIN && b.x < FELT_RIGHT - CORNER_MARGIN)) {
+              b.y = FELT_TOP + r;
+              b.vy = Math.abs(b.vy) * bounceDamping;
+              if (b.spinX) b.vx += b.spinX * 0.8;
+              playSound('playCushionBounce', Math.abs(b.vy) / 15);
+            }
           }
-          // Bottom rail
-          if (b.y + r > FELT_BOTTOM && Math.abs(b.x - TABLE_WIDTH / 2) > 28) {
-            b.y = FELT_BOTTOM - r;
-            b.vy = -Math.abs(b.vy) * bounceDamping;
-            if (b.spinX) b.vx -= b.spinX * 0.8;
-            playSound('playCushionBounce', Math.abs(b.vy) / 15);
+          // Bottom rail cushions (left and right of side pocket)
+          if (b.y + r > FELT_BOTTOM) {
+            if ((b.x > FELT_LEFT + CORNER_MARGIN && b.x < TABLE_WIDTH / 2 - SIDE_MARGIN) ||
+                (b.x > TABLE_WIDTH / 2 + SIDE_MARGIN && b.x < FELT_RIGHT - CORNER_MARGIN)) {
+              b.y = FELT_BOTTOM - r;
+              b.vy = -Math.abs(b.vy) * bounceDamping;
+              if (b.spinX) b.vx -= b.spinX * 0.8;
+              playSound('playCushionBounce', Math.abs(b.vy) / 15);
+            }
           }
-          // Left rail
-          if (b.x - r < FELT_LEFT && (b.y > FELT_TOP + 28 && b.y < FELT_BOTTOM - 28)) {
-            b.x = FELT_LEFT + r;
-            b.vx = Math.abs(b.vx) * bounceDamping;
-            if (b.spinX) b.vy -= b.spinX * 0.8;
-            playSound('playCushionBounce', Math.abs(b.vx) / 15);
+          // Left rail cushion
+          if (b.x - r < FELT_LEFT) {
+            if (b.y > FELT_TOP + CORNER_MARGIN && b.y < FELT_BOTTOM - CORNER_MARGIN) {
+              b.x = FELT_LEFT + r;
+              b.vx = Math.abs(b.vx) * bounceDamping;
+              if (b.spinX) b.vy -= b.spinX * 0.8;
+              playSound('playCushionBounce', Math.abs(b.vx) / 15);
+            }
           }
-          // Right rail
-          if (b.x + r > FELT_RIGHT && (b.y > FELT_TOP + 28 && b.y < FELT_BOTTOM - 28)) {
-            b.x = FELT_RIGHT - r;
-            b.vx = -Math.abs(b.vx) * bounceDamping;
-            if (b.spinX) b.vy += b.spinX * 0.8;
-            playSound('playCushionBounce', Math.abs(b.vx) / 15);
+          // Right rail cushion
+          if (b.x + r > FELT_RIGHT) {
+            if (b.y > FELT_TOP + CORNER_MARGIN && b.y < FELT_BOTTOM - CORNER_MARGIN) {
+              b.x = FELT_RIGHT - r;
+              b.vx = -Math.abs(b.vx) * bounceDamping;
+              if (b.spinX) b.vy += b.spinX * 0.8;
+              playSound('playCushionBounce', Math.abs(b.vx) / 15);
+            }
           }
         }
 
         // 4. Ball-to-Ball Elastic Collisions with Spin Transfer
         for (let i = 0; i < currentBalls.length; i++) {
           const b1 = currentBalls[i];
-          if (b1.pocketed) continue;
+          if (b1.pocketed || b1.falling) continue;
 
           for (let j = i + 1; j < currentBalls.length; j++) {
             const b2 = currentBalls[j];
-            if (b2.pocketed) continue;
+            if (b2.pocketed || b2.falling) continue;
 
             const dx = b2.x - b1.x;
             const dy = b2.y - b1.y;
@@ -748,7 +792,6 @@ export const PoolGame = ({
             const minDist = BALL_RADIUS * 2;
 
             if (dist < minDist && dist > 0.001) {
-              // Separate balls to prevent overlap
               const overlap = (minDist - dist) / 2;
               const nx = dx / dist;
               const ny = dy / dist;
@@ -758,27 +801,22 @@ export const PoolGame = ({
               b2.x += nx * overlap;
               b2.y += ny * overlap;
 
-              // Record first contact of cue ball
               if ((b1.num === 0 || b2.num === 0) && !shotEventsRef.current.firstHit) {
                 const target = b1.num === 0 ? b2 : b1;
                 shotEventsRef.current.firstHit = target;
 
-                // Apply Topspin / Backspin (Draw) impulse to cue ball
                 const cue = b1.num === 0 ? b1 : b2;
                 if (cue.spinY) {
-                  // Negative spinY = backspin (pulls cue ball back along normal)
-                  // Positive spinY = topspin (pushes cue ball forward through target)
                   const spinImpulse = cue.spinY * 3.5;
                   cue.vx += nx * spinImpulse;
                   cue.vy += ny * spinImpulse;
-                  cue.spinY *= 0.3; // Dissipate spin on contact
+                  cue.spinY *= 0.3;
                 }
               }
 
-              // Normal & tangent components
               const kx = b1.vx - b2.vx;
               const ky = b1.vy - b2.vy;
-              const p = 2 * (nx * kx + ny * ky) / 2; // Equal masses
+              const p = 2 * (nx * kx + ny * ky) / 2;
 
               b1.vx -= p * nx * 0.98;
               b1.vy -= p * ny * 0.98;
@@ -794,12 +832,10 @@ export const PoolGame = ({
         }
       }
 
-      // Check if physics finished
       if (isMoving && !anyBallMoving) {
         handleShotFinished();
       }
 
-      // Render Canvas Scene
       renderCanvas();
       animationFrameRef.current = requestAnimationFrame(updatePhysics);
     };
@@ -819,7 +855,6 @@ export const PoolGame = ({
 
     const theme = FELT_THEMES[feltTheme] || FELT_THEMES.emerald;
 
-    // Clear
     ctx.clearRect(0, 0, TABLE_WIDTH, TABLE_HEIGHT);
 
     // 1. Table Rails & Wood Outer Border
@@ -847,12 +882,11 @@ export const PoolGame = ({
     ctx.fillStyle = theme.felt;
     ctx.fillRect(FELT_LEFT, FELT_TOP, FELT_RIGHT - FELT_LEFT, FELT_BOTTOM - FELT_TOP);
 
-    // Subtle cloth texture shadow
     ctx.fillStyle = theme.feltDark;
     ctx.fillRect(FELT_LEFT, FELT_TOP, FELT_RIGHT - FELT_LEFT, 6);
     ctx.fillRect(FELT_LEFT, FELT_TOP, 6, FELT_BOTTOM - FELT_TOP);
 
-    // Headstring line & Foot spot marker
+    // Headstring line & Foot spot
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -860,7 +894,6 @@ export const PoolGame = ({
     ctx.lineTo(240, FELT_BOTTOM);
     ctx.stroke();
 
-    // Foot spot
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.beginPath();
     ctx.arc(680, TABLE_HEIGHT / 2, 3.5, 0, Math.PI * 2);
@@ -870,22 +903,20 @@ export const PoolGame = ({
     POCKETS.forEach((p) => {
       ctx.fillStyle = '#09090b';
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.radius + 2, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, p.radius + 3, 0, Math.PI * 2);
       ctx.fill();
 
-      // Deep Leather Pocket Interior
       ctx.fillStyle = '#000000';
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
       ctx.fill();
 
-      // Metal rim accent
       ctx.strokeStyle = '#27272a';
       ctx.lineWidth = 2;
       ctx.stroke();
     });
 
-    // 4. Laser Aiming Trajectory Guide (when aiming cue ball)
+    // 4. Laser Aiming Trajectory Guide
     const activeAngle = (gameMode === 'online' && onlineRole !== currentPlayer && opponentAim)
       ? opponentAim.angle
       : aimAngle;
@@ -919,7 +950,6 @@ export const PoolGame = ({
         ctx.fill();
         ctx.stroke();
 
-        // Center crosshair inside ghost ball
         ctx.strokeStyle = '#22c55e';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -930,7 +960,7 @@ export const PoolGame = ({
         ctx.stroke();
 
         // Target Ball Trajectory (Yellow laser)
-        const tLen = 140 * cutAlignment + 40;
+        const tLen = 150 * cutAlignment + 45;
         ctx.strokeStyle = '#facc15';
         ctx.lineWidth = 2.5;
         ctx.setLineDash([4, 3]);
@@ -939,7 +969,6 @@ export const PoolGame = ({
         ctx.lineTo(targetBall.x + Math.cos(targetAngle) * tLen, targetBall.y + Math.sin(targetAngle) * tLen);
         ctx.stroke();
 
-        // Target ball impact indicator
         ctx.setLineDash([]);
         ctx.fillStyle = '#facc15';
         ctx.beginPath();
@@ -947,7 +976,7 @@ export const PoolGame = ({
         ctx.fill();
 
         // Cue Ball Deflection Line (White dashed tangent line)
-        const defLen = 70 * (1 - cutAlignment) + 25;
+        const defLen = 75 * (1 - cutAlignment) + 25;
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
         ctx.lineWidth = 2;
         ctx.setLineDash([3, 3]);
@@ -966,14 +995,12 @@ export const PoolGame = ({
         ctx.lineTo(wallX, wallY);
         ctx.stroke();
 
-        // Cushion bounce dot
         ctx.setLineDash([]);
         ctx.fillStyle = '#facc15';
         ctx.beginPath();
         ctx.arc(wallX, wallY, 4, 0, Math.PI * 2);
         ctx.fill();
 
-        // Projected bank rebound
         ctx.strokeStyle = '#facc15';
         ctx.lineWidth = 2;
         ctx.setLineDash([4, 4]);
@@ -985,113 +1012,124 @@ export const PoolGame = ({
       ctx.restore();
 
       // 5. Render 3D Cue Stick Pull-Back
-      const cueDist = 20 + (activePower / 100) * 55; // Pull back distance
+      const cueDist = 20 + (activePower / 100) * 60;
       const stickLength = 340;
-      const cueAngle = activeAngle + Math.PI; // Cue points backwards from aim
+      const cueAngle = activeAngle + Math.PI;
       const cueStartX = cueBall.x + Math.cos(cueAngle) * (BALL_RADIUS + cueDist);
       const cueStartY = cueBall.y + Math.sin(cueAngle) * (BALL_RADIUS + cueDist);
       const cueEndX = cueBall.x + Math.cos(cueAngle) * (BALL_RADIUS + cueDist + stickLength);
       const cueEndY = cueBall.y + Math.sin(cueAngle) * (BALL_RADIUS + cueDist + stickLength);
 
       ctx.save();
-      // Cue stick drop shadow
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
       ctx.lineWidth = 7;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(cueStartX + 3, cueStartY + 3);
-      ctx.lineTo(cueEndX + 3, cueEndY + 3);
+      ctx.moveTo(cueStartX + 6, cueStartY + 6);
+      ctx.lineTo(cueEndX + 6, cueEndY + 6);
       ctx.stroke();
 
-      // Cue stick body (Maple wood gradient)
-      const grad = ctx.createLinearGradient(cueStartX, cueStartY, cueEndX, cueEndY);
-      grad.addColorStop(0, '#fef08a'); // Chalk tip ivory
-      grad.addColorStop(0.12, '#d97706'); // Front maple
-      grad.addColorStop(0.65, '#78350f'); // Dark wood
-      grad.addColorStop(1, '#000000'); // Heavy butt wrap
+      const cueGrad = ctx.createLinearGradient(cueStartX, cueStartY, cueEndX, cueEndY);
+      cueGrad.addColorStop(0, '#fef08a');
+      cueGrad.addColorStop(0.15, '#d97706');
+      cueGrad.addColorStop(0.55, '#92400e');
+      cueGrad.addColorStop(1, '#18181b');
 
-      ctx.strokeStyle = grad;
+      ctx.strokeStyle = cueGrad;
       ctx.lineWidth = 6;
       ctx.beginPath();
       ctx.moveTo(cueStartX, cueStartY);
       ctx.lineTo(cueEndX, cueEndY);
       ctx.stroke();
 
-      // Green chalk tip
-      ctx.strokeStyle = '#22c55e';
-      ctx.lineWidth = 6;
+      // Blue chalk tip & brass ferrule
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = 5;
       ctx.beginPath();
       ctx.moveTo(cueStartX, cueStartY);
-      ctx.lineTo(cueStartX + Math.cos(cueAngle) * 6, cueStartY + Math.sin(cueAngle) * 6);
+      ctx.lineTo(cueStartX + Math.cos(cueAngle) * 5, cueStartY + Math.sin(cueAngle) * 5);
       ctx.stroke();
+
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 5.5;
+      ctx.beginPath();
+      ctx.moveTo(cueStartX + Math.cos(cueAngle) * 6, cueStartY + Math.sin(cueAngle) * 6);
+      ctx.lineTo(cueStartX + Math.cos(cueAngle) * 11, cueStartY + Math.sin(cueAngle) * 11);
+      ctx.stroke();
+
+      // Power % label along stick
+      if (activePower > 10) {
+        const pColor = activePower > 75 ? '#ef4444' : activePower > 45 ? '#facc15' : '#22c55e';
+        ctx.fillStyle = pColor;
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
+        const labelX = cueBall.x + Math.cos(cueAngle) * (BALL_RADIUS + cueDist + 45);
+        const labelY = cueBall.y + Math.sin(cueAngle) * (BALL_RADIUS + cueDist + 45) - 12;
+        ctx.fillText(`${activePower}% PWR`, labelX, labelY);
+      }
       ctx.restore();
     }
 
-    // 6. Draw All 16 Billiard Balls
-    const currentBalls = ballsRef.current;
-    currentBalls.forEach((b) => {
-      if (b.pocketed) return;
-
-      const r = BALL_RADIUS * (b.scale || 1);
+    // 6. Draw Pool Balls
+    ballsRef.current.forEach((b) => {
+      if (b.pocketed && !b.falling) return;
       const cfg = BALL_CONFIGS[b.num];
+      const scale = b.scale !== undefined ? b.scale : 1;
+      const r = BALL_RADIUS * scale;
 
       ctx.save();
-
-      // Ball Drop Shadow on Felt
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+      // Drop Shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
       ctx.beginPath();
-      ctx.arc(b.x + 2, b.y + 2, r, 0, Math.PI * 2);
+      ctx.arc(b.x + 2, b.y + 3, r, 0, Math.PI * 2);
       ctx.fill();
 
-      // Ball Base Outer Sphere
+      // Ball Base Circle
       ctx.beginPath();
       ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
 
       if (b.type === 'cue') {
-        // Cue ball: pure white with red indicator dot
         ctx.fillStyle = '#ffffff';
         ctx.fill();
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
-        ctx.arc(b.x, b.y, 2.5, 0, Math.PI * 2);
+        ctx.arc(b.x, b.y, 2.5 * scale, 0, Math.PI * 2);
         ctx.fill();
       } else if (b.type === 'solid' || b.type === 'eight') {
-        // Solid or 8-ball: solid color fill
         ctx.fillStyle = cfg.color;
         ctx.fill();
 
-        // White center circle for number
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.arc(b.x, b.y, r * 0.48, 0, Math.PI * 2);
         ctx.fill();
 
-        // Number text
-        ctx.fillStyle = '#000000';
-        ctx.font = 'bold 9px monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(String(b.num), b.x, b.y + 0.5);
+        if (scale > 0.4) {
+          ctx.fillStyle = '#000000';
+          ctx.font = `bold ${Math.round(9 * scale)}px monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(b.num), b.x, b.y + 0.5);
+        }
       } else if (b.type === 'stripe') {
-        // Stripe ball: white base with wide center colored stripe
         ctx.fillStyle = '#ffffff';
         ctx.fill();
 
         ctx.fillStyle = cfg.color;
         ctx.fillRect(b.x - r * 0.85, b.y - r * 0.5, r * 1.7, r);
 
-        // White center badge
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.arc(b.x, b.y, r * 0.48, 0, Math.PI * 2);
         ctx.fill();
 
-        // Number
-        ctx.fillStyle = '#000000';
-        ctx.font = 'bold 8px monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(String(b.num), b.x, b.y + 0.5);
+        if (scale > 0.4) {
+          ctx.fillStyle = '#000000';
+          ctx.font = `bold ${Math.round(8 * scale)}px monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(b.num), b.x, b.y + 0.5);
+        }
       }
 
       // High-Gloss Specular Reflection Dot (Makes them look 3D sphere)
@@ -1100,7 +1138,6 @@ export const PoolGame = ({
       ctx.arc(b.x - r * 0.35, b.y - r * 0.35, r * 0.28, 0, Math.PI * 2);
       ctx.fill();
 
-      // Outer crisp black outline
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 1;
       ctx.stroke();
@@ -1130,8 +1167,8 @@ export const PoolGame = ({
   // Pointer & Touch Controls on Table Canvas
   const handlePointerDown = (e) => {
     if (isMoving || gameOver) return;
-    if (gameMode === 'ai' && currentPlayer === 'p2') return; // Bot turn
-    if (gameMode === 'online' && onlineRole !== currentPlayer) return; // Opponent turn
+    if (gameMode === 'ai' && currentPlayer === 'p2') return;
+    if (gameMode === 'online' && onlineRole !== currentPlayer) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -1143,11 +1180,9 @@ export const PoolGame = ({
     if (!cueBall) return;
 
     if (isBallInHand) {
-      // Place cue ball anywhere on valid felt
       const clampedX = Math.max(FELT_LEFT + BALL_RADIUS + 4, Math.min(FELT_RIGHT - BALL_RADIUS - 4, x));
       const clampedY = Math.max(FELT_TOP + BALL_RADIUS + 4, Math.min(FELT_BOTTOM - BALL_RADIUS - 4, y));
 
-      // Overlap check
       const overlaps = ballsRef.current.some((b) => {
         if (b.num === 0 || b.pocketed) return false;
         return Math.hypot(b.x - clampedX, b.y - clampedY) < BALL_RADIUS * 2;
@@ -1171,10 +1206,21 @@ export const PoolGame = ({
       return;
     }
 
-    // Aim calculation
-    const angle = Math.atan2(y - cueBall.y, x - cueBall.x);
-    updateAimAngle(angle);
-    setIsDraggingAim(true);
+    // Check if clicking in the rear quadrant of the cue stick to pull back
+    const clickDist = Math.hypot(x - cueBall.x, y - cueBall.y);
+    const clickAngle = Math.atan2(y - cueBall.y, x - cueBall.x);
+    const cueAngle = aimAngle + Math.PI;
+    const angleDiff = Math.abs(normalizeAngle(clickAngle - cueAngle));
+
+    if (angleDiff < 0.78 && clickDist > BALL_RADIUS) {
+      setIsPullingCue(true);
+      const pwr = Math.min(100, Math.max(10, Math.round(((clickDist - BALL_RADIUS) / 160) * 90 + 10)));
+      updatePower(pwr);
+    } else {
+      const angle = Math.atan2(y - cueBall.y, x - cueBall.x);
+      updateAimAngle(angle);
+      setIsDraggingAim(true);
+    }
   };
 
   const handlePointerMove = (e) => {
@@ -1202,12 +1248,26 @@ export const PoolGame = ({
       return;
     }
 
-    // Free cursor aiming (whenever mouse moves or is dragged over table)
-    const angle = Math.atan2(y - cueBall.y, x - cueBall.x);
-    updateAimAngle(angle);
+    if (isPullingCue) {
+      const dx = x - cueBall.x;
+      const dy = y - cueBall.y;
+      const cueAngle = aimAngle + Math.PI;
+      const proj = dx * Math.cos(cueAngle) + dy * Math.sin(cueAngle);
+      const pwr = Math.min(100, Math.max(10, Math.round(((proj - BALL_RADIUS) / 160) * 90 + 10)));
+      updatePower(pwr);
+    } else if (isDraggingAim || (!isDraggingAim && !isPullingCue && e.buttons === 0)) {
+      const angle = Math.atan2(y - cueBall.y, x - cueBall.x);
+      updateAimAngle(angle);
+    }
   };
 
   const handlePointerUp = () => {
+    if (isPullingCue) {
+      setIsPullingCue(false);
+      if (power >= 15) {
+        strikeCueBall(aimAngle, power);
+      }
+    }
     setIsDraggingAim(false);
   };
 
@@ -1218,7 +1278,7 @@ export const PoolGame = ({
     if (gameMode === 'online' && onlineRole !== currentPlayer) return;
     e.preventDefault();
 
-    const step = e.shiftKey ? 0.002 : 0.008; // 0.1° or 0.45°
+    const step = e.shiftKey ? 0.002 : 0.008;
     const delta = e.deltaY > 0 ? step : -step;
     updateAimAngle(aimAngle + delta);
   };
@@ -1241,7 +1301,6 @@ export const PoolGame = ({
     const rect = rig.getBoundingClientRect();
     const clientY = e.clientY;
     const relY = Math.max(0, Math.min(rect.height, clientY - rect.top));
-    // Drag down increases power (from top 10% to bottom 100%)
     const pct = Math.round((relY / rect.height) * 90 + 10);
     updatePower(pct);
   };
@@ -1253,7 +1312,6 @@ export const PoolGame = ({
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch (err) {}
 
-    // Auto-strike on release when pulled down!
     if (power >= 15) {
       strikeCueBall(aimAngle, power);
     }
@@ -1349,103 +1407,101 @@ export const PoolGame = ({
         if (myGroup) {
           const myRemaining = candidates.filter((b) => b.type === myGroup);
           candidates = myRemaining.length > 0 ? myRemaining : candidates.filter((b) => b.num === 8);
-        } else {
-          candidates = candidates.filter((b) => b.num !== 8);
         }
 
-        if (candidates.length === 0) candidates = currentBalls.filter((b) => b.num === 8 && !b.pocketed);
-        if (candidates.length === 0) return;
+        if (candidates.length === 0) candidates = currentBalls.filter((b) => !b.pocketed && b.num !== 0);
 
-        let bestAngle = 0;
+        let bestShot = null;
         let bestScore = -Infinity;
 
-        candidates.forEach((tb) => {
-          POCKETS.forEach((p) => {
-            const tToPx = p.x - tb.x;
-            const tToPy = p.y - tb.y;
-            const pocketDist = Math.hypot(tToPx, tToPy);
-            const pocketAngle = Math.atan2(tToPy, tToPx);
+        candidates.forEach((target) => {
+          POCKETS.forEach((pocket) => {
+            const tX = pocket.x - target.x;
+            const tY = pocket.y - target.y;
+            const tDist = Math.hypot(tX, tY);
+            if (tDist < 1) return;
 
-            const ghostX = tb.x - Math.cos(pocketAngle) * BALL_RADIUS * 2;
-            const ghostY = tb.y - Math.sin(pocketAngle) * BALL_RADIUS * 2;
+            const tNormX = tX / tDist;
+            const tNormY = tY / tDist;
 
-            const cueToGhostX = ghostX - cueBall.x;
-            const cueToGhostY = ghostY - cueBall.y;
-            const cueDist = Math.hypot(cueToGhostX, cueToGhostY);
-            const shotAngle = Math.atan2(cueToGhostY, cueToGhostX);
+            const impactX = target.x - tNormX * (BALL_RADIUS * 2);
+            const impactY = target.y - tNormY * (BALL_RADIUS * 2);
 
-            const cutAlignment = Math.cos(shotAngle - pocketAngle);
-            const score = cutAlignment * 100 - (pocketDist + cueDist) * 0.1;
-            if (score > bestScore) {
-              bestScore = score;
-              bestAngle = shotAngle;
+            const cX = impactX - cueBall.x;
+            const cY = impactY - cueBall.y;
+            const cDist = Math.hypot(cX, cY);
+            if (cDist < 1) return;
+
+            const cNormX = cX / cDist;
+            const cNormY = cY / cDist;
+
+            const alignment = cNormX * tNormX + cNormY * tNormY;
+            if (alignment > 0.15) {
+              const score = alignment * 100 - (tDist + cDist) * 0.05;
+              if (score > bestScore) {
+                bestScore = score;
+                const baseAngle = Math.atan2(cY, cX);
+                const jitter = difficulty === 'easy' ? (Math.random() - 0.5) * 0.12 : difficulty === 'medium' ? (Math.random() - 0.5) * 0.04 : (Math.random() - 0.5) * 0.008;
+                bestShot = {
+                  angle: baseAngle + jitter,
+                  power: Math.min(95, Math.max(35, Math.round((cDist + tDist) * 0.12 + 40)))
+                };
+              }
             }
           });
         });
 
-        let noise = 0;
-        let shotPwr = 60;
-        if (difficulty === 'easy') {
-          noise = (Math.random() - 0.5) * 0.12; // ±3.5 degrees
-          shotPwr = 42 + Math.random() * 25;
-        } else if (difficulty === 'medium') {
-          noise = (Math.random() - 0.5) * 0.035; // ±1 degree
-          shotPwr = 55 + Math.random() * 20;
-        } else {
-          noise = 0; // Laser accurate master bot
-          shotPwr = 68;
+        if (!bestShot) {
+          const randomTarget = candidates[Math.floor(Math.random() * candidates.length)];
+          const angle = Math.atan2(randomTarget.y - cueBall.y, randomTarget.x - cueBall.x);
+          bestShot = { angle, power: 55 };
         }
 
-        const finalAngle = bestAngle + noise;
-        setAimAngle(finalAngle);
-        setPower(Math.round(shotPwr));
-
-        setTimeout(() => {
-          strikeCueBall(finalAngle, shotPwr);
-        }, 500);
+        setAimAngle(bestShot.angle);
+        setPower(bestShot.power);
+        setIsBotThinking(false);
+        strikeCueBall(bestShot.angle, bestShot.power);
       } catch (err) {
-        console.error('Bot shot error:', err);
-      } finally {
         setIsBotThinking(false);
       }
-    }, 1100);
+    }, difficulty === 'easy' ? 900 : difficulty === 'medium' ? 1400 : 1800);
 
     return () => clearTimeout(botTimer);
   }, [gameMode, currentPlayer, isMoving, gameOver, difficulty, playerGroups, strikeCueBall]);
 
-  // Online Multiplayer Socket Listeners
+  // Online Socket Listeners
   useEffect(() => {
     if (!socket) return;
 
-    // Opponent Live Aim Stream
     const handleOpponentAim = ({ aim }) => {
-      if (aim) {
-        setOpponentAim(aim);
-      }
+      if (aim) setOpponentAim(aim);
     };
 
-    // Opponent Shot Trigger
     const handleOpponentShot = ({ shot }) => {
-      if (shot) {
-        setAimAngle(shot.angle);
-        setPower(shot.power);
-        if (shot.spin) setCueSpin(shot.spin);
-        setOpponentAim(null);
-        strikeCueBall(shot.angle, shot.power, shot.spin, true);
+      if (!shot) return;
+      setAimAngle(shot.angle);
+      setPower(shot.power);
+      if (shot.spin) setCueSpin(shot.spin);
+      if (shot.cueBallPos) {
+        const cue = ballsRef.current.find((b) => b.num === 0);
+        if (cue) {
+          cue.x = shot.cueBallPos.x;
+          cue.y = shot.cueBallPos.y;
+        }
       }
+      strikeCueBall(shot.angle, shot.power, shot.spin, true);
     };
 
-    // Authoritative State Update from Shooter at Shot Rest
     const handleStateUpdated = ({ state }) => {
       if (!state) return;
       if (state.balls) {
         const currentBalls = ballsRef.current;
-        state.balls.forEach((sb) => {
-          const local = currentBalls.find((b) => b.num === sb.num);
+        state.balls.forEach((remote) => {
+          const local = currentBalls.find((b) => b.num === remote.num);
           if (local) {
-            local.x = sb.x;
-            local.y = sb.y;
-            local.pocketed = sb.pocketed;
+            local.x = remote.x;
+            local.y = remote.y;
+            local.pocketed = remote.pocketed;
             local.vx = 0;
             local.vy = 0;
           }
@@ -1466,7 +1522,6 @@ export const PoolGame = ({
       setTimer(timeControl || 30);
     };
 
-    // Cue Placement (Ball in Hand)
     const handleCuePlaced = ({ pos }) => {
       if (!pos) return;
       const cueBall = ballsRef.current.find((b) => b.num === 0);
@@ -1477,7 +1532,6 @@ export const PoolGame = ({
       }
     };
 
-    // Rematch Handlers
     const handleRematchOffered = () => {
       setOpponentOfferedRematch(true);
       playSound('playMove');
@@ -1532,6 +1586,40 @@ export const PoolGame = ({
     };
   }, [socket, onlineRole, resetGame, strikeCueBall, playSound, playerId, timeControl]);
 
+  // Leave room helper
+  const handleLeaveRoom = () => {
+    if (socket && onlineRoomCode) {
+      socket.emit('pool_leave_room', { roomId: onlineRoomCode });
+    }
+    setOnlineRoomCode(null);
+    setOnlineRole('p1');
+    setRematchOffered(false);
+    setOpponentOfferedRematch(false);
+    setOnlineStatus('');
+    setGameMode('ai');
+    resetGame();
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('pool_room')) {
+      url.searchParams.delete('pool_room');
+      window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (!onlineRoomCode) return;
+    const url = `${window.location.origin}?pool_room=${onlineRoomCode}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleCopyCode = () => {
+    if (!onlineRoomCode) return;
+    navigator.clipboard.writeText(onlineRoomCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
   // Player Groups Progress Tracking
   const p1BallsRemaining = useMemo(() => {
     if (!playerGroups.p1) return 7;
@@ -1575,10 +1663,11 @@ export const PoolGame = ({
           </div>
         </div>
 
-        {/* Center: Mode Quick Select */}
+        {/* Center: Mode Quick Select (Matching Chess Layout) */}
         <div className="flex items-center gap-1 border-2 border-black bg-black p-0.5">
           <button
             onClick={() => {
+              if (gameMode === 'online') handleLeaveRoom();
               setGameMode('ai');
               resetGame();
             }}
@@ -1590,6 +1679,7 @@ export const PoolGame = ({
           </button>
           <button
             onClick={() => {
+              if (gameMode === 'online') handleLeaveRoom();
               setGameMode('pass_play');
               resetGame();
             }}
@@ -1601,17 +1691,39 @@ export const PoolGame = ({
           </button>
           <button
             onClick={() => setIsOnlineModalOpen(true)}
-            className={`px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors ${
+            className={`px-2.5 py-1 font-brutal text-xs font-black uppercase cursor-pointer transition-colors flex items-center gap-1 ${
               gameMode === 'online' ? 'bg-[#22c55e] text-black' : 'bg-black text-white hover:text-[#22c55e]'
             }`}
           >
-            ONLINE PvP
+            <Wifi className="w-3.5 h-3.5" />
+            <span>ONLINE PvP</span>
           </button>
         </div>
 
         {/* Right: Quick Action Controls */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Rules Guide */}
+          {gameMode === 'online' && onlineRoomCode && (
+            <>
+              <button
+                onClick={handleCopyLink}
+                className="brutal-press flex items-center gap-1 px-2.5 py-1.5 bg-[#facc15] hover:bg-yellow-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
+                title="Copy Match Invitation Link"
+              >
+                {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">{copiedLink ? 'COPIED' : 'INVITE LINK'}</span>
+              </button>
+
+              <button
+                onClick={handleLeaveRoom}
+                className="brutal-press flex items-center gap-1 px-2.5 py-1.5 bg-[#ef4444] hover:bg-red-500 text-white border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
+                title="Leave Room"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">LEAVE</span>
+              </button>
+            </>
+          )}
+
           <button
             onClick={() => setShowRules(true)}
             className="brutal-press p-1.5 bg-white hover:bg-neutral-100 text-black border-2 border-black cursor-pointer brutal-shadow-sm"
@@ -1620,15 +1732,16 @@ export const PoolGame = ({
             <HelpCircle className="w-4 h-4" />
           </button>
 
-          {/* Re-rack / Reset Table */}
-          <button
-            onClick={resetGame}
-            className="brutal-press flex items-center gap-1 px-3 py-1.5 bg-[#22c55e] hover:bg-green-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
-            title="Re-rack Table & Start New Match"
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>RE-RACK TABLE</span>
-          </button>
+          {gameMode !== 'online' && (
+            <button
+              onClick={resetGame}
+              className="brutal-press flex items-center gap-1 px-3 py-1.5 bg-[#22c55e] hover:bg-green-400 text-black border-2 border-black font-brutal text-xs font-black uppercase cursor-pointer brutal-shadow-sm"
+              title="Re-rack Table & Start New Match"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>RE-RACK TABLE</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1638,7 +1751,7 @@ export const PoolGame = ({
         {/* Left Column: Player Status HUD + Pool Canvas + Side Power Cue Stick */}
         <div className="flex flex-col items-center gap-3 w-full max-w-[960px] shrink-0">
           
-          {/* Top Scoreboard & Player HUD */}
+          {/* Top Scoreboard & Player HUD (CrazyGames Style) */}
           <div className="w-full bg-[#f4f4eb] text-black border-3 border-black p-2.5 brutal-shadow flex items-center justify-between gap-2 flex-wrap">
             {/* Player 1 HUD */}
             <div className={`p-2 border-2 border-black flex items-center gap-2.5 transition-all ${
@@ -1737,7 +1850,7 @@ export const PoolGame = ({
               )}
             </div>
 
-            {/* Miniclip-Style Vertical Power Cue Stick Rig */}
+            {/* Miniclip / CrazyGames Style Vertical Power Cue Stick Rig */}
             <div className="w-14 sm:w-16 bg-[#f4f4eb] border-3 border-black brutal-shadow flex flex-col items-center justify-between p-1.5 shrink-0 select-none">
               <span className="font-mono text-[9px] font-black uppercase text-center leading-none py-0.5">
                 CUE POWER
@@ -1761,7 +1874,7 @@ export const PoolGame = ({
                   }}
                 />
 
-                {/* 3D Cue Stick Image Graphic sliding downwards */}
+                {/* Cue Stick Graphic sliding downwards */}
                 <div
                   className="absolute left-1/2 -translate-x-1/2 w-4 bg-gradient-to-r from-[#d97706] via-[#fef08a] to-[#78350f] border-x border-black transition-transform"
                   style={{
@@ -1772,7 +1885,6 @@ export const PoolGame = ({
                   <div className="w-full h-3 bg-[#22c55e] border-b border-black" />
                 </div>
 
-                {/* Level indicator tick marks */}
                 {[25, 50, 75].map((tick) => (
                   <div
                     key={tick}
@@ -1793,7 +1905,7 @@ export const PoolGame = ({
             </div>
           </div>
 
-          {/* Bottom Cue Stick Control Station (Fine Aim, Spin Widget, Power Presets, Fire Button) */}
+          {/* Bottom Cue Stick Control Station */}
           <div className="w-full bg-[#f4f4eb] text-black border-3 border-black p-3 brutal-shadow flex items-center justify-between gap-3 flex-wrap">
             
             {/* Fine Aim Micro Adjusters */}
@@ -1842,12 +1954,10 @@ export const PoolGame = ({
                 onPointerMove={handleSpinPointerMove}
                 onPointerUp={handleSpinPointerUp}
                 className="relative w-9 h-9 rounded-full bg-white border-2 border-black shadow-inner cursor-pointer shrink-0"
-                title="Drag red dot to apply cue ball english (draw/backspin, follow/topspin, sidespin)"
+                title="Drag red dot to apply cue ball spin (draw/backspin, follow/topspin, sidespin)"
               >
-                {/* Cue ball axis lines */}
                 <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-neutral-300" />
                 <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-neutral-300" />
-                {/* Red chalk contact tip */}
                 <div
                   className="absolute w-3 h-3 rounded-full bg-red-600 border border-black -translate-x-1/2 -translate-y-1/2 shadow-xs"
                   style={{
@@ -1857,7 +1967,6 @@ export const PoolGame = ({
                 />
               </div>
 
-              {/* Reset spin button */}
               {(cueSpin.x !== 0 || cueSpin.y !== 0) && (
                 <button
                   onClick={() => updateSpin({ x: 0, y: 0 })}
@@ -1902,10 +2011,161 @@ export const PoolGame = ({
           </div>
         </div>
 
-        {/* Right Column: Tactical Ball Racks, Match Settings, Felt Palette */}
-        <div className="relative z-10 w-full xl:w-[320px] flex flex-col gap-3 shrink-0">
+        {/* Right Column: Tactical Command Station (Matching Chess Game UI Exactly) */}
+        <div className="relative z-10 w-full xl:w-[340px] flex flex-col gap-3 shrink-0">
           
-          {/* 1. Ball Racks & Sunk Status */}
+          {/* 1. MATCH OPPONENT & MULTIPLAYER SELECTOR (Exact layout as ChessGame.jsx) */}
+          <div className="bg-[#f4f4eb] text-black border-3 border-black p-3.5 brutal-shadow space-y-3">
+            <div className="flex items-center justify-between border-b-2 border-black pb-1.5">
+              <span className="font-brutal text-xs font-black uppercase tracking-wide">
+                Match Opponent
+              </span>
+              <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 bg-[#facc15] text-black border border-black">
+                {gameMode === 'ai' ? '🤖 vs COMPUTER' : gameMode === 'pass_play' ? '👥 1v1 LOCAL' : '⚡ ONLINE PvP'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                onClick={() => {
+                  if (gameMode === 'online') handleLeaveRoom();
+                  setGameMode('ai');
+                  resetGame();
+                }}
+                className={`brutal-press py-2.5 px-1 border-3 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
+                  gameMode === 'ai'
+                    ? 'bg-[#22c55e] text-black font-black brutal-shadow'
+                    : 'bg-[#facc15] text-black font-black hover:bg-yellow-400 brutal-shadow-sm'
+                }`}
+              >
+                <Bot className="w-5 h-5 mb-0.5 text-black" />
+                <span className="font-brutal text-xs font-black">vs BOT AI</span>
+                <span className="text-[9px] font-mono font-black text-black opacity-80">Billiards Bot</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (gameMode === 'online') handleLeaveRoom();
+                  setGameMode('pass_play');
+                  resetGame();
+                }}
+                className={`brutal-press py-2.5 px-1 border-3 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
+                  gameMode === 'pass_play'
+                    ? 'bg-[#22c55e] text-black font-black brutal-shadow'
+                    : 'bg-[#facc15] text-black font-black hover:bg-yellow-400 brutal-shadow-sm'
+                }`}
+              >
+                <Users className="w-5 h-5 mb-0.5 text-black" />
+                <span className="font-brutal text-xs font-black">1v1 LOCAL</span>
+                <span className="text-[9px] font-mono font-black text-black opacity-80">Pass & Play</span>
+              </button>
+
+              <button
+                onClick={() => setIsOnlineModalOpen(true)}
+                className={`brutal-press py-2.5 px-1 border-3 border-black flex flex-col items-center justify-center cursor-pointer transition-all ${
+                  gameMode === 'online'
+                    ? 'bg-[#22c55e] text-black font-black brutal-shadow'
+                    : 'bg-[#facc15] text-black font-black hover:bg-yellow-400 brutal-shadow-sm'
+                }`}
+              >
+                <Wifi className="w-5 h-5 mb-0.5 text-black animate-pulse" />
+                <span className="font-brutal text-xs font-black">ONLINE</span>
+                <span className="text-[9px] font-mono font-black text-black opacity-80">PvP Lobby</span>
+              </button>
+            </div>
+
+            {/* AI Difficulty Sub-panel (When in vs AI mode) */}
+            {gameMode === 'ai' && (
+              <div className="border-t-2 border-black pt-2 space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono font-black">
+                  <span className="uppercase text-black">BOT DIFFICULTY:</span>
+                  <span className="bg-black text-[#22c55e] px-2 py-0.5 border border-black font-mono font-black">
+                    ~{difficulty === 'easy' ? '800' : difficulty === 'medium' ? '1400' : '2000'} ELO
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 font-mono text-xs font-black">
+                  {[
+                    { id: 'easy', label: 'CADET', desc: '~800' },
+                    { id: 'medium', label: 'SHARK', desc: '~1400' },
+                    { id: 'hard', label: 'HUSTLER', desc: '~2000' }
+                  ].map((lvl) => (
+                    <button
+                      key={lvl.id}
+                      onClick={() => setDifficulty(lvl.id)}
+                      className={`brutal-press py-1.5 border-2 border-black cursor-pointer flex flex-col items-center ${
+                        difficulty === lvl.id ? 'bg-[#22c55e] text-black brutal-shadow-sm' : 'bg-white hover:bg-neutral-100 text-black'
+                      }`}
+                    >
+                      <span>{lvl.label}</span>
+                      <span className="text-[9px] opacity-75">{lvl.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Dedicated Online Multiplayer Card (When in online mode or ready to play online) */}
+            {gameMode === 'online' ? (
+              <div className="border-t-2 border-black pt-2 space-y-2">
+                <div className="p-3 bg-black text-white border-2 border-black space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="text-neutral-400">POOL ROOM:</span>
+                    <span className="font-black text-[#22c55e] tracking-widest text-sm">{onlineRoomCode || 'CONNECTING...'}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-mono">
+                    <span className="text-neutral-400">YOUR ROLE:</span>
+                    <span className="font-bold text-[#facc15]">{onlineRole === 'p1' ? 'HOST (P1 - BREAK)' : 'GUEST (P2)'}</span>
+                  </div>
+
+                  <div className="flex gap-1.5 pt-1">
+                    <button
+                      onClick={handleCopyCode}
+                      className="brutal-press flex-1 py-1.5 bg-white text-black font-mono text-[10px] font-black uppercase border border-white flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      {copiedCode ? <Check className="w-3 h-3 text-black" /> : <Copy className="w-3 h-3 text-black" />}
+                      <span>{copiedCode ? 'COPIED' : 'COPY CODE'}</span>
+                    </button>
+
+                    <button
+                      onClick={handleCopyLink}
+                      className="brutal-press flex-1 py-1.5 bg-[#facc15] text-black font-mono text-[10px] font-black uppercase border border-black flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      {copiedLink ? <Check className="w-3 h-3 text-black" /> : <Share2 className="w-3 h-3 text-black" />}
+                      <span>{copiedLink ? 'LINK COPIED' : 'SHARE LINK'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsOnlineModalOpen(true)}
+                  className="brutal-press w-full py-2 bg-white hover:bg-neutral-100 text-black font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm flex items-center justify-center gap-1.5"
+                >
+                  <Wifi className="w-4 h-4 text-black" />
+                  <span>OPEN ONLINE LOBBY (CUSTOM ROOM / QUICK MATCH) ▶</span>
+                </button>
+
+                <button
+                  onClick={handleLeaveRoom}
+                  className="brutal-press w-full py-2 bg-[#ef4444] hover:bg-red-500 text-white font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>LEAVE ONLINE MATCH</span>
+                </button>
+              </div>
+            ) : (
+              <div className="border-t-2 border-black pt-2">
+                <button
+                  onClick={() => setIsOnlineModalOpen(true)}
+                  className="brutal-press w-full py-2.5 bg-[#22c55e] hover:bg-green-400 text-black font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm flex items-center justify-center gap-1.5"
+                >
+                  <Wifi className="w-4 h-4 text-black" />
+                  <span>OPEN ONLINE MULTIPLAYER LOBBY ▶</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 2. Ball Racks & Sunk Status */}
           <div className="bg-[#f4f4eb] text-black border-3 border-black p-3 brutal-shadow space-y-2.5">
             <span className="font-brutal text-xs font-black uppercase tracking-wide block border-b-2 border-black pb-1">
               8-BALL SUITE // RACK TELEMETRY
@@ -1985,39 +2245,14 @@ export const PoolGame = ({
             </div>
           </div>
 
-          {/* 2. Match Settings (AI Difficulty & Felt Theme) */}
+          {/* 3. Table Felt Themes & Shot Clock */}
           <div className="bg-[#f4f4eb] text-black border-3 border-black p-3 brutal-shadow space-y-2.5">
             <span className="font-brutal text-xs font-black uppercase tracking-wide block border-b-2 border-black pb-1">
-              BATTLE ARENA SETTINGS
+              ARENA THEME & TIMER
             </span>
 
-            {/* Bot Difficulty (when in vs Bot mode) */}
-            {gameMode === 'ai' && (
-              <div className="space-y-1">
-                <span className="font-mono text-[10px] font-black uppercase text-neutral-700">BOT DIFFICULTY:</span>
-                <div className="grid grid-cols-3 gap-1">
-                  {[
-                    { id: 'easy', label: 'CADET', desc: '~800' },
-                    { id: 'medium', label: 'SHARK', desc: '~1400' },
-                    { id: 'hard', label: 'HUSTLER', desc: '~2000' }
-                  ].map((d) => (
-                    <button
-                      key={d.id}
-                      onClick={() => setDifficulty(d.id)}
-                      className={`p-1.5 border-2 border-black font-mono text-[10px] font-black uppercase cursor-pointer flex flex-col items-center ${
-                        difficulty === d.id ? 'bg-[#22c55e] text-black brutal-shadow-xs' : 'bg-white hover:bg-neutral-100 text-black'
-                      }`}
-                    >
-                      <span>{d.label}</span>
-                      <span className="text-[8px] opacity-80">{d.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Table Felt Themes */}
-            <div className="space-y-1 pt-1 border-t border-black/30">
+            <div className="space-y-1">
               <span className="font-mono text-[10px] font-black uppercase text-neutral-700">TABLE FELT:</span>
               <div className="grid grid-cols-2 gap-1.5">
                 {Object.values(FELT_THEMES).map((th) => (
@@ -2045,64 +2280,6 @@ export const PoolGame = ({
               />
             </div>
           </div>
-
-          {/* 3. Online Lobby Button & Rematch Workflow */}
-          {gameMode === 'online' && (
-            <div className="bg-[#f4f4eb] text-black border-3 border-black p-3 brutal-shadow space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-xs font-black uppercase block">
-                  ROOM: {onlineRoomCode || 'LOBBY READY'}
-                </span>
-                <span className="bg-black text-[#22c55e] px-1.5 py-0.2 font-mono text-[10px] font-black uppercase">
-                  {onlineRole === 'p1' ? 'HOST (P1)' : 'GUEST (P2)'}
-                </span>
-              </div>
-
-              {/* Rematch trigger when game is over */}
-              {gameOver && (
-                <div className="pt-1 border-t border-black space-y-1.5">
-                  {opponentOfferedRematch ? (
-                    <button
-                      onClick={() => {
-                        if (socket && onlineRoomCode) {
-                          socket.emit('pool_accept_rematch', { roomId: onlineRoomCode });
-                        }
-                      }}
-                      className="brutal-press w-full py-2 bg-[#facc15] hover:bg-yellow-400 text-black font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm flex items-center justify-center gap-1.5 animate-bounce"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                      <span>ACCEPT OPPONENT'S REMATCH!</span>
-                    </button>
-                  ) : rematchOffered ? (
-                    <div className="p-2 bg-neutral-200 border-2 border-black font-mono text-[10px] font-black text-center">
-                      WAITING FOR OPPONENT TO ACCEPT REMATCH...
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        if (socket && onlineRoomCode) {
-                          socket.emit('pool_offer_rematch', { roomId: onlineRoomCode });
-                          setRematchOffered(true);
-                        }
-                      }}
-                      className="brutal-press w-full py-2 bg-[#22c55e] hover:bg-green-400 text-black font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm flex items-center justify-center gap-1.5"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                      <span>OFFER REMATCH ▶</span>
-                    </button>
-                  )}
-                </div>
-              )}
-
-              <button
-                onClick={() => setIsOnlineModalOpen(true)}
-                className="brutal-press w-full py-2 bg-white hover:bg-neutral-100 text-black font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm flex items-center justify-center gap-1.5"
-              >
-                <Wifi className="w-4 h-4 text-black" />
-                <span>ONLINE LOBBY & INVITE LINK</span>
-              </button>
-            </div>
-          )}
         </div>
       </main>
 
@@ -2129,22 +2306,64 @@ export const PoolGame = ({
               </p>
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={resetGame}
-                className="brutal-press flex-1 py-3 bg-[#22c55e] hover:bg-green-400 text-black font-brutal text-sm font-black uppercase border-3 border-black cursor-pointer brutal-shadow flex items-center justify-center gap-2"
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span>RE-RACK & PLAY AGAIN</span>
-              </button>
-              <button
-                onClick={() => setGameOver(false)}
-                className="brutal-press px-4 py-3 bg-white hover:bg-neutral-100 text-black font-brutal text-xs font-black uppercase border-3 border-black cursor-pointer"
-                title="Review table position"
-              >
-                REVIEW FELT
-              </button>
-            </div>
+            {gameMode === 'online' ? (
+              <div className="space-y-2 pt-2">
+                {opponentOfferedRematch ? (
+                  <button
+                    onClick={() => {
+                      if (socket && onlineRoomCode) {
+                        socket.emit('pool_accept_rematch', { roomId: onlineRoomCode });
+                      }
+                    }}
+                    className="brutal-press w-full py-3 bg-[#facc15] hover:bg-yellow-400 text-black font-brutal text-xs font-black uppercase border-3 border-black cursor-pointer brutal-shadow flex items-center justify-center gap-2 animate-bounce"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>ACCEPT OPPONENT'S REMATCH!</span>
+                  </button>
+                ) : rematchOffered ? (
+                  <div className="p-2.5 bg-neutral-200 border-2 border-black font-mono text-xs font-black text-center">
+                    WAITING FOR OPPONENT TO ACCEPT REMATCH...
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (socket && onlineRoomCode) {
+                        socket.emit('pool_offer_rematch', { roomId: onlineRoomCode });
+                        setRematchOffered(true);
+                      }
+                    }}
+                    className="brutal-press w-full py-3 bg-[#22c55e] hover:bg-green-400 text-black font-brutal text-xs font-black uppercase border-3 border-black cursor-pointer brutal-shadow flex items-center justify-center gap-2"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>OFFER REMATCH ▶</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={handleLeaveRoom}
+                  className="brutal-press w-full py-2 bg-white text-black hover:bg-neutral-100 font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer"
+                >
+                  RETURN TO LOBBY
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={resetGame}
+                  className="brutal-press flex-1 py-3 bg-[#22c55e] hover:bg-green-400 text-black font-brutal text-sm font-black uppercase border-3 border-black cursor-pointer brutal-shadow flex items-center justify-center gap-2"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>RE-RACK & PLAY AGAIN</span>
+                </button>
+                <button
+                  onClick={() => setGameOver(false)}
+                  className="brutal-press px-4 py-3 bg-white hover:bg-neutral-100 text-black font-brutal text-xs font-black uppercase border-3 border-black cursor-pointer"
+                  title="Review table position"
+                >
+                  REVIEW FELT
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -2152,51 +2371,77 @@ export const PoolGame = ({
       {/* Rules Modal */}
       {showRules && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 modal-backdrop-anim select-none"
-          style={{ overscrollBehavior: 'contain' }}
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs modal-backdrop-anim select-none"
+          onClick={() => setShowRules(false)}
         >
-          <div className="bg-white text-black border-4 border-black p-5 sm:p-7 brutal-shadow-xl max-w-lg w-full space-y-4 relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setShowRules(false)}
-              className="brutal-press absolute top-4 right-4 bg-black text-white hover:bg-neutral-800 p-1.5 border-2 border-black cursor-pointer"
-            >
-              <CloseIcon className="w-5 h-5" />
-            </button>
-
-            <div className="flex items-center gap-2 border-b-3 border-black pb-3">
-              <span className="text-2xl">🎱</span>
-              <h2 className="font-brutal text-xl font-black uppercase">
-                CYBER 8-BALL POOL // CONTROLS & RULES
-              </h2>
+          <div
+            className={`w-full max-w-xl border-4 border-black p-5 sm:p-6 brutal-shadow-xl modal-content-anim ${
+              isDarkTheme ? 'bg-[#18181b] text-white' : 'bg-white text-black'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 mb-4 border-b-3 border-black">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-[#22c55e] border-2 border-black flex items-center justify-center font-black text-black text-sm">
+                  🎱
+                </div>
+                <h3 className="font-brutal font-black text-base sm:text-lg uppercase">
+                  Cyber 8-Ball Pool Rules & Controls
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowRules(false)}
+                className="brutal-press p-1 hover:bg-neutral-100 border-2 border-black cursor-pointer"
+              >
+                <CloseIcon className="w-4 h-4 text-black" />
+              </button>
             </div>
 
-            <div className="space-y-3 font-mono text-xs text-neutral-800">
-              <div className="p-3 bg-[#facc15] border-2 border-black space-y-1.5">
-                <span className="font-black text-black uppercase block">⚡ FULL CONTROLS & AIMING:</span>
-                <p>• <strong>Aim:</strong> Move your mouse or drag anywhere across the table to rotate the laser aim line and ghost ball.</p>
-                <p>• <strong>Mouse Wheel / Trackpad:</strong> Scroll to micro-adjust your aim angle with razor precision (Hold <code>Shift</code> for 0.1° ultra-fine tuning!).</p>
-                <p>• <strong>Miniclip Power Cue:</strong> Drag down the vertical cue stick on the right and release to shoot, or use the <strong>STRIKE</strong> button.</p>
-                <p>• <strong>Cue Ball English / Spin:</strong> Drag the red chalk dot on the circular cue ball widget to apply follow (topspin), draw (backspin), or side english.</p>
-                <p>• <strong>Keyboard Shortcuts:</strong> <code>Arrow Keys</code> or <code>A/D</code> to aim, <code>W/S</code> for power, <code>Space</code> to shoot.</p>
+            <div className="space-y-3 font-mono text-xs sm:text-sm max-h-[70vh] overflow-y-auto pr-1">
+              <div className="p-2.5 bg-neutral-100 text-black border-2 border-black">
+                <strong className="font-brutal text-black uppercase block mb-1">
+                  1. Aiming & Power Controls (CrazyGames Style)
+                </strong>
+                • <strong>Aim:</strong> Move your mouse around the cue ball to rotate the cue stick and laser trajectory guide.<br/>
+                • <strong>Pull-Back Shoot:</strong> Click and drag the cue stick backward on the table to charge power, then release to shoot!<br/>
+                • <strong>Side Power Bar:</strong> You can also drag the vertical power cue bar on the side down and release to shoot.<br/>
+                • <strong>Fine Aim:</strong> Use the <code>[-1.0°] [-0.1°] [+0.1°] [+1.0°]</code> buttons or mouse wheel for micro-adjustments.<br/>
+                • <strong>Keyboard:</strong> Arrow Left/Right to aim, Arrow Up/Down for power, <code>Space</code> to strike.
               </div>
 
-              <div className="p-3 bg-[#f4f4eb] border-2 border-black space-y-1">
-                <span className="font-black text-black uppercase block mb-1">🎱 OFFICIAL 8-BALL RULES:</span>
-                <p>• <strong>Break:</strong> Strike from behind the headstring line to shatter the 15-ball rack.</p>
-                <p>• <strong>Group Assignment:</strong> First legal ball pocketed after break assigns <strong>Solids (1-7)</strong> or <strong>Stripes (9-15)</strong>.</p>
-                <p>• <strong>Legal Contact:</strong> You must strike your own group's balls first.</p>
-                <p>• <strong>Scratch:</strong> If the Cue Ball is pocketed or hits no ball, opponent receives <strong>Ball in Hand</strong> (click anywhere on felt to place!).</p>
-                <p>• <strong>Winning:</strong> Clear all 7 of your group balls, then legally pocket the black <strong>8-Ball</strong> to claim victory!</p>
-                <p>• <strong>Loss:</strong> Pocketing the 8-Ball early or scratching on the 8-ball results in an immediate loss.</p>
+              <div className="p-2.5 bg-neutral-100 text-black border-2 border-black">
+                <strong className="font-brutal text-black uppercase block mb-1">
+                  2. 8-Ball Game Objective
+                </strong>
+                Pocket all 7 balls of your assigned group (Solids 1–7 or Stripes 9–15), and then legally sink the 8-Ball (Black) to win the match.
+              </div>
+
+              <div className="p-2.5 bg-neutral-100 text-black border-2 border-black">
+                <strong className="font-brutal text-black uppercase block mb-1">
+                  3. Fouls & Ball in Hand
+                </strong>
+                • Scratching the cue ball, hitting the opponent's ball first, or failing to hit any ball results in a foul.<br/>
+                • On a foul, the opponent receives <strong>Ball in Hand</strong> and can click anywhere on the felt to place the cue ball.
+              </div>
+
+              <div className="p-2.5 bg-neutral-100 text-black border-2 border-black">
+                <strong className="font-brutal text-black uppercase block mb-1">
+                  4. Real-Time Online Multiplayer
+                </strong>
+                Click <strong>ONLINE PvP</strong> to match instantly via Quick Match or generate a custom 6-character room code to invite a friend with a direct shareable link!
               </div>
             </div>
 
-            <button
-              onClick={() => setShowRules(false)}
-              className="brutal-press w-full py-2.5 bg-black text-[#22c55e] font-brutal text-sm font-black uppercase border-2 border-black cursor-pointer brutal-shadow"
-            >
-              GOT IT // RETURN TO TABLE
-            </button>
+            <div className="mt-4 pt-3 border-t-2 border-black flex justify-end">
+              <button
+                onClick={() => setShowRules(false)}
+                className="brutal-press px-4 py-2 bg-[#22c55e] hover:bg-green-400 text-black font-brutal text-xs font-black uppercase border-2 border-black cursor-pointer brutal-shadow-sm"
+              >
+                GOT IT // LET'S PLAY
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -2252,6 +2497,7 @@ export const PoolGame = ({
           if (socket) socket.emit('cancel_pool_quick_match');
           setIsSearchingQuickMatch(false);
         }}
+        onLeaveRoom={handleLeaveRoom}
         isSearchingQuickMatch={isSearchingQuickMatch}
         roomCode={onlineRoomCode}
         onlineStatus={onlineStatus}
