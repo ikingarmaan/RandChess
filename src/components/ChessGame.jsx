@@ -627,18 +627,6 @@ export const ChessGame = ({
     lastTickTimestampRef.current = Date.now();
   }, []);
 
-  // Safe New Match handler
-  const handleNewMatchClick = useCallback(() => {
-    if (gameMode === 'online' && onlineRoomCode && !gameOverResult) {
-      if (window.confirm('You are in an active online match. Do you want to leave the room and start a new match?')) {
-        handleLeaveRoom();
-        startNewGame();
-      }
-      return;
-    }
-    startNewGame();
-  }, [gameMode, onlineRoomCode, gameOverResult, handleLeaveRoom, startNewGame]);
-
   // Restart / New Game
   const startNewGame = useCallback(() => {
     const newGame = new Chess();
@@ -662,6 +650,32 @@ export const ChessGame = ({
     runCoachAnalysis(newGame);
     sound.playMove();
   }, [timeControl, runCoachAnalysis]);
+
+  // Leave active online room & reset waiting flags
+  const handleLeaveRoom = useCallback(() => {
+    if (socket && onlineRoomCode) {
+      socket.emit('leave_room', { roomId: onlineRoomCode });
+    }
+    if (socket && isSearchingQuickMatch) {
+      socket.emit('cancel_quick_match');
+    }
+    setIsSearchingQuickMatch(false);
+    setOnlineRoomCode(null);
+    setIsWaitingOnline(false);
+    setIsOnlineModalOpen(false);
+  }, [socket, onlineRoomCode, isSearchingQuickMatch]);
+
+  // Safe New Match handler
+  const handleNewMatchClick = useCallback(() => {
+    if (gameMode === 'online' && onlineRoomCode && !gameOverResult) {
+      if (window.confirm('You are in an active online match. Do you want to leave the room and start a new match?')) {
+        handleLeaveRoom();
+        startNewGame();
+      }
+      return;
+    }
+    startNewGame();
+  }, [gameMode, onlineRoomCode, gameOverResult, handleLeaveRoom, startNewGame]);
 
   // Custom FEN Loader
   const handleLoadCustomFen = useCallback((customFen) => {
@@ -757,19 +771,6 @@ export const ChessGame = ({
       setIsSearchingQuickMatch(false);
     }
   }, [socket]);
-
-  const handleLeaveRoom = useCallback(() => {
-    if (socket && onlineRoomCode) {
-      socket.emit('leave_room', { roomId: onlineRoomCode });
-    }
-    if (socket && isSearchingQuickMatch) {
-      socket.emit('cancel_quick_match');
-    }
-    setIsSearchingQuickMatch(false);
-    setOnlineRoomCode(null);
-    setIsWaitingOnline(false);
-    setIsOnlineModalOpen(false);
-  }, [socket, onlineRoomCode, isSearchingQuickMatch]);
 
   // Jump to specific move in history preview
   const handleJumpToMove = useCallback((idx) => {
